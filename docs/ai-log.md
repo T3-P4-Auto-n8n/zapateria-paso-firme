@@ -255,6 +255,45 @@ y docker-compose.yml.
 
 </details>
 
+### Documentación del workflow 01 · Eventos de la tienda (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** documentar `workflows/01-eventos-tienda.json` (creado y probado en n8n): convención de nombres, spec del router, payloads de prueba
+- **Resultado:** `AGENTS.md` sección 5 con la nueva numeración de workflows (sin `F00`). `specs/01-eventos-tienda.md` describe el router tal como está en el JSON: webhook `Evento de la tienda` y Switch `Según el evento` con 4 salidas y la de respaldo `Evento desconocido`; deja indicadas las ramas pendientes de HU-01, HU-02, HU-09 y HU-07. `tests/payloads/` con un JSON por evento (ejemplos de la guía, correos `@example.com`) y `evento-desconocido.json`.
+- **Problemas encontrados:** al leer el JSON, el agente señaló que la salida de respaldo se llama `"Evento desconocido "` (con un espacio al final), que el webhook no tiene autenticación y que el JSON exportado lleva `"active": true`. En `apartado.vencido.json`, la guía abrevia el apartado con `"..."`; el agente completó `fecha`, `telefono`, `talla` y `fecha_limite` con valores de ejemplo coherentes.
+- **Decisión:** Aceptado. Corregido en n8n el espacio final de la salida Evento desconocido y e-exportado. Se aceptan los valores de ejemplo de apartado.vencido.json porque son coherentes. La autenticación del webhook queda para HU-14.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+Completa la documentación del workflow workflows/01-eventos-tienda.json (ya
+creado y probado en n8n).
+
+## Cambios
+1. AGENTS.md, sección 5 (nombres de flujos): ya no hay "F00 router". Los
+   workflows se numeran por el flujo más bajo que contienen:
+   01 · Eventos de la tienda (webhook + Switch; flujos 1, 2, 4 y aviso de vencido),
+   03 · Abonos a distancia, 05 · Cierre diario, 06 · Recordatorios y vencimientos,
+   07 · Informe mensual, 08 · Error Workflow.
+2. specs/01-eventos-tienda.md con specs/_plantilla.md. Por ahora solo la parte
+   del router: webhook POST /webhook/tienda y Switch por body.evento con 4 salidas
+   (apartado.creado, abono.registrado, venta.registrada, apartado.vencido) y una
+   salida "Evento desconocido". Lee el JSON del workflow para describirlo tal como
+   está. Deja indicado que las ramas de HU-01, HU-02, HU-09 y HU-07 se añadirán después.
+3. tests/payloads/: un JSON por evento con los ejemplos de docs/guia-de-la-app.md
+   (apartado.creado.json, abono.registrado.json, venta.registrada.json,
+   apartado.vencido.json) y evento-desconocido.json. Usa datos de ejemplo
+   (@example.com), nunca datos reales.
+4. Entrada nueva en docs/ai-log.md con este prompt.
+
+## Límites
+- No modifiques el JSON del workflow.
+- No modifiques ningún otro archivo.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
