@@ -294,6 +294,28 @@ creado y probado en n8n).
 
 </details>
 
+### Lista de credenciales y variables (`docs/credenciales.md`)
+
+- **Autora:** Esra
+- **Tarea:** documentar las credenciales de n8n y las variables del `.env` que necesita cada workflow, sin valores (entregable 3 del README)
+- **Resultado:** `docs/credenciales.md` con las credenciales actuales (`Mailpit`, `API Tienda`, `Groq`), la tabla workflow → credenciales (`01 · Eventos de la tienda`: `Mailpit`; el resto por completar), las variables `API_KEY`, `N8N_WEBHOOK_URL` y `SEED`, y los pasos para crear cada credencial en n8n.
+- **Problemas encontrados:** el agente señaló que el servicio `mailpit` no está en el `docker-compose.yml` del repo, así que el host `mailpit` solo resuelve si Mailpit se levanta aparte. Tampoco hay todavía ningún nodo de correo en `workflows/01-eventos-tienda.json`.
+- **Decisión:** pendiente de revisión.
+
+<details><summary>Prompt</summary>
+
+```text
+Crea docs/credenciales.md: lista de credenciales y variables que necesita cada
+workflow, SIN valores. Credenciales actuales en n8n: "Mailpit" (SMTP, host mailpit,
+puerto 1025), "API Tienda" (Header Auth, Name X-API-Key, valor = API_KEY del .env),
+"Groq" (Groq API). Variables del .env: API_KEY, N8N_WEBHOOK_URL, SEED.
+Incluye una tabla workflow → credenciales (01 · Eventos de la tienda: Mailpit;
+el resto se irá completando) y cómo crear cada credencial en n8n.
+Añade una entrada en docs/ai-log.md. No modifiques ningún otro archivo.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
