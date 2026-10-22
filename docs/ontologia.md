@@ -176,7 +176,7 @@ Pago parcial de un apartado. El abono inicial también es un abono.
 - **Abonos a distancia (flujo 3):** la IA solo extrae ordenante, importe y concepto del aviso del banco; el flujo decide con la API qué apartado es. Si no está claro, si paga de más o si el apartado está fuera de plazo, **no se registra nada** y se avisa a Marisa.
 - **Migración:** los abonos del Excel se crean con su `fecha` original; un abono inicial por debajo de 5 € no se carga y va al informe de casos dudosos.
 
-> ⚠️ **Flujo 3 (abonos a distancia):** hay que enviar siempre `forma_pago` con `"bizum"` o `"tarjeta"`, según el aviso del banco. Si no se envía, la app guarda el pago como `efectivo` y el cierre diario sale mal.
+> ⚠️ **Flujo 3 (abonos a distancia):** hay que enviar siempre `forma_pago` `"bizum"` (también para las transferencias, porque la app no acepta `"transferencia"`; ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)). Si no se envía, la app guarda el pago como `efectivo` y el cierre diario sale mal.
 
 ---
 
