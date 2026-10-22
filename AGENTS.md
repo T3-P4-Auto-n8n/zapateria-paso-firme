@@ -51,7 +51,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 - **Flujos en n8n:** `F01 · Confirmación de apartado`. `F00` es el router (webhook + Switch) y `F08` el Error Workflow.
 - **Nodos:** nombres descriptivos en español, por ejemplo `Buscar apartado por id`.
 - **Specs:** `specs/NN-nombre.md` · **Workflows:** `workflows/NN-nombre.json` (mismo `NN` que el flujo).
-- **Commits:** en español y en imperativo (`Añade flujo de recibo de abono`).
+- **Commits y PRs:** en inglés, con Conventional Commits (`docs: ...`, `feat: ...`, `fix: ...`, `chore: ...`). La documentación del proyecto (specs, `docs/`, `AGENTS.md`) sigue en español.
 
 ## 6. Forma de trabajo
 
