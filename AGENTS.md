@@ -26,6 +26,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 | App de la tienda y API | http://localhost:8000 | `http://tienda:8000` |
 | Swagger | http://localhost:8000/docs | `http://tienda:8000/docs` |
 | n8n | http://localhost:5678 | `http://n8n:5678` |
+| Mailpit (correos de prueba) | http://localhost:8025 | SMTP host `mailpit`, puerto `1025`, sin usuario ni contraseña, SSL/TLS desactivado |
 
 - **Dentro de n8n nunca se usa `localhost`** para llamar a la app: se usa `http://tienda:8000`.
 - **Autenticación:** toda petición a `/api/...` lleva la cabecera `X-API-Key`. En n8n se configura una vez como credencial **Header Auth** (Name `X-API-Key`) y se elige en cada nodo HTTP Request. Sin ella, `401`.
@@ -48,7 +49,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 ## 5. Convenciones de nombres
 
 - **Ramas:** `feature/`, `docs/`, `fix/` o `chore/`, siempre creadas desde `dev`. Las PR van **siempre a `dev`**. A `main` solo se llega desde `dev` al cerrar un nivel.
-- **Flujos en n8n:** `F01 · Confirmación de apartado`. `F00` es el router (webhook + Switch) y `F08` el Error Workflow.
+- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual` y `08 · Error Workflow`.
 - **Nodos:** nombres descriptivos en español, por ejemplo `Buscar apartado por id`.
 - **Specs:** `specs/NN-nombre.md` · **Workflows:** `workflows/NN-nombre.json` (mismo `NN` que el flujo).
 - **Commits y PRs:** en inglés, con Conventional Commits (`docs: ...`, `feat: ...`, `fix: ...`, `chore: ...`). La documentación del proyecto (specs, `docs/`, `AGENTS.md`) sigue en español.

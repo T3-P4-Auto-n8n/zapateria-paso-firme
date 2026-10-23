@@ -1,0 +1,172 @@
+{
+  "name": "01 · Eventos de la tienda",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.evento }}",
+                    "rightValue": "apartado.creado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "125c6488-aa4b-4c4e-a953-db7f8681f900"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "apartado.creado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "70e0cc69-66fc-4324-85b9-7358d0c8d2a5",
+                    "leftValue": "={{ $json.body.evento }}",
+                    "rightValue": "abono.registrado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "abono.registrado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "8b1a3e7d-74f9-4fc7-8257-baef825045cf",
+                    "leftValue": "={{ $json.body.evento }}",
+                    "rightValue": "venta.registrada",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "venta.registrada"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "836fdcd1-cb72-41c5-a178-dbb009b58741",
+                    "leftValue": "={{ $json.body.evento }}",
+                    "rightValue": "apartado.vencido",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "apartado.vencido"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Evento desconocido"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "fac4693c-8e21-4cce-b6cf-b6a0e1f3e588",
+      "name": "Según el evento"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tienda",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2598deb6-e89b-4c84-a916-ff831c7570e2",
+      "name": "Evento de la tienda",
+      "webhookId": "fd681164-0e74-4d59-b728-5455fa222275"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Evento de la tienda": {
+      "main": [
+        [
+          {
+            "node": "Según el evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según el evento": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "506fcece-818d-462e-b91d-82ca65e57b1d",
+  "meta": {
+    "instanceId": "1359a9ad3151d1e603e3002a7660a8c8b9db2b111058e387772f7a5d0bd4f165"
+  },
+  "nodeGroups": [],
+  "id": "cDr6t9FK9qRYt4Fn",
+  "tags": []
+}
