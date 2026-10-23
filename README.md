@@ -113,6 +113,17 @@ Cambiad `API_KEY` en el `.env` por una clave vuestra (el `.env` no se sube a Git
 
 Para pararlo todo: `docker compose down`. Para borrar también los datos y empezar de cero: `docker compose down -v`.
 
+## 🔁 Exportar e importar flujos
+
+Con la app y n8n levantados, desde la raíz del repo:
+
+```bash
+python3 scripts/flujos.py exportar                            # n8n -> workflows/NN-nombre.json
+python3 scripts/flujos.py importar workflows/01-eventos-tienda.json   # workflows/ -> n8n
+```
+
+`exportar` guarda cada flujo con el nombre que tiene en n8n (`01 · Eventos de la tienda` → `01-eventos-tienda.json`) y guarda solo las claves de la descarga desde la interfaz (sin `pinData` ni datos de la instancia, como el propietario). Solo exporta los flujos cuyo nombre empieza por `NN · `. Revisad el diff antes de hacer commit.
+
 ## 🏪 El software de la tienda
 
 Para no empezar de cero, la tienda ya tiene una **aplicación básica** (carpetas [`backend/`](backend/) y [`frontend/`](frontend/)) que sustituye a la libreta. Vuestro trabajo **no es programarla**, sino **automatizar todo lo que pasa alrededor** con n8n. Cuando la levantéis (ver [Cómo empezar](#-cómo-empezar)) tendréis:

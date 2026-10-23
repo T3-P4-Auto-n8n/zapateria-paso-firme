@@ -64,19 +64,17 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 
 **Desde la interfaz de n8n:** menú del flujo → *Import from File* para importar y *Download* para exportar. Guardar el JSON en `workflows/`.
 
-**Con la CLI de n8n dentro del contenedor:**
+**Con el script [`scripts/flujos.py`](scripts/flujos.py)** (usa la CLI de n8n dentro del contenedor):
 
 ```bash
-# Exportar todos los flujos (un archivo por flujo) y copiarlos al repo
-docker compose exec n8n n8n export:workflow --all --separate --output=/tmp/workflows/
-docker compose cp n8n:/tmp/workflows/. workflows/
-
-# Importar un flujo del repo
-docker compose cp workflows/NN-nombre.json n8n:/tmp/NN-nombre.json
-docker compose exec n8n n8n import:workflow --input=/tmp/NN-nombre.json
+python3 scripts/flujos.py exportar                       # todos los flujos -> workflows/
+python3 scripts/flujos.py importar workflows/NN-nombre.json
 ```
 
-Los archivos exportados por la CLI se renombran a `NN-nombre.json` antes de hacer commit. Antes de subir un JSON, comprobar que no contiene claves ni datos personales reales.
+- `exportar` renombra cada archivo según su nombre en n8n (`01 · Eventos de la tienda` → `01-eventos-tienda.json`: minúsculas, sin tildes, sin `de`/`la`/`del`, con guiones), guarda solo las claves de la descarga desde la interfaz (`name`, `nodes`, `connections`, `settings`, `meta`, `tags`, `active`, `id`, `versionId`; sin `pinData` ni `shared`, que lleva el nombre y el email del propietario) y omite los flujos que no empiezan por `NN · ` y los archivados.
+- Solo librería estándar de Python; no hace falta instalar nada.
+
+Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 
 ## 8. Decisiones tomadas
 

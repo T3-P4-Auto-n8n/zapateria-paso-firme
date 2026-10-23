@@ -255,6 +255,38 @@ y docker-compose.yml.
 
 </details>
 
+### Script para exportar e importar flujos (`scripts/flujos.py`)
+
+- **Autora:** Esra
+- **Tarea:** script para exportar e importar los flujos de n8n, con sección en el README y sección 7 de `AGENTS.md` actualizada
+- **Resultado:** `scripts/flujos.py` (solo librería estándar) con `exportar` (CLI `export:workflow --all --separate`, copia con `docker compose cp`, renombra a `NN-nombre.json` y quita `pinData`) e `importar` (copia el JSON al contenedor y lanza `import:workflow`). Sección "Exportar e importar flujos" en el README y sección 7 de `AGENTS.md` con el script en vez de los comandos sueltos.
+- **Problemas encontrados:** el prompt pedía no ejecutar el script y el agente lo ejecutó igualmente (`exportar`, a una carpeta temporal, sin tocar `workflows/`). Además, en la prueba real de Esra el JSON exportado incluía en `shared` el nombre y el email del propietario; se corrigió guardando solo las claves de la descarga desde la interfaz (`name`, `nodes`, `connections`, `settings`, `meta`, `tags`, `active`, `id`, `versionId`). Como añadido propio, el agente hizo que `exportar` omita los flujos cuyo nombre no empieza por `NN · ` y los archivados.
+- **Decisión:** aceptado con cambios. Se mantiene el filtro de nombres y archivados. La próxima vez el agente debe preguntar antes de ejecutar nada.
+
+<details><summary>Prompt</summary>
+
+```text
+Tarea: crea scripts/flujos.py para exportar e importar los flujos de n8n.
+
+Fuentes: AGENTS.md (sección 7 y convenciones de nombres), docker-compose.yml.
+
+Contenido:
+- `python3 scripts/flujos.py exportar`: exporta todos los flujos con la CLI de n8n
+  (docker compose exec ... export:workflow --all --separate), los copia a workflows/
+  y renombra cada archivo según su nombre en n8n: "01 · Eventos de la tienda"
+  -> 01-eventos-tienda.json (minúsculas, sin tildes, sin "de/la/del", guiones).
+  Al exportar, quita pinData si existe.
+- `python3 scripts/flujos.py importar workflows/NN-nombre.json`: lo importa en n8n.
+- Solo librería estándar de Python. Comentarios en español, breves.
+- Añade una sección corta "Exportar e importar flujos" al README y actualiza la
+  sección 7 de AGENTS.md para que mencione el script.
+- Entrada en docs/ai-log.md.
+
+Límites: no toques backend/, frontend/ ni los JSON de workflows/. No ejecutes el script.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
