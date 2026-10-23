@@ -322,6 +322,58 @@ No modifiques el JSON del workflow. No ejecutes nada.
 
 </details>
 
+### Spec de la rama HU-02 · Recibo de abono (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** añadir a la spec del workflow 01 la rama de HU-02 (salida `abono.registrado`), con sus pruebas
+- **Resultado:** spec actualizada (alcance, cabecera, objetivo, entradas, pasos, salidas, errores, pruebas y criterios de HU-02): IF `¿Tiene email? (abono)` (sin email → termina sin enviar nada), IF `¿Liquidado?` sobre `datos.estado`, `Enviar recibo del abono` (`producto`, `talla`, `importe`, `abonado`, `pendiente` con 2 decimales y `fecha_limite` en `dd/MM/yyyy`) y `Avisar de que puede recoger` (`producto`, `talla`, `importe` del último abono y `abonado` como total pagado; sin `pendiente` ni `fecha_limite`). Payloads nuevos `abono.registrado-liquidado.json` (apartado 25, `importe` 59.9, `abonado` = `precio` = 89.9, `pendiente` 0) y `abono.registrado-sin-email.json` (apartado 26, `email` `null`), coherentes con los existentes.
+- **Problemas encontrados:** en el primer intento el agente usó `precio` como total pagado en el aviso de «puede recoger»; se corrigió a `abonado` (valor de la app) en el paso 9, la tabla de salidas y la de pruebas. La fila de la decisión en `AGENTS.md` (sección 8) se reescribió con la redacción de la pareja y estado «Tomada». **Decisión de la pareja:** si el abono llega sin email no se avisa a la tienda, porque en un abono el cliente ya está en contacto con ella y se llenaría de correos; registrada en la sección 8 de `AGENTS.md`. Con esta decisión, el criterio «cada abono registrado genera un recibo» solo se cumple para clientes con email. El agente actualizó también la prueba de extremo a extremo con `scripts/datos_demo.py`: el abono que liquida el apartado sin email no envía nada.
+- **Decisión:** pendiente de revisión.
+
+<details><summary>Prompt</summary>
+
+```text
+Añade a specs/01-eventos-tienda.md la rama de HU-02 (salida abono.registrado),
+siguiendo la plantilla y los criterios de aceptación de HU-02 del README:
+- IF "¿Tiene email? (abono)": si datos.email está vacío o es null, termina sin enviar
+  nada. Decisión nuestra: en un abono el cliente está en contacto con la tienda; no se
+  avisa a la tienda para no llenarla de correos. Regístrala en la sección 8 de AGENTS.md
+  (Decisiones tomadas) y en docs/ai-log.md.
+- IF "¿Liquidado?": datos.estado es igual a "liquidado".
+- No liquidado: "Enviar recibo del abono" al cliente (Mailpit, From
+  tienda@pasofirme.example) con producto, talla, importe (lo que acaba de pagar),
+  abonado, pendiente (2 decimales, valores de la app) y fecha_limite (dd/MM/yyyy).
+- Liquidado: "Avisar de que puede recoger" al cliente con producto, talla, importe del
+  último abono y precio total pagado; sin pendiente ni fecha límite.
+- Pruebas: tests/payloads/abono.registrado.json (activo) y dos payloads nuevos:
+  abono.registrado-liquidado.json (estado liquidado, pendiente 0, abonado = precio)
+  y abono.registrado-sin-email.json. Datos ficticios coherentes con los existentes.
+- Actualiza la cabecera, alcance, salidas, errores y criterios de la spec.
+- Entrada en docs/ai-log.md.
+- No modifiques el JSON del workflow. No ejecutes nada.
+```
+
+</details>
+
+<details><summary>Prompt (corrección)</summary>
+
+```text
+Faltan cosas de la rama HU-02:
+1. AGENTS.md, sección 8 (Decisiones tomadas): añade una fila:
+   "Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda)" |
+   "En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada
+   abono la llenaría de correos" | "Tomada".
+2. specs/01-eventos-tienda.md: en "Avisar de que puede recoger", el total pagado es
+   `abonado` (valor de la app), no `precio`. Corrígelo en el paso 9, la tabla de
+   salidas y la tabla de pruebas.
+3. docs/ai-log.md: entrada de la spec de HU-02 con el prompt original completo y este,
+   y en "Problemas encontrados": no se actualizaron AGENTS.md ni ai-log en el primer
+   intento, y se usó precio en vez de abonado como total pagado.
+No modifiques el JSON del workflow. No ejecutes nada.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
