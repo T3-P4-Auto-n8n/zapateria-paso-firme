@@ -255,6 +255,35 @@ y docker-compose.yml.
 
 </details>
 
+### Mailpit para probar correos en local (`docker-compose.yml`)
+
+- **Autora:** Esra
+- **Tarea:** añadir Mailpit al `docker-compose.yml` para probar los correos en local, como en el ejemplo de clase de la pastelería
+- **Resultado:** servicio `mailpit` (imagen `axllent/mailpit`, puertos 8025 web y 1025 SMTP, `TZ=Europe/Madrid`) en `docker-compose.yml`, sin tocar `tienda` ni `n8n`. Mailpit añadido a la tabla de servicios de `AGENTS.md` (sección 3) con los datos de conexión SMTP desde n8n.
+- **Problemas encontrados:** ninguno por ahora. `docker compose config` valida el archivo, pero el servicio aún no se ha levantado ni se ha enviado un correo de prueba desde n8n.
+- **Decisión:** probado: la web abre en 8025
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+Añade Mailpit al docker-compose.yml para probar los correos en local, igual
+que en el ejemplo de clase de la pastelería.
+
+## Contenido
+1. Servicio "mailpit" con la imagen axllent/mailpit: puerto 8025 (web) y
+   1025 (SMTP), con TZ=Europe/Madrid como los otros servicios.
+2. En AGENTS.md, sección 3, añade Mailpit a la tabla de servicios
+   (navegador: http://localhost:8025 · desde n8n: SMTP host mailpit, puerto 1025,
+   sin usuario ni contraseña, SSL/TLS desactivado).
+3. Entrada nueva en docs/ai-log.md con este prompt.
+
+## Límites
+- No toques los servicios tienda ni n8n.
+- No modifiques ningún otro archivo.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
