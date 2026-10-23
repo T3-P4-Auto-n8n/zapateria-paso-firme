@@ -8,6 +8,7 @@ Registro de cómo usamos agentes de IA en el proyecto: herramientas, prompts cla
 |---|---|---|---|
 | Agente de desarrollo | Claude Code | Claude Opus 5.5 (`claude-opus-5-5`) | En uso |
 | Nodos de IA dentro de n8n | Groq (capa gratuita) | Por decidir | Pendiente de configurar |
+| Documentación y validación de nodos | n8n-mcp (modo solo documentación) | — | En uso |
 
 **Por qué Claude Code y no OpenCode.** El README recomienda OpenCode, pero permite otras herramientas si se justifica la elección. Usamos Claude Code porque ya lo tenemos las dos.
 
@@ -527,6 +528,47 @@ Crea specs/08-error-workflow.md con la plantilla, para HU-05 (criterios del READ
   por la referencia a specs/08-error-workflow.md.
 - Entrada en docs/ai-log.md (fuente: guía de la sesión 2 del profesor, paso 6).
 No crees ni modifiques JSON de workflows. No ejecutes nada.
+```
+
+</details>
+
+### n8n-mcp (#8)
+
+- **Autora:** Esra
+- **Tarea:** configurar n8n-mcp para el agente y documentarlo (`.mcp.json`, `AGENTS.md`, `README.md`, `docs/ai-log.md`)
+- **Resultado:** servidor n8n-mcp en **modo solo documentación** (sin API key): el agente puede consultar nodos y parámetros y validar los JSON de `workflows/`, pero no se conecta a n8n. Elegimos este modo porque la pareja construye y publica los flujos en n8n, y el agente no debe tocar la instancia. Instalación a nivel de proyecto, que crea `.mcp.json`: `claude mcp add --scope project ... npx -y n8n-mcp`. **Prueba:** `validate_workflow` sobre `workflows/01-eventos-tienda.json` → válido, 0 errores y 0 avisos (9 nodos, 8 conexiones, 41 expresiones). Como sugerencia, el validador pidió gestión de errores (`onError` o Error Trigger), que ya cubre HU-05 (flujo 8). El agente también probó `validate_node` con el perfil `strict` en el Webhook: dio un aviso de buena práctica («los webhooks deberían responder siempre, también si fallan»).
+- **Problemas encontrados:** las ramas sin conectar y `toFixed(2)` con `null` no salieron del validador: las añadió el agente al leer el JSON. Las ramas sin conectar ya están documentadas como pendientes en `specs/01-eventos-tienda.md` (`venta.registrada` y `apartado.vencido`). La rama sin email del abono termina a propósito (decisión de la sección 8 de `AGENTS.md`). `toFixed(2)` sobre un importe `null` no está documentado todavía en la spec. El agente también señaló que el JSON exportado lleva `"active": true`.
+- **Decisión:** aceptado.
+
+<details><summary>Prompt (prueba)</summary>
+
+```text
+Usa n8n-mcp para validar workflows/01-eventos-tienda.json. Dime qué herramientas de n8n-mcp has usado y qué errores o avisos encuentra. No modifiques nada.
+```
+
+</details>
+
+<details><summary>Prompt (documentación)</summary>
+
+```text
+Documenta n8n-mcp (issue #8):
+1. AGENTS.md: añade una sección corta "Herramientas del agente" (o dentro de una existente):
+   n8n-mcp en modo solo documentación (.mcp.json, sin API key: no se conecta a n8n ni
+   puede crear ni publicar flujos). Para qué se usa: consultar nodos y parámetros antes
+   de escribir una spec, y validar los JSON de workflows/ (validate_workflow) antes de
+   abrir una PR. Al abrir el proyecto, Claude Code pide aprobar el servidor.
+2. docs/ai-log.md:
+   - Tabla de herramientas: fila "Documentación y validación de nodos | n8n-mcp (modo
+     solo documentación) | — | En uso".
+   - Entrada "n8n-mcp (#8)": por qué solo documentación (la pareja construye y publica
+     en n8n; el agente no debe tocar la instancia), cómo se instaló
+     (claude mcp add --scope project ... npx -y n8n-mcp) y la prueba: validate_workflow
+     sobre workflows/01-eventos-tienda.json → válido, 0 errores, 0 avisos; las
+     sugerencias (gestión de errores, ramas sin conectar, toFixed con null) ya estaban
+     cubiertas por HU-05 o documentadas como pendientes. Incluye este prompt y el de la prueba.
+3. README.md, sección de cómo empezar: una línea para que la pareja apruebe n8n-mcp
+   al abrir Claude Code en el proyecto (requiere Node/npx).
+No ejecutes nada más.
 ```
 
 </details>

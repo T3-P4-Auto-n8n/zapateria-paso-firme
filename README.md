@@ -113,6 +113,8 @@ Cambiad `API_KEY` en el `.env` por una clave vuestra (el `.env` no se sube a Git
 
 Para pararlo todo: `docker compose down`. Para borrar también los datos y empezar de cero: `docker compose down -v`.
 
+**7. Si usáis Claude Code:** al abrirlo en el proyecto os pedirá aprobar el servidor **n8n-mcp** (de `.mcp.json`, en modo solo documentación). Aprobadlo; necesita [Node.js](https://nodejs.org/) (`npx`).
+
 ## 🔁 Exportar e importar flujos
 
 Con la app y n8n levantados, desde la raíz del repo:
