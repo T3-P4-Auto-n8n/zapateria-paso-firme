@@ -294,6 +294,34 @@ creado y probado en n8n).
 
 </details>
 
+### Spec de la rama HU-01 · Confirmación de apartado (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** añadir a la spec del workflow 01 la rama de HU-01 (salida `apartado.creado`), con su prueba
+- **Resultado:** spec actualizada siguiendo la plantilla: IF `¿Tiene email?` sobre `datos.email` (vacío o `null` → No); rama **Sí** con correo al cliente por `Mailpit` desde `tienda@pasofirme.example` (`producto`, `talla`, `precio`, `abonado`, `pendiente` con 2 decimales y `fecha_limite`); rama **No** con aviso a `tienda@pasofirme.example` con `id` y `cliente`. Criterios de aceptación de HU-01 copiados del README. Nuevo payload `tests/payloads/apartado.creado-sin-email.json` (`"email": null`) y prueba de extremo a extremo con `scripts/datos_demo.py` cuando esté en `dev`.
+- **Problemas encontrados:** ninguno por ahora. El agente propuso los nombres de los nodos de correo (`Enviar confirmación al cliente`, `Avisar a la tienda: sin email`); se ajustarán a los del JSON cuando se construya la rama. No se ejecutó nada.
+- **Decisión:** pendiente de revisión.
+
+<details><summary>Prompt</summary>
+
+```text
+Añade a specs/01-eventos-tienda.md la rama de HU-01 (salida apartado.creado),
+siguiendo la plantilla y los criterios de aceptación de HU-01 del README:
+- IF "¿Tiene email?": si datos.email está vacío o es null.
+- Sí: correo al cliente con credencial Mailpit, From tienda@pasofirme.example,
+  con producto, talla, precio, abonado, pendiente y fecha_limite (importes de la app,
+  con 2 decimales).
+- No: correo a la tienda (tienda@pasofirme.example) avisando de que no se pudo
+  enviar la confirmación, con id y cliente del apartado.
+- Prueba: tests/payloads/apartado.creado.json y un payload nuevo
+  tests/payloads/apartado.creado-sin-email.json. Prueba de extremo a extremo con
+  scripts/datos_demo.py (cuando esté en dev).
+- Entrada en docs/ai-log.md.
+No modifiques el JSON del workflow. No ejecutes nada.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
