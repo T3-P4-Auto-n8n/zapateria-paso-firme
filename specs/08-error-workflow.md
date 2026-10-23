@@ -54,20 +54,26 @@ No llama a la API.
 
 ## 7. Prueba
 
-Con el `01` y el `08` publicados y el `08` asignado en el `01`, enviar a la **Production URL** un evento roto:
+Con el `01` y el `08` publicados y el `08` asignado en el `01`, enviar a la **Production URL** un evento que haga fallar el `01`:
 
 | Entrada | Resultado esperado |
 |---|---|
-| `tests/payloads/error-abono-sin-datos.json` (`abono.registrado` solo con `email`, sin `importe` ni `estado`) | El `01` va por `abono.registrado` → con email → no liquidado y falla en `Enviar recibo del abono` (falta `importe`). En Mailpit llega a `tienda@pasofirme.example` el correo «Ha fallado el flujo «01 · Eventos de la tienda»» con el paso, el mensaje de error y el enlace a la ejecución, sin claves ni contraseñas |
+| `tests/payloads/error-email-espacio.json` (`apartado.creado` con `email` `" "`) | El IF `¿Tiene email?` deja pasar `" "` (no está vacío) y `Enviar confirmación al cliente` falla con «No recipients defined». En Mailpit llega a `tienda@pasofirme.example` el correo «Ha fallado el flujo «01 · Eventos de la tienda»» con el flujo, el paso (`Enviar confirmación al cliente`), el error y el enlace a la ejecución, sin claves ni contraseñas |
 
 ```bash
 curl -X POST http://localhost:5678/webhook/tienda \
-  -H "Content-Type: application/json" -d @tests/payloads/error-abono-sin-datos.json
+  -H "Content-Type: application/json" -d @tests/payloads/error-email-espacio.json
 ```
+
+> Un evento con campos que faltan (por ejemplo, `abono.registrado` sin `importe`) **no** sirve para probar: las expresiones de n8n con campos que faltan dan texto vacío y el `01` no falla (envía un correo con campos vacíos).
+
+**Evidencias:**
+
+- Aviso del error en Mailpit: [docs/evidencias/08-hu05-aviso-error.png](../docs/evidencias/08-hu05-aviso-error.png)
 
 ## 8. Criterios de aceptación
 
 **HU-05 · Avisos de errores**
 
-- [ ] Cualquier flujo que falle envía un aviso con el nombre del flujo, el paso y el error.
-- [ ] El aviso no incluye contraseñas ni claves.
+- [x] Cualquier flujo que falle envía un aviso con el nombre del flujo, el paso y el error.
+- [x] El aviso no incluye contraseñas ni claves.
