@@ -324,6 +324,71 @@ que en el ejemplo de clase de la pastelería.
 
 </details>
 
+### Script para exportar e importar flujos (`scripts/flujos.py`)
+
+- **Autora:** Esra
+- **Tarea:** script para exportar e importar los flujos de n8n, con sección en el README y sección 7 de `AGENTS.md` actualizada
+- **Resultado:** `scripts/flujos.py` (solo librería estándar) con `exportar` (CLI `export:workflow --all --separate`, copia con `docker compose cp`, renombra a `NN-nombre.json` y quita `pinData`) e `importar` (copia el JSON al contenedor y lanza `import:workflow`). Sección "Exportar e importar flujos" en el README y sección 7 de `AGENTS.md` con el script en vez de los comandos sueltos.
+- **Problemas encontrados:** el prompt pedía no ejecutar el script y el agente lo ejecutó igualmente (`exportar`, a una carpeta temporal, sin tocar `workflows/`). Además, en la prueba real de Esra el JSON exportado incluía en `shared` el nombre y el email del propietario; se corrigió guardando solo las claves de la descarga desde la interfaz (`name`, `nodes`, `connections`, `settings`, `meta`, `tags`, `active`, `id`, `versionId`). Como añadido propio, el agente hizo que `exportar` omita los flujos cuyo nombre no empieza por `NN · ` y los archivados.
+- **Decisión:** aceptado con cambios. Se mantiene el filtro de nombres y archivados. La próxima vez el agente debe preguntar antes de ejecutar nada.
+
+<details><summary>Prompt</summary>
+
+```text
+Tarea: crea scripts/flujos.py para exportar e importar los flujos de n8n.
+
+Fuentes: AGENTS.md (sección 7 y convenciones de nombres), docker-compose.yml.
+
+Contenido:
+- `python3 scripts/flujos.py exportar`: exporta todos los flujos con la CLI de n8n
+  (docker compose exec ... export:workflow --all --separate), los copia a workflows/
+  y renombra cada archivo según su nombre en n8n: "01 · Eventos de la tienda"
+  -> 01-eventos-tienda.json (minúsculas, sin tildes, sin "de/la/del", guiones).
+  Al exportar, quita pinData si existe.
+- `python3 scripts/flujos.py importar workflows/NN-nombre.json`: lo importa en n8n.
+- Solo librería estándar de Python. Comentarios en español, breves.
+- Añade una sección corta "Exportar e importar flujos" al README y actualiza la
+  sección 7 de AGENTS.md para que mencione el script.
+- Entrada en docs/ai-log.md.
+
+Límites: no toques backend/, frontend/ ni los JSON de workflows/. No ejecutes el script.
+```
+
+</details>
+
+### Script de datos de demo (`scripts/datos_demo.py`)
+
+- **Autora:** Esra
+- **Tarea:** script que genera actividad en la tienda por API para que la app envíe eventos reales al webhook de n8n, con instrucciones en el README
+- **Resultado:** `scripts/datos_demo.py` (solo librería estándar, `urllib`) contra `http://localhost:8000`. Lee `API_KEY` de la variable de entorno o del `.env`. Crea un apartado con email (`bizum`) y otro sin email (`efectivo`), un abono parcial de 20 € (`tarjeta`) al primero, un abono por el `pendiente` exacto que devuelve la app al segundo (lo liquida) y una venta. Muestra `id`, `estado` y `pendiente` de cada paso y el `detail` de los errores de la API; si falla la creación de un apartado, se salta su abono. Instrucciones en el README, debajo de "Exportar e importar flujos".
+- **Problemas encontrados:** ninguno. Esra lo ejecutó: los 5 eventos llegaron al webhook en modo production y el Switch mandó cada uno a su salida (`apartado.creado` ×2, `abono.registrado` ×2, `venta.registrada` ×1).
+- **Decisión:** aceptado sin cambios.
+
+<details><summary>Prompt</summary>
+
+```text
+Tarea: crea scripts/datos_demo.py que genera actividad en la tienda llamando a la API,
+para que la app envíe eventos reales al webhook de n8n.
+
+Fuentes: docs/guia-de-la-app.md, docs/ontologia.md, backend/schemas/, .env.example.
+
+Contenido:
+- Lee API_KEY de la variable de entorno o del archivo .env (nunca la escribe en el código).
+- URL base http://localhost:8000 (se ejecuta desde el Mac, no desde n8n).
+- Crea: 1 apartado con email, 1 apartado sin email, 1 abono parcial, 1 abono que
+  liquida un apartado (pendiente exacto que devuelve la app) y 1 venta.
+  Así se disparan apartado.creado, abono.registrado (activo y liquidado) y venta.registrada.
+- Clientes ficticios con emails @example.com. forma_pago solo efectivo/tarjeta/bizum.
+- Muestra por pantalla qué ha creado (id, estado, pendiente) y los errores de la API si los hay.
+- Solo librería estándar (urllib). Comentarios en español, breves.
+- Instrucciones de uso en el README, junto a la sección de flujos.
+- Entrada en docs/ai-log.md.
+
+Límites: no toques backend/ ni frontend/. No ejecutes el script.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |
