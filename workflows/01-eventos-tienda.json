@@ -351,7 +351,6 @@
       }
     }
   ],
-  "pinData": {},
   "connections": {
     "Evento de la tienda": {
       "main": [
@@ -430,17 +429,19 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "18416c63-2a85-48b4-be2f-3c2548492a21",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "1359a9ad3151d1e603e3002a7660a8c8b9db2b111058e387772f7a5d0bd4f165"
+    "templateCredsSetupCompleted": true
   },
-  "nodeGroups": [],
+  "tags": [],
+  "active": true,
   "id": "cDr6t9FK9qRYt4Fn",
-  "tags": []
+  "versionId": "18416c63-2a85-48b4-be2f-3c2548492a21"
 }
