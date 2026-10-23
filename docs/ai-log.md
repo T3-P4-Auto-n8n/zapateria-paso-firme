@@ -263,6 +263,13 @@ y docker-compose.yml.
 - **Problemas encontrados:** al leer el JSON, el agente señaló que la salida de respaldo se llama `"Evento desconocido "` (con un espacio al final), que el webhook no tiene autenticación y que el JSON exportado lleva `"active": true`. En `apartado.vencido.json`, la guía abrevia el apartado con `"..."`; el agente completó `fecha`, `telefono`, `talla` y `fecha_limite` con valores de ejemplo coherentes.
 - **Decisión:** Aceptado. Corregido en n8n el espacio final de la salida Evento desconocido y e-exportado. Se aceptan los valores de ejemplo de apartado.vencido.json porque son coherentes. La autenticación del webhook queda para HU-14.
 
+### Mailpit para probar correos en local (`docker-compose.yml`)
+
+- **Autora:** Esra
+- **Tarea:** añadir Mailpit al `docker-compose.yml` para probar los correos en local, como en el ejemplo de clase de la pastelería
+- **Resultado:** servicio `mailpit` (imagen `axllent/mailpit`, puertos 8025 web y 1025 SMTP, `TZ=Europe/Madrid`) en `docker-compose.yml`, sin tocar `tienda` ni `n8n`. Mailpit añadido a la tabla de servicios de `AGENTS.md` (sección 3) con los datos de conexión SMTP desde n8n.
+- **Problemas encontrados:** ninguno por ahora. `docker compose config` valida el archivo, pero el servicio aún no se ha levantado ni se ha enviado un correo de prueba desde n8n.
+- **Decisión:** probado: la web abre en 8025
 <details><summary>Prompt</summary>
 
 ```text
@@ -289,6 +296,19 @@ creado y probado en n8n).
 
 ## Límites
 - No modifiques el JSON del workflow.
+Añade Mailpit al docker-compose.yml para probar los correos en local, igual
+que en el ejemplo de clase de la pastelería.
+
+## Contenido
+1. Servicio "mailpit" con la imagen axllent/mailpit: puerto 8025 (web) y
+   1025 (SMTP), con TZ=Europe/Madrid como los otros servicios.
+2. En AGENTS.md, sección 3, añade Mailpit a la tabla de servicios
+   (navegador: http://localhost:8025 · desde n8n: SMTP host mailpit, puerto 1025,
+   sin usuario ni contraseña, SSL/TLS desactivado).
+3. Entrada nueva en docs/ai-log.md con este prompt.
+
+## Límites
+- No toques los servicios tienda ni n8n.
 - No modifiques ningún otro archivo.
 ```
 

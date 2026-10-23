@@ -26,6 +26,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 | App de la tienda y API | http://localhost:8000 | `http://tienda:8000` |
 | Swagger | http://localhost:8000/docs | `http://tienda:8000/docs` |
 | n8n | http://localhost:5678 | `http://n8n:5678` |
+| Mailpit (correos de prueba) | http://localhost:8025 | SMTP host `mailpit`, puerto `1025`, sin usuario ni contraseña, SSL/TLS desactivado |
 
 - **Dentro de n8n nunca se usa `localhost`** para llamar a la app: se usa `http://tienda:8000`.
 - **Autenticación:** toda petición a `/api/...` lleva la cabecera `X-API-Key`. En n8n se configura una vez como credencial **Header Auth** (Name `X-API-Key`) y se elige en cada nodo HTTP Request. Sin ella, `401`.
