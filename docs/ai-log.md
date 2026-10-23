@@ -374,8 +374,13 @@ No modifiques el JSON del workflow. No ejecutes nada.
 
 </details>
 
+### Confirmación: transferencias como bizum
+
+- **Autora:** Esra
+- **Pregunta al profesor** (resumen): la app solo admite `forma_pago` `efectivo`, `tarjeta` o `bizum` y rechaza `"transferencia"` con un `422`. ¿Registramos los abonos que llegan por transferencia bancaria (flujo 3) con `forma_pago` `"bizum"`?
+- **Respuesta:** sí.
+- **Decisión:** confirmada. Actualizado el estado en la sección 8 de `AGENTS.md` y quitada de las decisiones abiertas.
+
 ## 4. Decisiones abiertas
 
-| Decisión | Motivo | Estado |
-|---|---|---|
-| Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Pendiente de confirmar con el profesor |
+Ninguna por ahora.
