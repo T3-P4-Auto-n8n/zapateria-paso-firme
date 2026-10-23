@@ -68,7 +68,7 @@ No llama a la API: todos los datos llegan en el aviso.
 | Llega un `evento` que no es ninguno de los 4 (o falta) | Sale por `Evento desconocido` y termina sin hacer nada (pendiente: decidir si avisa a la tienda) |
 | `apartado.creado` sin `email` (vacío o `null`) | No falla: va por la rama **No** y avisa a la tienda |
 | `abono.registrado` sin `email` (vacío o `null`) | No falla: termina sin enviar nada (decisión: el cliente está en contacto con la tienda) |
-| Falla el envío del correo (Mailpit caído, credencial mal) | El nodo da error; lo recogerá el Error Workflow (`08`, pendiente) |
+| Falla el envío del correo (Mailpit caído, credencial mal) | El nodo da error; lo recoge el Error Workflow, ver [specs/08-error-workflow.md](08-error-workflow.md) |
 | El flujo no está publicado | La Production URL responde 404 y el aviso se pierde; la app no reintenta |
 | n8n está apagado | El aviso se pierde; la tienda sigue funcionando |
 
