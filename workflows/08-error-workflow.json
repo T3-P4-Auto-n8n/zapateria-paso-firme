@@ -1,0 +1,67 @@
+{
+  "name": "08 · Error Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "12198cb3-e4a5-461d-943c-83513ae89881",
+      "name": "Si falla un flujo"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "=Ha fallado el flujo «{{ $json.workflow.name }}»",
+        "emailFormat": "text",
+        "text": "=Una automatización ha fallado.\n\nFlujo: {{ $json.workflow.name }}\nPaso: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\nEjecución: {{ $json.execution.url }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4e771a3a-89f0-467c-8fc3-df2439f905bf",
+      "name": "Avisar a la tienda del error",
+      "webhookId": "91e50359-bd42-40cd-aba7-5e6b159b2d1c",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Si falla un flujo": {
+      "main": [
+        [
+          {
+            "node": "Avisar a la tienda del error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": true,
+  "id": "z1T27bO8VvzyoL18",
+  "versionId": "c9995563-0ac0-4cbe-add4-93dbb895c58e"
+}

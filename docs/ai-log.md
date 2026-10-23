@@ -491,8 +491,46 @@ No modifiques el JSON del workflow. No ejecutes nada.
 
 </details>
 
+### Confirmación: transferencias como bizum
+
+- **Autora:** Esra
+- **Pregunta al profesor** (resumen): la app solo admite `forma_pago` `efectivo`, `tarjeta` o `bizum` y rechaza `"transferencia"` con un `422`. ¿Registramos los abonos que llegan por transferencia bancaria (flujo 3) con `forma_pago` `"bizum"`?
+- **Respuesta:** sí.
+- **Decisión:** confirmada. Actualizado el estado en la sección 8 de `AGENTS.md` y quitada de las decisiones abiertas.
+
+### Spec del Error Workflow · HU-05 (`specs/08-error-workflow.md`)
+
+- **Autora:** Esra
+- **Tarea:** crear la spec del `08 · Error Workflow` para HU-05 con la plantilla. Fuente: guía de la sesión 2 del profesor, paso 6.
+- **Resultado:** `specs/08-error-workflow.md` con Error Trigger `Si falla un flujo` y Send Email `Avisar a la tienda del error` (`Mailpit`, From y To `tienda@pasofirme.example`) con flujo, paso, error y enlace a la ejecución. Indica que se asigna en **Settings → Error workflow** de cada flujo (ahora el `01`; luego `03`, `05`, `06`, `07`) y que el `08` tiene que estar publicado. Prueba con un payload enviado a la Production URL (ver «Problemas encontrados»). En `specs/01-eventos-tienda.md`, el caso de error del envío de correo enlaza ahora a esta spec.
+- **Problemas encontrados:** la prueba propuesta (por el mentor y la spec), `error-abono-sin-datos.json` (`abono.registrado` sin `importe`), no provocaba un error: las expresiones de n8n con campos que faltan dan texto vacío («Invalid DateTime» en la fecha), así que el `01` envió un recibo vacío a `rota@example.com` y el `08` no se activó. Se cambió por `tests/payloads/error-email-espacio.json` (`apartado.creado` con `email` `" "`): el IF `¿Tiene email?` deja pasar el espacio y el envío falla con «No recipients defined», lo que reproduce el error del ejemplo del profesor. Los dos comportamientos quedan como casos «pendiente de mejorar» en `specs/01-eventos-tienda.md`. Prueba final por la Production URL: el correo «Ha fallado el flujo «01 · Eventos de la tienda»» llegó a Mailpit con flujo, paso, error y enlace, sin claves.
+- **Decisión:** aceptado con cambios.
+
+<details><summary>Prompt</summary>
+
+```text
+Crea specs/08-error-workflow.md con la plantilla, para HU-05 (criterios del README):
+- Disparador: Error Trigger "Si falla un flujo".
+- Send Email "Avisar a la tienda del error" (credencial Mailpit), From y To
+  tienda@pasofirme.example.
+  Subject: Ha fallado el flujo «{{ $json.workflow.name }}»
+  Texto con: flujo ($json.workflow.name), paso ($json.execution.lastNodeExecuted),
+  error ($json.execution.error.message) y enlace ($json.execution.url).
+- Se asigna en Settings → Error workflow de cada flujo (ahora el 01; luego 03, 05, 06, 07).
+  El 08 tiene que estar publicado o no avisa.
+- Prueba: con el 01 publicado, enviar a la Production URL un evento roto, por ejemplo
+  {"evento":"abono.registrado","datos":{"email":"rota@example.com"}} (sin importe:
+  el recibo falla). Resultado esperado: correo a la tienda con flujo, paso y error.
+  Guarda ese payload en tests/payloads/error-abono-sin-datos.json.
+- Seguridad: el aviso no incluye claves ni contraseñas (criterio 2 de HU-05).
+- En specs/01-eventos-tienda.md, sustituye "lo recogerá el Error Workflow (08, pendiente)"
+  por la referencia a specs/08-error-workflow.md.
+- Entrada en docs/ai-log.md (fuente: guía de la sesión 2 del profesor, paso 6).
+No crees ni modifiques JSON de workflows. No ejecutes nada.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
-| Decisión | Motivo | Estado |
-|---|---|---|
-| Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Pendiente de confirmar con el profesor |
+Ninguna por ahora.
