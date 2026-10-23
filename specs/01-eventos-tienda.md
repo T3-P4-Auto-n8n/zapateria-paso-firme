@@ -38,8 +38,8 @@ Recibir en un único webhook todos los avisos de la app, repartir cada uno a su 
 **Rama HU-01 · Confirmación de apartado** (salida `apartado.creado`)
 
 3. IF `¿Tiene email?`: **Sí** si `{{ $json.body.datos.email }}` no está vacío; **No** si está vacío o es `null`.
-4. **Sí →** `Enviar confirmación al cliente` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `precio`, `abonado`, `pendiente` y `fecha_limite` del apartado. Los importes son los que da la app, solo formateados con 2 decimales (`{{ $json.body.datos.precio.toFixed(2) }}`); no se recalculan.
-5. **No →** `Avisar a la tienda: sin email` (Send Email, credencial `Mailpit`): From y To `tienda@pasofirme.example`, avisa de que no se pudo enviar la confirmación e incluye `id` y `cliente` del apartado.
+4. **Sí →** `Enviar confirmación al cliente` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `precio`, `abonado`, `pendiente` y `fecha_limite` del apartado. Los importes son los que da la app, solo formateados con 2 decimales (`{{ $json.body.datos.precio.toFixed(2) }}`); no se recalculan. La `fecha_limite` se muestra como `dd/MM/yyyy` (`{{ DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') }}`).
+5. **No →** `Avisar a la tienda: sin email` (Send Email, credencial `Mailpit`): From y To `tienda@pasofirme.example`, avisa de que no se pudo enviar la confirmación e incluye `id`, `cliente`, `telefono` (o «sin teléfono» si no lo tiene) y `producto` con su `talla`.
 
 No llama a la API: todos los datos llegan en el aviso.
 
@@ -47,8 +47,8 @@ No llama a la API: todos los datos llegan en el aviso.
 
 | Destinatario | Canal | Cuándo | Datos que incluye |
 |---|---|---|---|
-| Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `apartado.creado` con email | `producto`, `talla`, `precio`, `abonado`, `pendiente` (2 decimales) y `fecha_limite` |
-| Tienda (`tienda@pasofirme.example`) | Correo (`Mailpit`) | `apartado.creado` sin email | Aviso de que no se pudo enviar la confirmación, con `id` y `cliente` |
+| Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `apartado.creado` con email | `producto`, `talla`, `precio`, `abonado`, `pendiente` (2 decimales) y `fecha_limite` (`dd/MM/yyyy`) |
+| Tienda (`tienda@pasofirme.example`) | Correo (`Mailpit`) | `apartado.creado` sin email | Aviso de que no se pudo enviar la confirmación, con `id`, `cliente`, `telefono` (o «sin teléfono») y `producto` con `talla` |
 
 ## 6. Casos de error
 
@@ -66,8 +66,8 @@ Payloads en `tests/payloads/`, enviados a la Test URL (`http://localhost:5678/we
 
 | Entrada | Resultado esperado |
 |---|---|
-| `apartado.creado.json` | Sale por `apartado.creado` → **Sí**. En Mailpit (http://localhost:8025) llega a `carmen@example.com`, desde `tienda@pasofirme.example`, un correo con Botín piel marrón, talla 38, precio 89.90, abonado 10.00, pendiente 79.90 y fecha límite 2027-01-18 |
-| `apartado.creado-sin-email.json` | Sale por `apartado.creado` → **No**. En Mailpit llega a `tienda@pasofirme.example` el aviso de que no se pudo enviar la confirmación del apartado 26 (Andrés Ruiz) |
+| `apartado.creado.json` | Sale por `apartado.creado` → **Sí**. En Mailpit (http://localhost:8025) llega a `carmen@example.com`, desde `tienda@pasofirme.example`, un correo con Botín piel marrón, talla 38, precio 89.90, abonado 10.00, pendiente 79.90 y fecha límite 18/01/2027 |
+| `apartado.creado-sin-email.json` | Sale por `apartado.creado` → **No**. En Mailpit llega a `tienda@pasofirme.example` el aviso de que no se pudo enviar la confirmación del apartado 26: Andrés Ruiz, teléfono 612 345 002, Zapatilla running azul (talla 42) |
 | `abono.registrado.json` | Sale por `abono.registrado` (sin rama todavía) |
 | `venta.registrada.json` | Sale por `venta.registrada` (sin rama todavía) |
 | `apartado.vencido.json` | Sale por `apartado.vencido` (sin rama todavía) |
@@ -80,6 +80,11 @@ curl -X POST http://localhost:5678/webhook-test/tienda \
 
 **De extremo a extremo** (cuando `scripts/datos_demo.py` esté en `dev`): con el flujo publicado, `python3 scripts/datos_demo.py` crea un apartado con email y otro sin él. Resultado esperado: en Mailpit, la confirmación al cliente del primero y el aviso a la tienda del segundo, con los importes que muestra el script.
 
+**Evidencias:**
+
+- Confirmación al cliente en Mailpit: [docs/evidencias/01-hu01-confirmacion-cliente.png](../docs/evidencias/01-hu01-confirmacion-cliente.png)
+- Aviso a la tienda por apartado sin email: [docs/evidencias/01-hu01-aviso-tienda-sin-email.png](../docs/evidencias/01-hu01-aviso-tienda-sin-email.png)
+
 ## 8. Criterios de aceptación
 
 Del nivel Esencial del README (el router no tiene HU propia):
@@ -89,8 +94,8 @@ Del nivel Esencial del README (el router no tiene HU propia):
 
 **HU-01 · Confirmación al apartar**
 
-- [ ] Al crear un apartado en la app, el cliente recibe un mensaje en menos de un minuto.
-- [ ] El mensaje incluye modelo, talla, precio, abonado, pendiente y fecha límite, con los importes que da la app.
-- [ ] Si el cliente no tiene correo, el flujo no falla: avisa a la tienda de que no se pudo enviar.
+- [x] Al crear un apartado en la app, el cliente recibe un mensaje en menos de un minuto.
+- [x] El mensaje incluye modelo, talla, precio, abonado, pendiente y fecha límite, con los importes que da la app.
+- [x] Si el cliente no tiene correo, el flujo no falla: avisa a la tienda de que no se pudo enviar.
 
 Las checklists de HU-02, HU-09 y HU-07 se copiarán aquí al añadir cada rama.

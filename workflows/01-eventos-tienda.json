@@ -115,7 +115,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.5,
       "position": [
-        224,
+        -176,
         0
       ],
       "id": "fac4693c-8e21-4cce-b6cf-b6a0e1f3e588",
@@ -130,12 +130,101 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        0,
+        -384,
         0
       ],
       "id": "2598deb6-e89b-4c84-a916-ff831c7570e2",
       "name": "Evento de la tienda",
       "webhookId": "fd681164-0e74-4d59-b728-5455fa222275"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "e44bff44-a6a2-4f0f-94b9-814e584bbf1d",
+              "leftValue": "={{ $json.body.datos.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        96,
+        -128
+      ],
+      "id": "80b4cb36-fa64-490c-89af-f5fbcfc5faef",
+      "name": "¿Tiene email?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "={{ $json.body.datos.email }}",
+        "subject": "=Tu apartado en Paso Firme: {{ $json.body.datos.producto }}",
+        "emailFormat": "text",
+        "text": "=Hola {{ $json.body.datos.cliente }}:\n\nHemos registrado tu apartado n.º {{ $json.body.datos.id }} en Zapatería Paso Firme.\n\nModelo: {{ $json.body.datos.producto }}\nTalla: {{ $json.body.datos.talla }}\nPrecio: {{ $json.body.datos.precio.toFixed(2) }} €\nAbonado: {{ $json.body.datos.abonado.toFixed(2) }} €\nPendiente: {{ $json.body.datos.pendiente.toFixed(2) }} €\nFecha límite: {{ DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') }}\n\nPuedes pagar lo pendiente en abonos de cualquier importe antes de la fecha límite.\n\nGracias,\nZapatería Paso Firme",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        -224
+      ],
+      "id": "e72354a4-704b-48de-b8cc-0e29db251369",
+      "name": "Enviar confirmación al cliente",
+      "webhookId": "edaed55e-76ae-4fde-b528-84f3f422a759",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "=Apartado {{ $json.body.datos.id }} sin email: no se envió la confirmación",
+        "emailFormat": "text",
+        "text": "=No se pudo enviar la confirmación del apartado porque el cliente no tiene email.\n\nApartado: {{ $json.body.datos.id }}\nCliente: {{ $json.body.datos.cliente }}\nTeléfono: {{ $json.body.datos.telefono || 'sin teléfono' }}\nProducto: {{ $json.body.datos.producto }} (talla {{ $json.body.datos.talla }})\n\nAvisad al cliente por teléfono o en la tienda.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "8a0ba270-249d-4d08-8422-225c08cf2ff8",
+      "name": "Avisar a la tienda: sin email",
+      "webhookId": "8debb57b-18c1-42f6-8fd1-9c635328dec8",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -153,7 +242,31 @@
     },
     "Según el evento": {
       "main": [
-        []
+        [
+          {
+            "node": "¿Tiene email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Tiene email?": {
+      "main": [
+        [
+          {
+            "node": "Enviar confirmación al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar a la tienda: sin email",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -162,8 +275,9 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "506fcece-818d-462e-b91d-82ca65e57b1d",
+  "versionId": "a250a1e3-7902-48c6-a9fc-77f3015bc26c",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "1359a9ad3151d1e603e3002a7660a8c8b9db2b111058e387772f7a5d0bd4f165"
   },
   "nodeGroups": [],
