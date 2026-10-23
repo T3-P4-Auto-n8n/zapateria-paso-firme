@@ -61,6 +61,14 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 3. Cada flujo tiene datos de prueba y resultado esperado; si la prueba falla, se arregla el flujo, no la prueba.
 4. Registrar los prompts relevantes y las decisiones (qué se aceptó, qué se rechazó y por qué) en `docs/ai-log.md`.
 
+### Herramientas del agente
+
+- **n8n-mcp** (configurado en [`.mcp.json`](.mcp.json)) en **modo solo documentación**: sin API key, no se conecta a n8n ni puede crear ni publicar flujos.
+- Se usa para:
+  - consultar nodos y parámetros antes de escribir una spec;
+  - validar los JSON de `workflows/` con `validate_workflow` antes de abrir una PR.
+- Al abrir el proyecto, Claude Code pide aprobar el servidor.
+
 ## 7. Importar y exportar flujos
 
 **Desde la interfaz de n8n:** menú del flujo → *Import from File* para importar y *Download* para exportar. Guardar el JSON en `workflows/`.
