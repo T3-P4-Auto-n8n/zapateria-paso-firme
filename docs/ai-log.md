@@ -287,6 +287,39 @@ Límites: no toques backend/, frontend/ ni los JSON de workflows/. No ejecutes e
 
 </details>
 
+### Script de datos de demo (`scripts/datos_demo.py`)
+
+- **Autora:** Esra
+- **Tarea:** script que genera actividad en la tienda por API para que la app envíe eventos reales al webhook de n8n, con instrucciones en el README
+- **Resultado:** `scripts/datos_demo.py` (solo librería estándar, `urllib`) contra `http://localhost:8000`. Lee `API_KEY` de la variable de entorno o del `.env`. Crea un apartado con email (`bizum`) y otro sin email (`efectivo`), un abono parcial de 20 € (`tarjeta`) al primero, un abono por el `pendiente` exacto que devuelve la app al segundo (lo liquida) y una venta. Muestra `id`, `estado` y `pendiente` de cada paso y el `detail` de los errores de la API; si falla la creación de un apartado, se salta su abono. Instrucciones en el README, debajo de "Exportar e importar flujos".
+- **Problemas encontrados:** ninguno. Esra lo ejecutó: los 5 eventos llegaron al webhook en modo production y el Switch mandó cada uno a su salida (`apartado.creado` ×2, `abono.registrado` ×2, `venta.registrada` ×1).
+- **Decisión:** aceptado sin cambios.
+
+<details><summary>Prompt</summary>
+
+```text
+Tarea: crea scripts/datos_demo.py que genera actividad en la tienda llamando a la API,
+para que la app envíe eventos reales al webhook de n8n.
+
+Fuentes: docs/guia-de-la-app.md, docs/ontologia.md, backend/schemas/, .env.example.
+
+Contenido:
+- Lee API_KEY de la variable de entorno o del archivo .env (nunca la escribe en el código).
+- URL base http://localhost:8000 (se ejecuta desde el Mac, no desde n8n).
+- Crea: 1 apartado con email, 1 apartado sin email, 1 abono parcial, 1 abono que
+  liquida un apartado (pendiente exacto que devuelve la app) y 1 venta.
+  Así se disparan apartado.creado, abono.registrado (activo y liquidado) y venta.registrada.
+- Clientes ficticios con emails @example.com. forma_pago solo efectivo/tarjeta/bizum.
+- Muestra por pantalla qué ha creado (id, estado, pendiente) y los errores de la API si los hay.
+- Solo librería estándar (urllib). Comentarios en español, breves.
+- Instrucciones de uso en el README, junto a la sección de flujos.
+- Entrada en docs/ai-log.md.
+
+Límites: no toques backend/ ni frontend/. No ejecutes el script.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 | Decisión | Motivo | Estado |

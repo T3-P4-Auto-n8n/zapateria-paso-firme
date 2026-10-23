@@ -124,6 +124,14 @@ python3 scripts/flujos.py importar workflows/01-eventos-tienda.json   # workflow
 
 `exportar` guarda cada flujo con el nombre que tiene en n8n (`01 · Eventos de la tienda` → `01-eventos-tienda.json`) y guarda solo las claves de la descarga desde la interfaz (sin `pinData` ni datos de la instancia, como el propietario). Solo exporta los flujos cuyo nombre empieza por `NN · `. Revisad el diff antes de hacer commit.
 
+**Datos de demo:** para que la app envíe eventos reales al webhook de n8n:
+
+```bash
+python3 scripts/datos_demo.py
+```
+
+Crea por API 2 apartados (uno con email y otro sin él), un abono parcial, un abono que liquida un apartado y una venta, y muestra el `id`, el `estado` y el `pendiente` de cada uno (o el error de la API). Dispara `apartado.creado`, `abono.registrado` (`activo` y `liquidado`) y `venta.registrada`. Lee `API_KEY` de la variable de entorno o del `.env`. Cada ejecución crea datos nuevos.
+
 ## 🏪 El software de la tienda
 
 Para no empezar de cero, la tienda ya tiene una **aplicación básica** (carpetas [`backend/`](backend/) y [`frontend/`](frontend/)) que sustituye a la libreta. Vuestro trabajo **no es programarla**, sino **automatizar todo lo que pasa alrededor** con n8n. Cuando la levantéis (ver [Cómo empezar](#-cómo-empezar)) tendréis:
