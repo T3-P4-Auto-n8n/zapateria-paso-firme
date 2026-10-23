@@ -98,6 +98,9 @@ curl -X POST http://localhost:5678/webhook-test/tienda \
 
 - Confirmación al cliente en Mailpit: [docs/evidencias/01-hu01-confirmacion-cliente.png](../docs/evidencias/01-hu01-confirmacion-cliente.png)
 - Aviso a la tienda por apartado sin email: [docs/evidencias/01-hu01-aviso-tienda-sin-email.png](../docs/evidencias/01-hu01-aviso-tienda-sin-email.png)
+- Recibo de un abono parcial: [docs/evidencias/01-hu02-recibo-abono.png](../docs/evidencias/01-hu02-recibo-abono.png)
+- Aviso de que puede recoger (apartado liquidado): [docs/evidencias/01-hu02-puede-recoger.png](../docs/evidencias/01-hu02-puede-recoger.png)
+- Abono de un cliente sin email (no se envía nada): [docs/evidencias/01-hu02-abono-sin-email.png](../docs/evidencias/01-hu02-abono-sin-email.png)
 
 ## 8. Criterios de aceptación
 
@@ -114,7 +117,7 @@ Del nivel Esencial del README (el router no tiene HU propia):
 
 **HU-02 · Recibo de cada abono**
 
-- [ ] Cada abono registrado genera un recibo con el importe pagado y lo que queda pendiente.
-- [ ] Si el apartado queda liquidado, el mensaje cambia: avisa de que ya puede recoger sus zapatos.
+- [x] Cada abono registrado genera un recibo con el importe pagado y lo que queda pendiente.
+- [x] Si el apartado queda liquidado, el mensaje cambia: avisa de que ya puede recoger sus zapatos.
 
 Las checklists de HU-09 y HU-07 se copiarán aquí al añadir cada rama.
