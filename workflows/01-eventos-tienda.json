@@ -166,8 +166,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        96,
-        -128
+        80,
+        -304
       ],
       "id": "80b4cb36-fa64-490c-89af-f5fbcfc5faef",
       "name": "¿Tiene email?"
@@ -186,8 +186,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        336,
-        -224
+        256,
+        -352
       ],
       "id": "e72354a4-704b-48de-b8cc-0e29db251369",
       "name": "Enviar confirmación al cliente",
@@ -213,12 +213,136 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        320,
-        -32
+        240,
+        -176
       ],
       "id": "8a0ba270-249d-4d08-8422-225c08cf2ff8",
       "name": "Avisar a la tienda: sin email",
       "webhookId": "8debb57b-18c1-42f6-8fd1-9c635328dec8",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "47ffaae1-2c5b-4bd6-8137-99deaa57f778",
+              "leftValue": "={{ $json.body.datos.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        80,
+        -16
+      ],
+      "id": "11bbf3a5-7ca7-465b-99b3-c6be415a13d4",
+      "name": "¿Tiene email? (abono)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "62955ac7-ae9d-4069-b6dc-4d676eb9cade",
+              "leftValue": "={{ $json.body.datos.estado }}",
+              "rightValue": "liquidado",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        336,
+        -32
+      ],
+      "id": "293bbaf9-48a4-41a2-9e88-13fb2a8ed922",
+      "name": "¿Liquidado?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "={{ $json.body.datos.email }}",
+        "subject": "=Recibo de tu abono: {{ $json.body.datos.producto }}",
+        "emailFormat": "text",
+        "text": "=Hola {{ $json.body.datos.cliente }}:\n\nHemos registrado tu abono para el apartado n.º {{ $json.body.datos.id }}.\n\nModelo: {{ $json.body.datos.producto }}\nTalla: {{ $json.body.datos.talla }}\nImporte de este abono: {{ $json.body.datos.importe.toFixed(2) }} €\nTotal abonado: {{ $json.body.datos.abonado.toFixed(2) }} €\nPendiente: {{ $json.body.datos.pendiente.toFixed(2) }} €\nFecha límite: {{ DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') }}\n\nGracias,\nZapatería Paso Firme",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        528,
+        32
+      ],
+      "id": "350db7d0-b73e-432c-ad9c-799338d5bdb9",
+      "name": "Enviar recibo del abono",
+      "webhookId": "b0389185-4709-49aa-b78b-6bd924caa560",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "={{ $json.body.datos.email }}",
+        "subject": "=Ya puedes recoger tus zapatos! {{ $json.body.datos.producto }}",
+        "emailFormat": "text",
+        "text": "=Hola {{ $json.body.datos.cliente }}:\n\nCon tu último abono de {{ $json.body.datos.importe.toFixed(2) }} € has terminado de pagar tu apartado n.º {{ $json.body.datos.id }}.\n\nModelo: {{ $json.body.datos.producto }}\nTalla: {{ $json.body.datos.talla }}\nTotal pagado: {{ $json.body.datos.abonado.toFixed(2) }} €\n\nYa puedes pasar por la tienda a recoger tus zapatos.\n\n¡Gracias por tu compra!\nZapatería Paso Firme",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        544,
+        -128
+      ],
+      "id": "8524d69f-a966-43e5-980e-696b5df19858",
+      "name": "Avisar de que puede recoger",
+      "webhookId": "f214f1ab-cf19-4aa1-96f0-e43781d703ba",
       "credentials": {
         "smtp": {
           "id": "fJ41sXzJzc6Ciubq",
@@ -248,6 +372,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "¿Tiene email? (abono)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -268,6 +399,35 @@
           }
         ]
       ]
+    },
+    "¿Tiene email? (abono)": {
+      "main": [
+        [
+          {
+            "node": "¿Liquidado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Liquidado?": {
+      "main": [
+        [
+          {
+            "node": "Avisar de que puede recoger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar recibo del abono",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -275,7 +435,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a250a1e3-7902-48c6-a9fc-77f3015bc26c",
+  "versionId": "18416c63-2a85-48b4-be2f-3c2548492a21",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1359a9ad3151d1e603e3002a7660a8c8b9db2b111058e387772f7a5d0bd4f165"

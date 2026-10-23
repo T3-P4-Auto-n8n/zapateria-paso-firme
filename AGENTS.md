@@ -83,6 +83,7 @@ Los archivos exportados por la CLI se renombran a `NN-nombre.json` antes de hace
 | Decisión | Motivo | Estado |
 |---|---|---|
 | Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Pendiente de confirmar con el profesor |
+| Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda) | En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada abono la llenaría de correos | Tomada |
 
 ## 9. Lo que el agente NO debe hacer
 
