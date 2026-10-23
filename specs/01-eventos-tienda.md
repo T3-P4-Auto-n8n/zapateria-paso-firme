@@ -1,19 +1,19 @@
 # Flujo 01 · Eventos de la tienda
 
-> **Alcance de esta versión:** solo el router (webhook + Switch). Las ramas de cada evento se añadirán después:
-> `apartado.creado` → HU-01 (flujo 1) · `abono.registrado` → HU-02 (flujo 2) · `venta.registrada` → HU-09 (flujo 4) · `apartado.vencido` → HU-07 (aviso de vencido, flujo 6).
+> **Alcance de esta versión:** router (webhook + Switch), rama de HU-01 (`apartado.creado`) y rama de HU-02 (`abono.registrado`). Las demás ramas se añadirán después:
+> `venta.registrada` → HU-09 (flujo 4) · `apartado.vencido` → HU-07 (aviso de vencido, flujo 6).
 
 ## 1. Cabecera
 
 - **Flujo:** `01 · Eventos de la tienda` (`workflows/01-eventos-tienda.json`)
-- **HU:** HU-01, HU-02, HU-09, HU-07 (ramas pendientes)
+- **HU:** HU-01, HU-02 · HU-09, HU-07 (ramas pendientes)
 - **Nivel:** Esencial (router, HU-01, HU-02) · Medio (HU-09, HU-07)
 - **Responsable:** Esra
-- **Credenciales y variables:** ninguna en esta versión (el webhook no lleva autenticación)
+- **Credenciales y variables:** `Mailpit` (SMTP), ver [docs/credenciales.md](../docs/credenciales.md). El webhook no lleva autenticación.
 
 ## 2. Objetivo
 
-Recibir en un único webhook todos los avisos de la app y repartir cada uno a su rama según el `evento`.
+Recibir en un único webhook todos los avisos de la app, repartir cada uno a su rama según el `evento` y avisar al cliente por correo: confirmación al crear un apartado (o aviso a la tienda si no tiene email) y recibo de cada abono (o aviso de que puede recoger sus zapatos si queda liquidado).
 
 ## 3. Disparador y entradas
 
@@ -21,29 +21,54 @@ Recibir en un único webhook todos los avisos de la app y repartir cada uno a su
 - **Entradas:** el aviso de la app, `{ "evento": ..., "datos": ... }`, que n8n guarda dentro de `body`:
   - `$json.body.evento`: `apartado.creado`, `abono.registrado`, `venta.registrada` o `apartado.vencido`.
   - `$json.body.datos`: el Apartado (más `importe` del Abono en `abono.registrado`), la Venta, o `{ apartado, vale }` en `apartado.vencido`. Ver [docs/guia-de-la-app.md](../docs/guia-de-la-app.md#6-el-webhook-app--n8n).
+- **Rama HU-01** (`apartado.creado`), campos del Apartado que usa: `id`, `cliente`, `email`, `producto`, `talla`, `precio`, `abonado`, `pendiente`, `fecha_limite`.
+- **Rama HU-02** (`abono.registrado`), campos que usa: del Apartado ya actualizado, `email`, `cliente`, `producto`, `talla`, `precio`, `abonado`, `pendiente`, `fecha_limite` y `estado` (estado después del abono); del Abono, `importe` (lo que se acaba de pagar).
 
 ## 4. Pasos y reglas
 
+**Router**
+
 1. `Evento de la tienda` recibe el `POST` y responde a la app en el momento (opción por defecto del nodo).
 2. `Según el evento` (Switch, comparación exacta y sensible a mayúsculas sobre `{{ $json.body.evento }}`) envía el item por una de sus 5 salidas:
-   - `apartado.creado`
-   - `abono.registrado`
-   - `venta.registrada`
-   - `apartado.vencido`
+   - `apartado.creado` → rama HU-01
+   - `abono.registrado` → rama HU-02
+   - `venta.registrada` (sin conectar todavía)
+   - `apartado.vencido` (sin conectar todavía)
    - `Evento desconocido` (salida de respaldo: cualquier otro valor o sin `evento`)
-3. Ninguna salida está conectada todavía: el flujo termina en el Switch.
 
-No llama a la API.
+**Rama HU-01 · Confirmación de apartado** (salida `apartado.creado`)
+
+3. IF `¿Tiene email?`: **Sí** si `{{ $json.body.datos.email }}` no está vacío; **No** si está vacío o es `null`.
+4. **Sí →** `Enviar confirmación al cliente` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `precio`, `abonado`, `pendiente` y `fecha_limite` del apartado. Los importes son los que da la app, solo formateados con 2 decimales (`{{ $json.body.datos.precio.toFixed(2) }}`); no se recalculan. La `fecha_limite` se muestra como `dd/MM/yyyy` (`{{ DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') }}`).
+5. **No →** `Avisar a la tienda: sin email` (Send Email, credencial `Mailpit`): From y To `tienda@pasofirme.example`, avisa de que no se pudo enviar la confirmación e incluye `id`, `cliente`, `telefono` (o «sin teléfono» si no lo tiene) y `producto` con su `talla`.
+
+**Rama HU-02 · Recibo de abono** (salida `abono.registrado`)
+
+6. IF `¿Tiene email? (abono)`: **Sí** si `{{ $json.body.datos.email }}` no está vacío; **No** si está vacío o es `null` → termina sin enviar nada (ver decisión en [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)).
+7. IF `¿Liquidado?`: **Sí** si `{{ $json.body.datos.estado }}` es igual a `liquidado`.
+8. **No liquidado →** `Enviar recibo del abono` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `importe` (lo que acaba de pagar), `abonado`, `pendiente` (2 decimales, valores de la app) y `fecha_limite` (`dd/MM/yyyy`).
+9. **Liquidado →** `Avisar de que puede recoger` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `importe` del último abono y `abonado` (total pagado, valor de la app), con 2 decimales. Sin `pendiente` ni `fecha_limite`.
+
+No llama a la API: todos los datos llegan en el aviso.
 
 ## 5. Salidas
 
-- Ninguna por ahora. Cada salida del Switch enviará los mensajes de su HU cuando se añada la rama.
+| Destinatario | Canal | Cuándo | Datos que incluye |
+|---|---|---|---|
+| Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `apartado.creado` con email | `producto`, `talla`, `precio`, `abonado`, `pendiente` (2 decimales) y `fecha_limite` (`dd/MM/yyyy`) |
+| Tienda (`tienda@pasofirme.example`) | Correo (`Mailpit`) | `apartado.creado` sin email | Aviso de que no se pudo enviar la confirmación, con `id`, `cliente`, `telefono` (o «sin teléfono») y `producto` con `talla` |
+| Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `abono.registrado` con email y `estado` ≠ `liquidado` | Recibo: `producto`, `talla`, `importe`, `abonado`, `pendiente` (2 decimales) y `fecha_limite` (`dd/MM/yyyy`) |
+| Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `abono.registrado` con email y `estado` = `liquidado` | Aviso de que puede recoger: `producto`, `talla`, `importe` y `abonado` (total pagado), 2 decimales |
+| — | — | `abono.registrado` sin email | Nada |
 
 ## 6. Casos de error
 
 | Caso | Qué hace el flujo |
 |---|---|
 | Llega un `evento` que no es ninguno de los 4 (o falta) | Sale por `Evento desconocido` y termina sin hacer nada (pendiente: decidir si avisa a la tienda) |
+| `apartado.creado` sin `email` (vacío o `null`) | No falla: va por la rama **No** y avisa a la tienda |
+| `abono.registrado` sin `email` (vacío o `null`) | No falla: termina sin enviar nada (decisión: el cliente está en contacto con la tienda) |
+| Falla el envío del correo (Mailpit caído, credencial mal) | El nodo da error; lo recogerá el Error Workflow (`08`, pendiente) |
 | El flujo no está publicado | La Production URL responde 404 y el aviso se pierde; la app no reintenta |
 | n8n está apagado | El aviso se pierde; la tienda sigue funcionando |
 
@@ -53,16 +78,29 @@ Payloads en `tests/payloads/`, enviados a la Test URL (`http://localhost:5678/we
 
 | Entrada | Resultado esperado |
 |---|---|
-| `apartado.creado.json` | El item sale por `apartado.creado` |
-| `abono.registrado.json` | El item sale por `abono.registrado` |
-| `venta.registrada.json` | El item sale por `venta.registrada` |
-| `apartado.vencido.json` | El item sale por `apartado.vencido` |
-| `evento-desconocido.json` | El item sale por `Evento desconocido` |
+| `apartado.creado.json` | Sale por `apartado.creado` → **Sí**. En Mailpit (http://localhost:8025) llega a `carmen@example.com`, desde `tienda@pasofirme.example`, un correo con Botín piel marrón, talla 38, precio 89.90, abonado 10.00, pendiente 79.90 y fecha límite 18/01/2027 |
+| `apartado.creado-sin-email.json` | Sale por `apartado.creado` → **No**. En Mailpit llega a `tienda@pasofirme.example` el aviso de que no se pudo enviar la confirmación del apartado 26: Andrés Ruiz, teléfono 612 345 002, Zapatilla running azul (talla 42) |
+| `abono.registrado.json` | Sale por `abono.registrado` → con email → no liquidado. Llega a `carmen@example.com` el recibo: Botín piel marrón, talla 38, importe 20.00, abonado 30.00, pendiente 59.90, fecha límite 18/01/2027 |
+| `abono.registrado-liquidado.json` | Sale por `abono.registrado` → con email → liquidado. Llega a `carmen@example.com` el aviso de que puede recoger: Botín piel marrón, talla 38, último abono 59.90, total pagado (`abonado`) 89.90; sin pendiente ni fecha límite |
+| `abono.registrado-sin-email.json` | Sale por `abono.registrado` → sin email. No llega ningún correo a Mailpit y la ejecución termina sin error |
+| `venta.registrada.json` | Sale por `venta.registrada` (sin rama todavía) |
+| `apartado.vencido.json` | Sale por `apartado.vencido` (sin rama todavía) |
+| `evento-desconocido.json` | Sale por `Evento desconocido` |
 
 ```bash
 curl -X POST http://localhost:5678/webhook-test/tienda \
   -H "Content-Type: application/json" -d @tests/payloads/apartado.creado.json
 ```
+
+**De extremo a extremo** (cuando `scripts/datos_demo.py` esté en `dev`): con el flujo publicado, `python3 scripts/datos_demo.py` crea un apartado con email y otro sin él, abona 20 € al primero y liquida el segundo. Resultado esperado en Mailpit: la confirmación al cliente del primero, el aviso a la tienda del segundo y el recibo del abono parcial del primero, con los importes que muestra el script. El abono que liquida el segundo no envía nada, porque ese cliente no tiene email.
+
+**Evidencias:**
+
+- Confirmación al cliente en Mailpit: [docs/evidencias/01-hu01-confirmacion-cliente.png](../docs/evidencias/01-hu01-confirmacion-cliente.png)
+- Aviso a la tienda por apartado sin email: [docs/evidencias/01-hu01-aviso-tienda-sin-email.png](../docs/evidencias/01-hu01-aviso-tienda-sin-email.png)
+- Recibo de un abono parcial: [docs/evidencias/01-hu02-recibo-abono.png](../docs/evidencias/01-hu02-recibo-abono.png)
+- Aviso de que puede recoger (apartado liquidado): [docs/evidencias/01-hu02-puede-recoger.png](../docs/evidencias/01-hu02-puede-recoger.png)
+- Abono de un cliente sin email (no se envía nada): [docs/evidencias/01-hu02-abono-sin-email.png](../docs/evidencias/01-hu02-abono-sin-email.png)
 
 ## 8. Criterios de aceptación
 
@@ -71,4 +109,15 @@ Del nivel Esencial del README (el router no tiene HU propia):
 - [ ] Un único webhook que reparta los eventos con un nodo Switch según el campo `evento`.
 - [ ] Los eventos de la app llegan a n8n.
 
-Las checklists de HU-01, HU-02, HU-09 y HU-07 se copiarán aquí al añadir cada rama.
+**HU-01 · Confirmación al apartar**
+
+- [x] Al crear un apartado en la app, el cliente recibe un mensaje en menos de un minuto.
+- [x] El mensaje incluye modelo, talla, precio, abonado, pendiente y fecha límite, con los importes que da la app.
+- [x] Si el cliente no tiene correo, el flujo no falla: avisa a la tienda de que no se pudo enviar.
+
+**HU-02 · Recibo de cada abono**
+
+- [x] Cada abono registrado genera un recibo con el importe pagado y lo que queda pendiente.
+- [x] Si el apartado queda liquidado, el mensaje cambia: avisa de que ya puede recoger sus zapatos.
+
+Las checklists de HU-09 y HU-07 se copiarán aquí al añadir cada rama.
