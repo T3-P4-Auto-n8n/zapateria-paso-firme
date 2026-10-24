@@ -1,0 +1,125 @@
+{
+  "name": "03 · Abonos a distancia (entrada)",
+  "nodes": [
+    {
+      "name": "Formulario de desarrollo",
+      "id": "cd4fa78a-12c4-5b37-a458-b3ead4200aa3",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "Probar entrada de correo bancario",
+        "formDescription": "HU-03 · Solo datos de ejemplo. Introduce referencia, asunto y cuerpo. Esta prueba recibe el aviso; no registra pagos ni envía recibos.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "referencia",
+              "fieldType": "text",
+              "requiredField": true,
+              "placeholder": "01_bizum_carmen-prueba-1"
+            },
+            {
+              "fieldLabel": "asunto",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "cuerpo",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "path": "hu03-entrada",
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "5def7006-1a22-5489-971f-563701131172"
+    },
+    {
+      "name": "Correo bancario IMAP",
+      "id": "9d897d58-b162-51be-a3af-cb2a4b3f7061",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        220
+      ],
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "format": "simple",
+        "downloadAttachments": false,
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]",
+          "trackLastMessageId": true
+        }
+      },
+      "disabled": true
+    },
+    {
+      "name": "Normalizar entrada de correo",
+      "id": "8d9f77ee-a6a7-53f0-b454-fd35f417feaa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// #32: adaptar entradas; no filtrar pagos ni decidir abonos.\nconst input = $json;\nconst isForm = Object.prototype.hasOwnProperty.call(input, 'asunto') || Object.prototype.hasOwnProperty.call(input, 'cuerpo');\nconst text = value => typeof value === 'string' ? value.replace(/\\r\\n?/g, '\\n') : '';\nconst asunto = text(isForm ? input.asunto : input.subject);\nconst cuerpo = text(isForm ? input.cuerpo : (input.textPlain || input.text));\nconst referencia = text(isForm ? input.referencia : (input.messageId || input.metadata?.['message-id'])).trim();\nlet motivo = '';\nif (!asunto.trim() || !cuerpo.trim()) motivo = 'Falta asunto o cuerpo de texto plano; revisar la entrada';\nelse if (!referencia) motivo = 'Falta referencia de prueba o Message-ID del correo';\nelse if (cuerpo.length > 20000 || asunto.length > 998 || referencia.length > 300) motivo = 'Entrada demasiado larga; revisar sin procesar automáticamente';\nreturn {json: {origen: isForm ? 'formulario' : 'imap', referencia, asunto, cuerpo, entrada_valida: !motivo, motivo}};\n"
+      }
+    },
+    {
+      "name": "Configurar y probar la entrada",
+      "id": "3cac9bdf-8650-5416-8204-7ac243bc98ea",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -450
+      ],
+      "parameters": {
+        "content": "## HU-03 · Entrada (#32)\nExportación parcial e inactiva. No registra abonos.\n\n**Desarrollo:** Execute Workflow y Test URL del Form Trigger; copiar asunto/cuerpo de data/correos/.\n**Final:** seleccionar credencial IMAP de una cuenta de pruebas; habilitar IMAP y deshabilitar Form Trigger. No publicar sin revisión.\n**Salida:** asunto, cuerpo, referencia, origen, entrada_valida y motivo. #33 conectará el filtro.\n\nIMAP marca el correo como leído al recibirlo; leído no significa pago registrado. Message-ID y UID no sustituyen la idempotencia de un abono.\nVer docs/hu03-entrada.md.",
+        "height": 370,
+        "width": 540
+      }
+    }
+  ],
+  "connections": {
+    "Formulario de desarrollo": {
+      "main": [
+        [
+          {
+            "node": "Normalizar entrada de correo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Correo bancario IMAP": {
+      "main": [
+        [
+          {
+            "node": "Normalizar entrada de correo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "active": false,
+  "tags": []
+}
