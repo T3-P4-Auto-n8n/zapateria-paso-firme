@@ -573,6 +573,15 @@ No ejecutes nada más.
 
 </details>
 
+### Entrada de avisos bancarios HU-03 (#32)
+
+- **Autora:** Beste.
+- **Tarea:** Form Trigger de desarrollo e IMAP para la entrada final, con contrato común para #33.
+- **Resultado:** exportación parcial e inactiva `workflows/03-abonos-distancia-entrada.json`, adaptador de asunto/cuerpo/referencia, pruebas del código exportado y guía `docs/hu03-entrada.md`. IMAP deshabilitado y sin credenciales; no hay filtro, IA, escritura en API ni envío de correo en esta entrega.
+- **Validación:** prueba inicial fallida por ausencia del artefacto; después, seis pruebas de entrada superadas. Las nueve muestras se comprobaron en formato formulario e IMAP, además de entradas inválidas, HTML sin texto plano, referencias, límites exactos y exclusión de datos adicionales. Regresión backend: trece pruebas superadas. Revisión sin problemas críticos ni importantes. Parámetros contrastados con fuentes oficiales de n8n.
+- **Limitaciones:** importación, Test URL y recepción IMAP reales pendientes: n8n no respondía y el acceso al socket Docker fue denegado. No se confirmó una credencial de pruebas. `n8n-mcp` no estaba disponible; su validación queda pendiente antes de aprobar el PR.
+- **Decisión:** entregar #32 aparte y conservar los borradores de otras tareas. IMAP cumple la alternativa permitida. Mark as Read no equivale a abono registrado; el UID no sustituye idempotencia. La tarea sigue abierta. Instrucción técnica: preparar ambas entradas conforme a la spec #31 y preservar el contenido para #33.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
