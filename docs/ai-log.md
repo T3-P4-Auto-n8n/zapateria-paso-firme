@@ -691,6 +691,85 @@ No hagas commit. Dime qué has cambiado.
 
 </details>
 
+### Código de los nodos Code · HU-10 (`specs/09-migracion-excel.md`)
+
+- **Autora:** Esra
+- **Tarea:** issues #86 a #90: código JavaScript de los 5 nodos Code del workflow `09 · Migración del Excel`.
+- **Reparto:** la pareja construye a mano en n8n los nodos y las conexiones, con los nombres ya decididos; el agente escribe solo el código de los Code y la configuración que hay que poner en los otros 15 nodos. El código y el `LEEME.md` quedan fuera del repo y entran con el JSON del workflow al exportarlo.
+- **Resultado:**
+  - 5 ficheros `.js`: `Limpiar y clasificar`, `Decidir qué crear`, `Preparar abonos`, `Preparar ventas` y `Preparar informe`. Llevan comentarios cortos en español, no usan librerías y no recalculan `abonado` ni `pendiente`.
+  - Un `LEEME.md` con lo que recibe y devuelve cada Code (con ejemplo) y la configuración exacta de los otros 15 nodos.
+  - La sección 4 de `specs/09-migracion-excel.md` está adaptada al flujo real: tres `GET` de listas, un IF antes de cada `POST`, `Never Error` + respuesta completa y un único `GET` final para comprobar los pendientes. Se quitan el Loop Over Items, el Switch y la búsqueda por `q`.
+  - El agente consultó con n8n-mcp el nodo Code (modo Run Once for All Items) y HTTP Request (Include Response Headers and Status, Response Format, Authentication).
+- **Prueba en local (agente):** con `node` se simularon `$()` y una app falsa con las reglas de `backend/models`, y se usaron los dos CSV de `data/`:
+  - **1.ª ejecución:**
+    - 7 apartados, 3 abonos y 6 ventas creados;
+    - 2 dudosos (Lucía Gómez) y 4 omitidas;
+    - 0 diferencias y 0 errores;
+    - Sofía `bizum` (CSV de ventas, fila 8); Miguel y Ana del 03/10 `efectivo` del CSV de ventas.
+  - **2.ª ejecución:** 0 creados y todo «ya existía». Coincide con la sección 7 de la spec.
+  - **Casos extra:**
+    - una venta de ejemplo que coincide sale como «ya existía»;
+    - un apartado de ejemplo de Carmen Ruiz con otra talla no se confunde;
+    - un abono que supera lo pendiente → `422` en el informe y diferencia con la resta;
+    - un `401` → error con el código y el mensaje de la app.
+- **Problemas encontrados:**
+  - **Los 0 items.** Un nodo que no devuelve items corta el flujo. Por eso:
+    - los `GET` llevan Always Output Data, y el Code ignora el item vacío;
+    - los Code nunca devuelven 0 items: si no hay nada que crear, devuelven `{ cuerpo: null }`;
+    - un IF antes de cada `POST` evita enviar ese item vacío (sería un `422`) y deja seguir al siguiente Code.
+  - **Leer los resultados de una rama que no se ejecutó.** Si se lee la salida de un `POST` que no se ejecutó (rama false del IF), n8n da error. El código usa `isExecuted` y, por si en n8n 2.4.5 se comporta distinto, un `try/catch`. Las respuestas se emparejan por orden con los items enviados, y si no cuadra el número, el flujo para.
+  - **Peticiones a la vez.** El HTTP Request puede enviar las peticiones en paralelo. Con dos abonos del mismo apartado, los dos se comprobarían contra el mismo `pendiente`. El agente lo detectó al revisar el diseño y el `LEEME.md` pide Batching de 1 en los `POST`.
+  - **Fallos de la primera versión,** encontrados en la prueba local y corregidos: a las líneas de diferencias del informe les faltaba el guion, y la fila TOTAL salía con un separador vacío.
+  - **Pendiente de comprobar al construir:** el nombre del campo binario que crea el Form Trigger (Input Binary Field de los Extract from File) y que `isExecuted` funciona en n8n 2.4.5.
+  - **Prompt cortado.** El prompt llegó cortado en los puntos 7 a 11 y Contenido 1, 2, 3 y 5; el agente reconstruyó por contexto la carpeta (`~/hu10-codigo/`), el nombre del 5.º fichero (`5-preparar-informe.js`) y el título de esta entrada.
+  - El prompt se corrompió al pegarlo en la terminal; el agente completó los pasos con la spec. Se sustituyó por el texto original.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-10 (issues #86–#90): vamos a construir el workflow `09 · Migración del Excel` a mano en n8n. Tú escribes solo el JavaScript de los 5 nodos Code; la pareja crea los demás nodos y pega tu código. Los nombres de los nodos y las conexiones ya están decididos (abajo): úsalos exactamente.
+
+## Fuentes
+
+- specs/09-migracion-excel.md (reglas de limpieza, clasificación, idempotencia, forma de pago, informe), AGENTS.md, docs/guia-de-la-app.md.
+- backend/routes/ y backend/models/: forma exacta de las respuestas de GET /api/apartados, /api/abonos y /api/ventas y de los POST.
+- n8n-mcp: nodo Code (modo Run Once for All Items, `$('Nodo').all()`, `.first()`, `.isExecuted`) y HTTP Request (opciones Never Error e Include Response Headers and Status).
+
+## Flujo (nombres exactos)
+
+1. `Subir el Excel` (Form Trigger): campos File `apartados` y `ventas`.
+2. `Leer CSV de apartados` y `Leer CSV de ventas` (Extract from File, CSV, Header Row), en paralelo desde el formulario → `Juntar los dos CSV` (Merge, Append).
+3. Code `Limpiar y clasificar`: lee `$('Leer CSV de apartados').all()` y `$('Leer CSV de ventas').all()`. Devuelve UN solo item: `{ apartados: [...con sus abonos], ventas: [...], dudosos: [...], omitidas: [...], rango: { desde, hasta } }`.
+4. `Leer apartados de la app` (GET /api/apartados), `Leer abonos de la app` (GET /api/abonos?desde=&hasta= con `rango`), `Leer ventas de la app` (GET /api/ventas?desde=&hasta=), en cadena, con Execute Once y Always Output Data (si la lista está vacía llega un item vacío: ignóralo).
+5. Code `Decidir qué crear`: compara (apartado: cliente normalizado + producto + talla + fecha; abono: apartado_id + fecha + importe; venta: fecha + concepto + importe) y guarda el plan completo. Devuelve un item por apartado a crear `{ cuerpo: {...body del POST}, ref: {...}, plan }`, o, si no hay ninguno, un único item `{ cuerpo: null, plan }`.
+6. IF `¿Hay apartados que crear?` (`$json.cuerpo` existe). true → `Crear apartados` (POST /api/apartados, body `$json.cuerpo`, Never Error + respuesta completa) → `Preparar abonos`. false → `Preparar abonos`.
+7. Code `Preparar abonos`: plan de `$('Decidir qué crear').first().json.plan`; resultados de `Crear apartados` solo si `.isExecuted` (emparejados por orden con los items a crear). Une id nuevos y existentes con sus abonos; si un apartado dio 422, sus abonos pasan a dudosos. Si un POST dio un código que no es 2xx ni 422, lanza un Error (lo recoge el 08). Devuelve un item por abono a crear `{ apartado_id, cuerpo, ref }`, en orden de fecha, o un único `{ cuerpo: null }`.
+8. IF `¿Hay abonos que crear?` → `Registrar abonos` (POST /api/apartados/{{ $json.apartado_id }}/abonos) → `Preparar ventas`; false → `Preparar ventas`.
+9. Code `Preparar ventas`: igual (comprueba los resultados de `Registrar abonos`), devuelve las ventas a crear o `{ cuerpo: null }`.
+10. IF `¿Hay ventas que crear?` → `Registrar ventas` (POST /api/ventas) → `Comprobar pendientes`; false → `Comprobar pendientes` (GET /api/apartados, Execute Once, Always Output Data).
+11. Code `Preparar informe`: lee todos los nodos con `.isExecuted`, comprueba los resultados de `Registrar ventas`, compara pendiente con resta y devuelve `{ asunto, texto }` en texto plano con las secciones de la spec (creados, ya existían, dudosos, omitidas, diferencias, errores de la API y de dónde sale cada forma de pago) → `Enviar informe de migración` (Send Email).
+
+## Contenido
+
+1. Escribe los 5 códigos en ~/hu10-codigo/ (fuera del repo, no se suben): `1-limpiar-y-clasificar.js`, `2-decidir-que-crear.js`, `3-preparar-abonos.js`, `4-preparar-ventas.js`, `5-preparar-informe.js`. Comentarios cortos en español, sin librerías externas, sin recalcular abonado ni pendiente.
+2. En ~/hu10-codigo/LEEME.md: para cada Code, qué recibe y qué devuelve (con un ejemplo corto), y la configuración exacta de los otros 15 nodos que debe saber la pareja (URL, query, body, opciones de HTTP, condiciones de los IF).
+3. Comprueba la lógica de 1, 2 y 5 con node en local usando los dos CSV de data/ (simulando `$()` con datos falsos de la app vacía y de la app con todo ya creado). Dime los resultados: deben coincidir con la tabla de la sección 7 de la spec.
+4. specs/09-migracion-excel.md: actualiza la sección 4 a este flujo (nombres reales, IF antes de cada POST y por qué).
+5. docs/ai-log.md: entrada "### Código de los nodos Code · HU-10" con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código; problema de los 0 items y la solución con IF) y este prompt literal en un bloque <details>.
+
+## Límites
+
+- No toques n8n, workflows/, backend/, frontend/ ni docker-compose.yml.
+- No llames a la API.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
