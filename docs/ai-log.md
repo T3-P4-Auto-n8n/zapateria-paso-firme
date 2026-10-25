@@ -583,6 +583,131 @@ No ejecutes nada más.
 
 **Instrucción de trabajo:** especificar HU-03 con el disparador de desarrollo y final, extracción de ordenante/importe/concepto, búsqueda y decisiones mediante API, registro y errores 422, avisos a Marisa y resultados esperados para los nueve correos. Aplicar la plantilla y las decisiones de AGENTS.md. La IA solo extrae los tres datos; las reglas del flujo deciden.
 
+### Spec de la rama HU-09 · Venta grande (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** issues #77, #78 y #83: añadir a la spec del workflow 01 la rama de HU-09 (salida `venta.registrada`, flujo 4), con sus pruebas. Solo documentación; el flujo todavía no se construye.
+- **Resultado:**
+  - Spec actualizada en todas las secciones (alcance, cabecera, objetivo, entradas, pasos, salidas, errores, pruebas, evidencias previstas y criterios de HU-09 sin marcar). La rama tiene cinco nodos:
+    - `Leer umbral de venta grande` (Data table, Row → Get, `clave` Equals `umbral_venta_grande`, Limit 1, **Always Output Data**);
+    - IF `¿Hay umbral?`;
+    - Stop and Error `Falta el umbral`, que recoge el `08`;
+    - IF `¿Venta grande?` (Number, is greater than, con el importe leído de `$('Evento de la tienda')`);
+    - `Avisar a la tienda: venta grande`.
+  - Payloads nuevos: `venta.registrada-grande.json` (129.9), `venta.registrada-umbral.json` (100) y `venta.registrada-60.json` (60, para la prueba con el umbral a 50).
+  - Nueva sección «Data tables de n8n» en `docs/credenciales.md`.
+  - Nueva fila en la sección 8 de `AGENTS.md`.
+  - El agente consultó con n8n-mcp los nodos Data table (`nodes-base.dataTable`, versión 1.1 en la base de n8n-mcp) y Stop and Error (`nodes-base.stopAndError`, versión 1) para usar sus nombres y parámetros reales.
+- **Problemas encontrados:**
+  - **Always Output Data.** La Data table, con la operación Get, no devuelve ningún item si no hay fila: la ejecución terminaría en ese nodo sin error, y el IF `¿Hay umbral?` y el aviso del `08` no llegarían a ejecutarse. El agente lo detectó al leer el nodo y la spec pide activar **Always Output Data** en `Leer umbral de venta grande`. Hay que comprobarlo al construir.
+  - **Versión del nodo.** n8n-mcp no confirma que su versión de la Data table coincida con la de nuestra n8n 2.4.5: los nombres de los parámetros se revisan en el editor al construir.
+  - **Payload extra.** El prompt no pedía un payload para la prueba de 60 €; el agente añadió `venta.registrada-60.json` para que la prueba sea repetible.
+  - **Prueba sin fila.** Se hace por la Production URL, porque el `08` no salta con ejecuciones de prueba.
+  - **Discrepancias con «variable».** `docs/ontologia.md` (reglas de la Venta, flujo 4) y el criterio 2 de HU-09 del README siguen diciendo que el umbral se guarda en una variable de n8n. La pareja decidió actualizar docs/ontologia.md para que coincida con la decisión; el criterio del README se copia literal con una nota.
+- **Decisión:** aceptado con cambios (ontología actualizada).
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Escribe la spec de la rama HU-09 (flujo 4, aviso de ventas grandes, issues #77, #78 y #83) dentro de specs/01-eventos-tienda.md, igual que hicimos con HU-01 y HU-02. Solo documentación: todavía no construimos el flujo.
+
+## Fuentes
+
+- README.md: HU-09 y tabla de flujos (flujo 4).
+- docs/ontologia.md: "Venta grande (flujo 4)" y la tabla de quién decide qué.
+- docs/guia-de-la-app.md: evento venta.registrada y campos de la Venta.
+- specs/01-eventos-tienda.md (estructura y estilo actuales), specs/08-error-workflow.md, AGENTS.md, docs/credenciales.md.
+- tests/payloads/venta.registrada.json.
+- n8n-mcp: consulta el nodo Data table (operación para leer filas con una condición) y el nodo Stop and Error para que la spec use sus nombres y parámetros reales de n8n 2.4.5.
+
+## Contenido
+
+1. Decisión: las Variables de n8n ($vars) están bloqueadas en nuestra versión (community, "Upgrade to unlock variables"). El umbral se guarda en una Data table de n8n:
+   - Tabla "Configuración", columnas `clave` (string) y `valor` (number).
+   - Fila: clave `umbral_venta_grande`, valor `100`.
+   - Marisa cambia el valor en la tabla sin editar el flujo.
+2. Rama venta.registrada en specs/01-eventos-tienda.md (actualizar el aviso de alcance, la cabecera y cada sección):
+   - Data table "Leer umbral de venta grande": lee la fila de `umbral_venta_grande`.
+   - IF "¿Hay umbral?": si no hay fila o el valor está vacío → Stop and Error "Falta el umbral de venta grande en la Data table Configuración" (lo recoge el Error Workflow 08).
+   - IF "¿Venta grande?": importe > umbral, estrictamente mayor (una venta igual al umbral no avisa). Comparación Number. Tras el nodo Data table, $json es la fila de la tabla: el importe se lee con $('Evento de la tienda').item.json.body.datos.importe.
+   - true → Send Email "Avisar a la tienda: venta grande" (Mailpit, From/To tienda@pasofirme.example). Asunto con el importe; texto con id, concepto, importe (.toFixed(2)), forma_pago, fecha en dd/MM/yyyy y el umbral actual.
+   - false → nada.
+3. Pruebas (tabla como en HU-01/HU-02), con payloads nuevos en tests/payloads/ (datos ficticios):
+   - venta.registrada-grande.json: importe 129.9 → aviso.
+   - venta.registrada-umbral.json: importe 100 → no avisa.
+   - venta.registrada.json (ya existe, 4.5) → no avisa.
+   - Cambiar el valor de la tabla a 50 y repetir con un importe de 60 → aviso, sin tocar el flujo (evidencia del criterio 2).
+   - Borrar la fila temporalmente → aviso del Error Workflow 08.
+   Evidencias previstas: docs/evidencias/01-hu09-*.png. Los criterios de HU-09 quedan sin marcar.
+4. docs/credenciales.md: nueva sección "Data tables de n8n" con la tabla Configuración, sus columnas, la fila inicial y cómo crearla (Overview → Data tables). Avisar de que las Data tables no se exportan con el JSON del workflow: tras importar 01 hay que crear la tabla y volver a elegirla en el nodo.
+5. AGENTS.md, sección 8: fila "El umbral de venta grande se guarda en una Data table de n8n (Configuración)" | "Las Variables de n8n requieren licencia de pago" | Tomada.
+6. docs/ai-log.md: entrada "### Spec de la rama HU-09 · Venta grande (`specs/01-eventos-tienda.md`)" con el mismo formato que las anteriores y este prompt literal en un bloque <details>.
+
+## Límites
+
+- No modifiques workflows/, backend/ ni frontend/.
+- No crees la Data table ni toques n8n: solo documentación y payloads.
+- No hagas commit, push ni PR. Cuando termines, dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción de la rama HU-09 · Venta grande (`workflows/01-eventos-tienda.json`)
+
+- **Autora:** Esra
+- **Tarea:** issues #79, #80, #81, #82 y #83: construir y probar en n8n la rama de HU-09 según `specs/01-eventos-tienda.md`, exportar el workflow y abrir la PR.
+- **Resultado:**
+  - La pareja construyó en n8n los 5 nodos de la spec (`Leer umbral de venta grande`, `¿Hay umbral?`, `Falta el umbral`, `¿Venta grande?` y `Avisar a la tienda: venta grande`) y creó la Data table `Configuración` con la fila `umbral_venta_grande` · `100`.
+  - Pruebas superadas:
+    - 129.90 → aviso;
+    - 100 → sin aviso (estrictamente mayor);
+    - 4.50 → sin aviso;
+    - umbral cambiado a 50 en la tabla, sin tocar el flujo → aviso de 60.00 con «Umbral actual: 50.00»;
+    - fila borrada + Production URL → correo del `08` con el paso «Falta el umbral».
+  - `validate_workflow` (n8n-mcp) sobre `workflows/01-eventos-tienda.json`: válido, 0 errores y 0 avisos (14 nodos, 13 conexiones, 51 expresiones). Solo las sugerencias genéricas de gestión de errores, ya cubierta por el `08` (HU-05).
+- **Problemas encontrados:**
+  - Al crear la fila, `clave` y `valor` se escribieron juntos en la celda `clave` (`valor` quedó `Null`); se corrigió.
+  - El correo llevaba la firma «This email was sent automatically with n8n»; se desactivó **Append n8n Attribution**, como en los demás correos.
+  - La primera exportación se hizo con *Download* de la interfaz en lugar del script; se repitió con `scripts/flujos.py`.
+- **Decisión:** aceptado.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+La rama HU-09 ya está construida y probada en n8n, y workflows/01-eventos-tienda.json está exportado. Valida el workflow, actualiza la documentación y abre la PR.
+
+## Contenido
+
+1. Valida workflows/01-eventos-tienda.json con n8n-mcp (validate_workflow). Si hay errores, para y dímelos sin cambiar nada.
+2. specs/01-eventos-tienda.md:
+   - Quita "especificada, sin construir todavía" / "sin construir" del alcance y la cabecera.
+   - En la sección de evidencias, cambia "Previstas para HU-09 (todavía no existen)" por enlaces reales a los cuatro archivos docs/evidencias/01-hu09-*.png (aviso-venta-grande, venta-igual-umbral, umbral-cambiado, sin-umbral-error).
+   - Marca los dos criterios de HU-09.
+3. docs/ai-log.md: nueva entrada "### Construcción de la rama HU-09 · Venta grande (`workflows/01-eventos-tienda.json`)" después de la de la spec de HU-09, con el formato habitual:
+   - Autora: Esra. Tarea: issues #79, #80, #81, #82, #83.
+   - Resultado: la pareja construyó los 5 nodos en n8n según la spec y creó la Data table Configuración. Pruebas superadas: 129.90 → aviso; 100 → sin aviso (estrictamente mayor); 4.50 → sin aviso; umbral cambiado a 50 en la tabla sin tocar el flujo → aviso de 60.00 con "Umbral actual: 50.00"; fila borrada + Production URL → correo del 08 con paso "Falta el umbral". Resultado de validate_workflow.
+   - Problemas encontrados: al crear la fila, clave y valor se escribieron juntos en la celda clave (valor quedó Null); se corrigió. El correo llevaba la firma "This email was sent automatically with n8n"; se desactivó Append n8n Attribution, como en los demás correos. La primera exportación se hizo con Download de la interfaz en lugar del script; se repitió con scripts/flujos.py.
+   - Decisión: aceptado.
+   - Este prompt literal en un bloque <details>.
+4. Commit en inglés (Conventional Commits) con todos los cambios pendientes de la rama (spec, AGENTS.md, ontología, credenciales, ai-log, payloads, evidencias y workflow), push de feature/hu-09-venta-registrada y PR a dev:
+   - Título: "feat: large sale alert with configurable threshold (HU-09)"
+   - Descripción breve: qué hace la rama, por qué Data table en lugar de Variables, cómo preparar la tabla tras importar (enlace a docs/credenciales.md), pruebas y evidencias.
+   - Closes #77, #78, #79, #80, #81, #82, #83.
+   - Reviewer: BesteOzaydin.
+
+## Límites
+
+- No toques n8n, backend/ ni frontend/.
+- No hagas merge ni push a dev o main.
+- No añadas co-autores ni firmas de IA al commit ni a la PR.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

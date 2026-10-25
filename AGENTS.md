@@ -91,6 +91,7 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 |---|---|---|
 | Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Confirmada por el profesor |
 | Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda) | En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada abono la llenaría de correos | Tomada |
+| El umbral de venta grande se guarda en una Data table de n8n (`Configuración`) | Las Variables de n8n requieren licencia de pago | Tomada |
 
 ## 9. Lo que el agente NO debe hacer
 

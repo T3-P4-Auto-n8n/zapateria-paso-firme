@@ -203,7 +203,7 @@ Venta directa en la tienda, sin apartado.
 
 - Cada venta dispara el webhook `venta.registrada`.
 - `forma_pago` solo admite `efectivo`, `tarjeta` o `bizum`; cualquier otro valor devuelve `422`.
-- **Venta grande (flujo 4):** si el `importe` supera un umbral que decide Marisa, n8n le avisa. El umbral se guarda en una variable de n8n, no en el flujo. ⚙️ n8n
+- **Venta grande (flujo 4):** si el `importe` supera un umbral que decide Marisa, n8n le avisa. El umbral se guarda en la Data table `Configuración` de n8n, no en el flujo (ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)). ⚙️ n8n
 - **Datáfono (nivel avanzado):** las ventas con tarjeta importadas del CSV no deben duplicar las ya registradas. ⚙️ n8n
 
 ---
@@ -283,7 +283,7 @@ La API no define esta entidad. Sus datos son los que piden el README (HU-04) y l
 | Recaudación mensual (ventas directas y abonos por separado) | ⚙️ n8n | Sumar ventas y abonos del mes |
 | Total pendiente de cobro | ⚙️ n8n | Sumar `pendiente` de los apartados `activo` |
 | Apartados nuevos, liquidados y vencidos del mes | ⚙️ n8n | A partir de los apartados y vales de la API |
-| Si una venta es "grande" | ⚙️ n8n | Comparar `importe` con el umbral guardado en una variable |
+| Si una venta es "grande" | ⚙️ n8n | Comparar `importe` con el umbral guardado en la Data table `Configuración` de n8n (ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)) |
 | Datos de un aviso del banco (ordenante, importe, concepto) | ⚙️ n8n (IA) | Extracción con IA; la decisión la toma el flujo con la API |
 
 ---
