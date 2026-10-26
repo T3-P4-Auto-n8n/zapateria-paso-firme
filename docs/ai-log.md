@@ -1121,3 +1121,9 @@ Ninguna por ahora.
 - **Verificación local:** cuatro pruebas sobre el JSON generado cubren ocho pagos de ejemplo, publicidad, valores inventados, esquemas inválidos, importe negativo, JSON truncado y fallo de Groq.
 - **Prueba real (26/10/2026):** los ocho pagos llegaron a `buscar` y publicidad a `ignorar` usando `openai/gpt-oss-20b`; no hubo escrituras. Se guardan salidas, capturas y los nueve IDs de ejecución (pagos 5–11 y 13; publicidad 12).
 - **Pendiente:** revisar el enlace local de `08` y validar el export final con n8n-mcp. PR en borrador; no cerrar #34 hasta completar la revisión.
+
+### Búsqueda de apartado HU-03 (#35)
+
+- **Tarea:** consultar la API con la URL ya elegida por #34 (ID explícito o búsqueda conservadora) y entregar la respuesta a #36.
+- **Resultado:** se añade `workflows/03-abonos-distancia-busqueda.json`, generador determinista, prueba automatizada y guía. El nodo es un GET autenticado con `API Tienda`; no hay escritura ni SMTP. El 404 explícito conserva su estado para revisión; fallos de red paran la ejecución.
+- **Pendiente:** importar y validar en n8n, asignar credenciales y seleccionar el 08 local. Mantener la PR como borrador y el workflow inactivo.
