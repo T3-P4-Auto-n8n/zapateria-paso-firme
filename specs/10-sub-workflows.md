@@ -1,6 +1,6 @@
 # Flujo 10 · Sub-workflows reutilizables
 
-> **Alcance de esta versión:** spec de los dos sub-workflows, `10 · Buscar apartado` y `10 · Enviar notificación`, y del cambio del `08 · Error Workflow` para usar el segundo. Todavía no están construidos.
+> **Alcance de esta versión:** los dos sub-workflows, `10 · Buscar apartado` y `10 · Enviar notificación`, están construidos en n8n, exportados en `workflows/10-buscar-apartado.json` y `workflows/10-enviar-notificacion.json` (6 nodos cada uno) y probados con los datos de ejemplo (sección 7). El `08 · Error Workflow` ya envía su aviso con `Enviar notificación` (`workflows/08-error-workflow.json`). Los demás flujos los usarán en PR aparte (sección 4.3, #95).
 
 ## 1. Cabecera
 
@@ -13,7 +13,7 @@
 - **Responsable:** Esra
 - **Credenciales y variables:** `API Tienda` (Header Auth) en `Buscar apartado` y `Mailpit` (SMTP) en `Enviar notificación`, ver [docs/credenciales.md](../docs/credenciales.md).
 - **Error Workflow:** **ninguno** en los dos sub-workflows. Un error del sub-workflow hace fallar el nodo que lo llama, y lo avisa el `08` del flujo que llama (sección 6). En `Enviar notificación` es obligatorio: si tuviera el `08` asignado y el `08` lo usa para avisar, un fallo podría volver a llamarse a sí mismo.
-- **Settings → This workflow can be called by:** «Workflows from the same owner» (el valor por defecto; lo tienen ya los demás flujos).
+- **Quién puede llamarlos:** solo los workflows del mismo propietario (`"callerPolicy": "workflowsFromSameOwner"` en los JSON exportados, el valor por defecto). En n8n 2.4.5 community la opción **This workflow can be called by** no aparece en Settings, así que no se puede cambiar desde la interfaz.
 
 ## 2. Objetivo
 
@@ -21,10 +21,10 @@ Que la búsqueda de apartados y el envío de correos se hagan en un solo sitio y
 
 **Dónde se repite hoy:**
 - **Envío de correos:** hay 8 nodos Send Email con la misma configuración (credencial `Mailpit`, From `tienda@pasofirme.example`, **Append n8n Attribution** desactivado):
-  - 5 en el `01`, contando la rama de HU-09 del PR #159;
-  - 1 en el `07` (PR #161);
-  - 1 en el `08`;
-  - 1 en el `09` (PR #160);
+  - 5 en el `01`, contando la rama de HU-09 (PR #159, ya en `dev`);
+  - 1 en el `07` (PR #161, ya en `dev`);
+  - 1 en el `08` (en este PR pasa a usar `Enviar notificación`, 4.4);
+  - 1 en el `09` (PR #160, ya en `dev`);
   - y los que traigan los flujos 3 y 6.
 - **Búsqueda de apartados:** la necesitan el flujo 3 (por número de apartado o por nombre del ordenante), el flujo 6 (apartados activos) y el asistente de Telegram (por nombre o teléfono). Hoy ningún flujo construido busca: el `01` recibe el apartado en el webhook, y el `07` y el `09` leen la lista completa.
 
@@ -130,16 +130,17 @@ Con 0 resultados: `{ "total": 0, "apartados": [] }`. **No es un error:** el fluj
 | Workflow | Nodo actual | Se sustituye por | Cuándo |
 |---|---|---|---|
 | `08 · Error Workflow` | `Avisar a la tienda del error` | `Enviar notificación` | **En este PR** (4.4) |
-| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | Cuando se fusione el PR #159 |
-| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Cuando se fusione el PR #159 |
-| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Cuando se fusione el PR #159 |
-| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Cuando se fusione el PR #161 |
-| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Cuando se fusione el PR #160 |
+| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | Pendiente, en una PR aparte |
+| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Pendiente, en una PR aparte |
+| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Pendiente, en una PR aparte |
+| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Pendiente, en una PR aparte |
+| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Pendiente, en una PR aparte |
 | `03 · Abonos a distancia` (Beste, PR #158) | Pasos 2 y 3 de su spec: `GET /api/apartados/{id}` y `GET /api/apartados?estado=activo&q=...` | `Buscar apartado`: con `id` (sin `estado`, para poder avisar si está liquidado o fuera de plazo) o con `texto` y `estado` `activo` | Lo decide Beste al construirlo o corregirlo |
 | `03` | Consulta o rechazo a Marisa (sección 5 de su spec) | `Enviar notificación` | Igual |
 | `06 · Recordatorios y vencimientos` (Beste, sin empezar) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` | Al construirlo |
 | `06` | Recordatorios al cliente (7 días y 1 día), aviso del vale al cliente (HU-07) y lista de zapatos que vuelven a la venta a la tienda | `Enviar notificación` | Al construirlo |
 
+- Los PR #159, #160 y #161 ya están fusionados en `dev`. El cambio de `01`, `07` y `09` no va en este PR para no mezclarlo con #92 y para repetir sus pruebas por separado.
 - El `POST /api/apartados/{id}/vencer` del flujo 6 **no** pasa a un sub-workflow: solo se reutilizan la búsqueda y el envío.
 - Los flujos 1 y 2 no usan `Buscar apartado`: el webhook ya trae el apartado actualizado.
 - **#95** («usarlos desde los flujos 1, 2, 3, 6») queda **abierta**: este PR solo la referencia (`Refs #95`). Se cierra cuando los cuatro flujos usen los sub-workflows.
@@ -151,7 +152,13 @@ El `08` está en `dev` y ningún PR abierto lo toca.
 | Antes | Después |
 |---|---|
 | `Si falla un flujo` (Error Trigger) | Sin cambios |
-| `Avisar a la tienda del error` (Send Email, `Mailpit`, From y To `tienda@pasofirme.example`, texto, sin atribución) | `Avisar a la tienda del error` (**Execute Workflow**, versión 1.4): **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once for each item (la regla de la sección 3; el Error Trigger da un solo item, pero el `08` sigue la regla igual que los demás), **Options → Wait For Sub-Workflow Completion** activado. **Workflow Inputs:** `para` = `tienda@pasofirme.example`; `asunto` = `Ha fallado el flujo «{{ $json.workflow.name }}»`; `texto` = el mismo texto de ahora (flujo, paso, error y enlace); `html` vacío |
+| `Avisar a la tienda del error` (Send Email, `Mailpit`, From y To `tienda@pasofirme.example`, texto, sin atribución) | `Avisar a la tienda del error` (**Execute Workflow**, versión 1.4): **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once for each item (la regla de la sección 3; el Error Trigger da un solo item, pero el `08` sigue la regla igual que los demás), **Options → Wait For Sub-Workflow Completion** activado. **Workflow Inputs:** `para` = `tienda@pasofirme.example`; `asunto` = `Ha fallado el flujo «{{ $json.workflow.name }}»`; `texto` = el mismo texto de ahora (flujo, paso, error y enlace), escrito como expresión con `\n` (abajo); `html` vacío |
+
+**`texto` como expresión con `\n`:** los campos de **Workflow Inputs** son de una sola línea. Al pegar el texto de varias líneas o pulsar Enter se pierden los saltos y el aviso llega en una sola línea. Por eso los saltos se escriben dentro de la expresión:
+
+```text
+{{ 'Una automatización ha fallado.\n\nFlujo: ' + $json.workflow.name + '\nPaso: ' + $json.execution.lastNodeExecuted + '\nError: ' + $json.execution.error.message + '\nEjecución: ' + $json.execution.url }}
+```
 
 - El nodo conserva el nombre, así que la spec del `08` solo cambia en el paso 2.
 - El correo que llega tiene que ser igual que antes: mismo remitente, destinatario, asunto y texto, y sin firma de n8n.
@@ -192,7 +199,7 @@ Como siempre, solo en ejecuciones de producción.
 | Buscar apartado | Varios resultados | Se devuelven todos; elegir uno es cosa del flujo que llama (en el flujo 3, varios candidatos = consulta a Marisa) |
 | Enviar notificación | Falta `para`, `asunto` o el cuerpo, o `para` sin `@` | Para con error sin enviar nada |
 | Enviar notificación | Mailpit caído o credencial `Mailpit` mal | Falla el Send Email; lo avisa el `08` del flujo que llama, salvo si quien llama es el propio `08` (4.4) |
-| Los dos | El sub-workflow no existe, no se puede llamar (Settings → This workflow can be called by) o no está publicado si n8n 2.4.5 lo exige | Falla el Execute Workflow del flujo que llama |
+| Los dos | El sub-workflow no existe, no se puede llamar (`callerPolicy`, sección 1) o no está publicado si n8n 2.4.5 lo exige | Falla el Execute Workflow del flujo que llama. Los dos están publicados (`"active": true` en el JSON exportado) |
 | Los dos | Un flujo llama con **Run once with all items** y le pasa varios items (incumple la regla de la sección 3) | El sub-workflow solo atiende el primer item: `Enviar notificación` envía un correo y los demás se pierden; `Buscar apartado` solo hace la primera búsqueda. **No hay error** y el `08` no avisa. Se evita con la regla y se comprueba en la revisión de cada flujo que llame (el Mode se ve en el JSON exportado: `"mode": "each"`) |
 
 ## 7. Prueba
@@ -247,13 +254,48 @@ Los resultados por texto dependen del día en que se cargó el seed. Se comparan
 | Execute workflow con **Run once for each item** | Llegan a Mailpit **2 correos**, «Aviso 1 de 2» y «Aviso 2 de 2». `Enviar los avisos` da 2 items con `enviado` `true` y dos `messageId` distintos. En las ejecuciones se ven 2 de `10 · Enviar notificación` |
 | Lo mismo cambiando el Mode a **Run once with all items** (para ver el fallo) | Llega **1 correo** («Aviso 1 de 2»), una sola ejecución del sub-workflow, y ningún error. Al terminar, volver a poner Run once for each item, o borrar el flujo de prueba |
 
-**Evidencias previstas** (todavía no existen):
+**Resultado real** (datos de ejemplo, seed del 21/10/2026, pin data en el trigger):
 
-- Ejecución de `Buscar apartado` con 0 resultados: `docs/evidencias/10-buscar-apartado-sin-resultados.png`
-- Ejecución de `Buscar apartado` con resultados: `docs/evidencias/10-buscar-apartado-texto.png`
-- Correo HTML de `Enviar notificación` en Mailpit: `docs/evidencias/10-enviar-notificacion-html.png`
-- Aviso del `08` enviado a través de `Enviar notificación`: `docs/evidencias/10-08-aviso-con-sub-workflow.png`
-- Los 2 correos de la prueba con varios items: `docs/evidencias/10-enviar-notificacion-varios-items.png`
+`10 · Buscar apartado`
+
+| Entrada | Resultado |
+|---|---|
+| `{ "id": 22 }` | `total` 1: apartado 22, Beatriz Medina, `vencido`, `abonado` 25, `pendiente` 14.9, sin `abonos` ni `vale` |
+| `{ "id": 22, "estado": "activo" }` | `total` 0 |
+| `{ "id": 9999 }` | `total` 0. `Leer apartado por número` sale en verde: el `404` con Never Error no es un error |
+| `{ "texto": "Carmen Ruiz" }` | `total` 1: apartado 1 (Zueco sanitario, `activo`, `abonado` 15, `pendiente` 19.5). Coincide con `GET /api/apartados?q=Carmen Ruiz` |
+| `{ "texto": "Carmen Ruiz", "estado": "activo" }` | `total` 1 |
+| `{ "texto": "600000001" }` | `total` 2: apartados 1 y 27, que tienen el mismo teléfono. En la API, `q=600000001` sin espacios da 0 y `q=600 000 001` da 2: lo resuelve la normalización de `Comprobar la búsqueda` |
+| `{ "texto": "Nadie Inventado" }` | `{ "total": 0, "apartados": [] }` |
+| `{ "estado": "activo" }` | `total` 20, igual que `activo` en `GET /api/apartados/resumen` |
+| `{}` | Error «Buscar apartado: falta `id`, `texto` o `estado`» |
+| `{ "estado": "pagado" }` | Error «Buscar apartado: estado no válido: «pagado» (activo, liquidado o vencido)» |
+| `401` | **No realizada.** Obligaba a crear una credencial falsa. El camino de error está en `Preparar resultado`: cualquier código que no sea `200` ni el `404` por número para con error con el código y el `detail` |
+
+`10 · Enviar notificación`
+
+| Entrada | Resultado |
+|---|---|
+| HTML | Llega «Prueba HTML» con «Hola» en negrita |
+| Texto | Llega en texto plano. Al principio salía la firma de n8n: en `Enviar correo de texto` faltaba desactivar **Append n8n Attribution**. Se desactivó y el JSON exportado lo tiene (`appendAttribution: false` en los dos Send Email) |
+| Sin `para` | Error y no llega nada |
+
+`08` llamando a `Enviar notificación` (`curl` de HU-05 con `tests/payloads/error-email-espacio.json` a la Production URL): llega «Ha fallado el flujo «01 · Eventos de la tienda»» con el flujo, el paso `Enviar confirmación al cliente`, el error «No recipients defined» y el enlace a la ejecución 71, sin firma de n8n. La primera vez el cuerpo llegó en una sola línea; se resolvió con la expresión con `\n` (4.4).
+
+Varios items (flujo `Prueba de sub-workflows (no exportar)`, que no se exporta):
+
+| Mode | Resultado |
+|---|---|
+| **Run once for each item** | `Enviar los avisos` da «2 items, 2 sub-executions», `enviado` `true` y dos `messageId` distintos. Llegan «Aviso 1 de 2» y «Aviso 2 de 2» |
+| **Run once with all items** | Llega 1 solo correo y no hay ningún error: el fallo silencioso de la sección 6. Se volvió a poner Run once for each item |
+
+**Evidencias:**
+
+- Ejecución de `Buscar apartado` con resultados (Carmen Ruiz): [docs/evidencias/10-buscar-apartado-texto.png](../docs/evidencias/10-buscar-apartado-texto.png)
+- Ejecución de `Buscar apartado` con 0 resultados (Nadie Inventado): [docs/evidencias/10-buscar-apartado-sin-resultados.png](../docs/evidencias/10-buscar-apartado-sin-resultados.png)
+- Correo HTML de `Enviar notificación` en Mailpit: [docs/evidencias/10-enviar-notificacion-html.png](../docs/evidencias/10-enviar-notificacion-html.png)
+- Aviso del `08` enviado a través de `Enviar notificación`: [docs/evidencias/10-08-aviso-con-sub-workflow.png](../docs/evidencias/10-08-aviso-con-sub-workflow.png)
+- Los 2 correos de la prueba con varios items: [docs/evidencias/10-enviar-notificacion-varios-items.png](../docs/evidencias/10-enviar-notificacion-varios-items.png)
 
 ## 8. Criterios de aceptación
 
@@ -261,6 +303,11 @@ Las issues #92–#95 no traen checklist: solo el título. Los criterios salen de
 
 **#92 · Sub-workflows reutilizables** (README, nivel Medio: «Sub-workflows reutilizables (**Execute Workflow**), por ejemplo "buscar apartado" o "enviar notificación"»)
 
-- [ ] **#93** Sub-workflow «buscar apartado»: busca por número, texto o estado y devuelve siempre `{ total, apartados }`, también con 0 resultados.
-- [ ] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
-- [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta).
+- [x] **#93** Sub-workflow «buscar apartado»: busca por número, texto o estado y devuelve siempre `{ total, apartados }`, también con 0 resultados.
+- [x] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
+- [x] El `08` envía su aviso con `Enviar notificación` y el correo llega igual que antes.
+- [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta, `Refs #95`):
+  - [ ] Flujo 1 (`01`, HU-01)
+  - [ ] Flujo 2 (`01`, HU-02)
+  - [ ] Flujo 3 (`03`, Beste)
+  - [ ] Flujo 6 (`06`, Beste)

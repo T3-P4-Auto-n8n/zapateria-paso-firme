@@ -106,7 +106,7 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 | Los sub-workflows no tienen Error workflow: sus errores los avisa el `08` del flujo que llama | Así no hay avisos duplicados, y `Enviar notificación` no puede llamarse a sí mismo a través del `08` si falla | Tomada |
 | `Enviar notificación` no decide qué hacer si el cliente no tiene email; para con error si falta `para` o `asunto` | Cada flujo tiene su regla (HU-01 avisa a la tienda; HU-02 no envía nada); el error es solo una red de seguridad | Tomada |
 | Cada llamada a un sub-workflow es una sola petición: el Execute Workflow que llama usa siempre **Mode: Run once for each item** | Los Code de los sub-workflows solo leen el primer item; con Run once with all items y varios items, los demás se perderían sin error (por ejemplo, los recordatorios del flujo 6) | Tomada |
-| El `08` envía su aviso con `Enviar notificación` | Lo pide #92 y el `08` no lo toca ningún PR abierto; si el sub-workflow falla, el aviso se pierde igual que hoy si falla su Send Email | Pendiente de revisión |
+| El `08` envía su aviso con `Enviar notificación` | Lo pide #92 y el `08` no lo toca ningún PR abierto; si el sub-workflow falla, el aviso se pierde igual que hoy si falla su Send Email | Tomada (probada con la prueba de HU-05) |
 
 ## 9. Lo que el agente NO debe hacer
 

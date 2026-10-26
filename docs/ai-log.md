@@ -1262,6 +1262,39 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 
 </details>
 
+### Construcción de los sub-workflows · #92 (`workflows/10-*.json`, `workflows/08-error-workflow.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `10 · Buscar apartado`, `10 · Enviar notificación` y el cambio del `08 · Error Workflow` según `specs/10-sub-workflows.md`, y exportarlos.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 4 Code. Cada sub-workflow tiene 6 nodos con los nombres de la spec, sin Error workflow. Los 4 Code del JSON exportado son idénticos a `~/subflujos/*.js`.
+  - En el `08`, `Avisar a la tienda del error` pasa a ser un Execute Workflow a `10 · Enviar notificación`, con **Mode** Run once for each item (`"mode": "each"`) y Wait For Sub-Workflow Completion.
+  - Los tres JSON pasan `validate_workflow` de n8n-mcp sin errores ni avisos.
+  - **Pruebas** (datos de ejemplo, pin data en el trigger):
+    - **`Buscar apartado`:**
+      - `id` 22 da el apartado de Beatriz Medina (`vencido`, `abonado` 25, `pendiente` 14.9), sin `abonos` ni `vale`. Con `estado` `activo`, `total` 0.
+      - `id` 9999 da `total` 0, con el `404` en verde.
+      - «Carmen Ruiz» da el apartado 1, igual que `GET /api/apartados?q=Carmen Ruiz`, y también con `estado` `activo`.
+      - `600000001` da los apartados 1 y 27. En la API, sin espacios da 0 y con espacios da 2: lo resuelve la normalización del teléfono.
+      - «Nadie Inventado» da `{ total: 0, apartados: [] }`.
+      - `estado` `activo` da 20, igual que el `resumen`.
+      - `{}` y `estado` `pagado` paran con el error de la spec.
+    - **`Enviar notificación`:** llegan el correo HTML («Hola» en negrita) y el de texto. Sin `para`, error y no llega nada.
+    - **`08`** (`curl` de HU-05 con `error-email-espacio.json` a la Production URL): llega el aviso con el flujo, el paso `Enviar confirmación al cliente`, «No recipients defined» y el enlace a la ejecución 71, sin firma.
+    - **Varios items:** con Run once for each item, 2 sub-ejecuciones, 2 correos y dos `messageId` distintos. Con Run once with all items, 1 correo y ningún error, como dice la spec. Se volvió a Run once for each item.
+    - **`401`:** no se hizo; obligaba a crear una credencial falsa. El camino de error está en `Preparar resultado`.
+  - Lo pendiente de comprobar del código, después de construir:
+    - **Publicar:** los dos sub-workflows están publicados (`"active": true`).
+    - **Error del sub-workflow en el `08` del que llama:** sigue sin comprobarse. Ningún flujo con `08` llama todavía a un sub-workflow; se verá en la PR de #95.
+    - **Respuesta del HTTP Request y campos vacíos:** todas las pruebas dieron lo esperado. El código acepta las dos formas, así que no hizo falta mirar cuál llega.
+  - Esta vez no hizo falta `git restore` del `01` tras exportar: la rama ya tiene `dev` con #159, #160 y #161 fusionados.
+- **Problemas encontrados:**
+  - **Saltos de línea del `08`.** La primera vez el aviso llegó en una sola línea. Los campos de **Workflow Inputs** son de una línea, y al pegar el texto o pulsar Enter se pierden los saltos. Se resolvió escribiendo `texto` como expresión con `\n`. La spec (4.4) y el `LEEME.md` lo recogen.
+  - **Firma de n8n en `Enviar correo de texto`.** Faltaba desactivar **Append n8n Attribution** en ese nodo. Se desactivó y se repitió la prueba.
+  - **`callerPolicy` oculto.** «This workflow can be called by» no aparece en Settings en n8n 2.4.5 community. Los JSON exportados tienen `callerPolicy: workflowsFromSameOwner`, el valor por defecto que pedía la spec. La sección 1 de la spec lo recoge.
+- **Decisión:** aceptado. La fila del `08` en `AGENTS.md` (sección 8) pasa a «Tomada».
+- No hay prompt: los flujos los construyó la pareja a mano.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
