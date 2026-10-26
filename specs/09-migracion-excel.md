@@ -1,6 +1,6 @@
 # Flujo 09 · Migración del Excel
 
-> **Alcance de esta versión:** spec y análisis fila a fila de los dos CSV de `data/`. El flujo todavía no está construido.
+> **Alcance de esta versión:** flujo construido en n8n, exportado en `workflows/09-migracion-excel.json` (20 nodos) y probado con los dos CSV de `data/` (sección 7).
 
 ## 1. Cabecera
 
@@ -24,7 +24,7 @@ Pasar a la app, por API y con su fecha original, los apartados, abonos y ventas 
   Después, `Juntar los dos CSV` (Merge, **Append**) espera a que se lean los dos ficheros.
 
   **Por qué un formulario:** el contenedor de n8n no ve la carpeta `data/` del repo. Con el formulario no hay que tocar `docker-compose.yml` para montarla.
-- **Lectura:** un nodo Extract from File por fichero (Operation **Extract From CSV**, con **Header Row** activado), `Leer CSV de apartados` y `Leer CSV de ventas`. En **Input Binary Field** va el nombre del campo binario que crea el Form Trigger para cada fichero; se comprueba en la salida del formulario al construir.
+- **Lectura:** un nodo Extract from File por fichero (Operation **Extract From CSV**, con **Header Row** activado), `Leer CSV de apartados` y `Leer CSV de ventas`. En **Input Binary Field** va el nombre del campo binario que crea el Form Trigger para cada fichero: `apartados` y `ventas`, el mismo nombre que el campo del formulario.
 - **Entradas.** Las columnas del Excel no son de la ontología. Esta tabla dice a qué campo de la app va cada una:
 
 | CSV | Columna | Campo de la app | Notas |
@@ -143,7 +143,7 @@ Todas las llamadas usan HTTP Request a `http://tienda:8000/api/...` con Authenti
     - devuelve `{ asunto, texto }`.
 19. `Enviar informe de migración` (Send Email, credencial `Mailpit`) lo manda **en un solo correo**, From y To `tienda@pasofirme.example`, en texto plano. Ver la sección 5.
 
-El código de los 5 nodos Code y la configuración de los demás nodos los tiene la pareja aparte (fuera del repo); se suben con el JSON del workflow al exportarlo.
+El código de los 5 nodos Code y la configuración de los demás nodos están en `workflows/09-migracion-excel.json`.
 
 **Procedimiento** (lo hace la pareja, no el flujo)
 
@@ -182,6 +182,14 @@ En la app quedan los apartados, abonos y ventas creados. Los avisos del webhook 
 ## 7. Prueba
 
 **Condición previa:** la app sin datos de la migración y el `01` despublicado.
+
+**Cómo se preparó la prueba real:**
+
+1. Copia de la base de datos de la app (con los datos de ejemplo).
+2. App vacía, arrancada con `SEED=0`.
+3. `01 · Eventos de la tienda` despublicado.
+4. Dos ejecuciones por la Test URL del formulario, con los mismos dos ficheros.
+5. Al terminar, se restauró la copia de la base de datos (con el seed) y se volvió a publicar el `01`.
 
 > **Ojo con los datos de ejemplo** (`SEED=1`): tienen los mismos clientes y los mismos conceptos e importes de venta (`Calcetines pack 3` 6.50, `Crema calzado` 4.50, `Bota montaña T41` 79.90...) en los últimos 75 días. Si un día del Excel coincide con una venta de ejemplo con el mismo concepto e importe, esa venta saldría como «ya existía» y no se cargaría. Para que la prueba dé exactamente estos números, lo mejor es una app sin datos de ejemplo (`SEED=0` con el volumen `tienda_data` vacío). **No** usar `docker compose down -v`, que borra también el volumen de n8n (flujos y credenciales).
 
@@ -247,17 +255,29 @@ Coinciden todos: 0 diferencias.
 
 Después de la 2.ª ejecución, la app tiene los mismos apartados, abonos y ventas que después de la 1.ª.
 
-**Evidencias previstas** (todavía no existen):
+**Resultado real** (coincide con el esperado):
 
-- Informe de la 1.ª ejecución en Mailpit: `docs/evidencias/09-hu10-informe-primera.png`
-- Informe de la 2.ª ejecución, todo «ya existía»: `docs/evidencias/09-hu10-informe-segunda.png`
-- Un apartado migrado en la app, con su fecha original y sus abonos: `docs/evidencias/09-hu10-apartado-migrado.png`
+- **1.ª ejecución:**
+  - `Crear apartados` 7, `Registrar abonos` 3 y `Registrar ventas` 6.
+  - Asunto: «Migración del Excel: 7 apartados, 3 abonos y 6 ventas creados · 2 dudosos · 0 errores».
+  - Dudosos: Lucía Gómez, filas 3 y 9 del CSV de apartados. Omitidas: 4 (filas 1, 6, 8 y 10 del CSV de ventas). Diferencias: 0. Errores de la API: 0.
+  - En la app: 7 apartados, 10 abonos (7 iniciales + 3) y 6 ventas. Cada abono quedó en su apartado (por ejemplo, Ana Torres, apartado 7, con su abono de 20 €).
+- **2.ª ejecución** (mismos ficheros):
+  - Los tres IF van por false y no se ejecuta ningún `POST`.
+  - Asunto: «Migración del Excel: 0 apartados, 0 abonos y 0 ventas creados · 2 dudosos · 0 errores».
+  - «Ya existían»: 7 apartados, 3 abonos y 6 ventas. La app sigue con 7 / 10 / 6.
+
+**Evidencias:**
+
+- Informe de la 1.ª ejecución en Mailpit: [docs/evidencias/09-hu10-informe-primera.png](../docs/evidencias/09-hu10-informe-primera.png)
+- Informe de la 2.ª ejecución, todo «ya existía»: [docs/evidencias/09-hu10-informe-segunda.png](../docs/evidencias/09-hu10-informe-segunda.png)
+- Lista de apartados de la app después de la migración: [docs/evidencias/09-hu10-apartado-migrado.png](../docs/evidencias/09-hu10-apartado-migrado.png). Se ven los 7 apartados. El pendiente ya descuenta los abonos (Carmen Ruiz: 89,90 € → 59,90 €) y la fecha límite sale de la fecha original (2026-09-02 + 90 días = 2026-12-01).
 
 ## 8. Criterios de aceptación
 
 **HU-10 · Migración del Excel antiguo**
 
-- [ ] Los CSV de `data/` se leen y se limpian (fechas, nombres, importes con €).
-- [ ] Los apartados y abonos se crean en la app por API conservando su fecha original.
-- [ ] Ejecutarlo dos veces no duplica los datos.
-- [ ] Los casos dudosos (por ejemplo, un abono inicial menor de 5 €) no se cargan y salen en un informe para que Marisa decida.
+- [x] Los CSV de `data/` se leen y se limpian (fechas, nombres, importes con €).
+- [x] Los apartados y abonos se crean en la app por API conservando su fecha original.
+- [x] Ejecutarlo dos veces no duplica los datos.
+- [x] Los casos dudosos (por ejemplo, un abono inicial menor de 5 €) no se cargan y salen en un informe para que Marisa decida.

@@ -770,6 +770,35 @@ HU-10 (issues #86–#90): vamos a construir el workflow `09 · Migración del Ex
 
 </details>
 
+### Construcción del flujo · HU-10 (`workflows/09-migracion-excel.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n el workflow `09 · Migración del Excel` según `specs/09-migracion-excel.md` y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los 15 nodos que no son Code y pegó el código de los 5 Code. En total son 20 nodos, con los nombres de la spec, y el `08` está configurado como Error Workflow.
+  - **Preparación de la prueba:**
+    - copia de la base de datos de la app;
+    - app vacía con `SEED=0`;
+    - `01 · Eventos de la tienda` despublicado, porque si no la app dispara un evento por apartado creado;
+    - al terminar, se restauró la copia (con el seed) y se volvió a publicar el `01`.
+  - **1.ª ejecución:**
+    - `Crear apartados` 7, `Registrar abonos` 3 y `Registrar ventas` 6;
+    - asunto «Migración del Excel: 7 apartados, 3 abonos y 6 ventas creados · 2 dudosos · 0 errores»;
+    - 2 dudosos (Lucía Gómez, filas 3 y 9), 4 omitidas (filas 1, 6, 8 y 10 del CSV de ventas), 0 diferencias y 0 errores de la API;
+    - en la app, 7 apartados, 10 abonos (7 iniciales + 3) y 6 ventas, cada abono en su apartado (Ana Torres, id 7, con su abono de 20 €).
+  - **2.ª ejecución** (mismos CSV):
+    - los tres IF van por false y no se ejecuta ningún `POST`;
+    - asunto «0 apartados, 0 abonos y 0 ventas creados · 2 dudosos · 0 errores» y «Ya existían» 7 / 3 / 6;
+    - la app sigue con 7 / 10 / 6.
+  - Coincide con la sección 7 de la spec. Los 5 Code del JSON exportado son idénticos a los ficheros de `~/hu10-codigo/`.
+  - Se resolvió lo que quedaba por comprobar: el Form Trigger crea los campos binarios `apartados` y `ventas`, y los Code leen sin error los `POST` que no se ejecutaron (2.ª ejecución), con `isExecuted` o con el `try/catch`.
+- **Problemas encontrados:**
+  - **Conexión duplicada:** una conexión repetida hacía que `Leer ventas de la app` se ejecutara dos veces. Se borró la que sobraba.
+  - **URL de `Registrar abonos`** en modo Fixed en vez de Expression: el `{{ $json.apartado_id }}` no se sustituía. Se cambió a Expression.
+  - **El export también reescribe `01`** con la rama de HU-09, que pertenece a otro PR (#159). Ese cambio se descartó con `git restore`.
+- **Decisión:** aceptado.
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
