@@ -1136,3 +1136,12 @@ Ninguna por ahora.
 - **Verificación:** pruebas locales cubren coincidencias por nombre/producto, acentos e iniciales, concepto vacío, candidatos cero o múltiples, discrepancias, fecha límite, estado, pendiente, 404 explícito y errores HTTP técnicos.
 - **Pendiente:** revisión y validación en n8n con credenciales locales; workflow inactivo y PR borrador.
 - **Decisión:** 401 y 5xx se mantienen como errores técnicos para 08; un 404 de ID explícito requiere revisión manual y nunca activa una búsqueda alternativa.
+
+
+### Registro de abono HU-03 (#37)
+
+- **Tarea:** registrar mediante POST solo cuando #36 devuelve `decision=registrar`; manejar el 422 de la API como revisión manual.
+- **Resultado:** workflow parcial e inactivo con guard adicional de ID, estado, plazo y saldo; POST a `/api/apartados/{id}/abonos` con `forma_pago: bizum`; 201 deja el recibo al webhook HU-02; 422 y 404 pasan a #38; errores de red, 401 y 5xx llegan al 08. Sin retry automático ni correo duplicado.
+- **Verificación:** pruebas simuladas para autorización, saldo, estado, plazo, 201/422/404/401/5xx y transporte; no se envió POST a la app ni se modificó la base de datos.
+- **Pendiente:** review y prueba de importación en n8n. Para validar escritura real se requiere una base desechable/restaurable; no usar datos de la tienda habitual. Mantener borrador inactivo.
+- **Decisión:** ante timeout no reintentar a ciegas porque el POST pudo haberse aplicado; conciliar antes de cualquier repetición.
