@@ -115,8 +115,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.5,
       "position": [
-        -176,
-        0
+        -256,
+        -208
       ],
       "id": "fac4693c-8e21-4cce-b6cf-b6a0e1f3e588",
       "name": "Según el evento"
@@ -130,8 +130,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -384,
-        0
+        -432,
+        -192
       ],
       "id": "2598deb6-e89b-4c84-a916-ff831c7570e2",
       "name": "Evento de la tienda",
@@ -166,8 +166,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        80,
-        -304
+        32,
+        -368
       ],
       "id": "80b4cb36-fa64-490c-89af-f5fbcfc5faef",
       "name": "¿Tiene email?"
@@ -186,8 +186,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        256,
-        -352
+        192,
+        -464
       ],
       "id": "e72354a4-704b-48de-b8cc-0e29db251369",
       "name": "Enviar confirmación al cliente",
@@ -213,8 +213,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        240,
-        -176
+        192,
+        -288
       ],
       "id": "8a0ba270-249d-4d08-8422-225c08cf2ff8",
       "name": "Avisar a la tienda: sin email",
@@ -255,8 +255,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        80,
-        -16
+        96,
+        -112
       ],
       "id": "11bbf3a5-7ca7-465b-99b3-c6be415a13d4",
       "name": "¿Tiene email? (abono)"
@@ -291,7 +291,7 @@
       "typeVersion": 2.4,
       "position": [
         336,
-        -32
+        -128
       ],
       "id": "293bbaf9-48a4-41a2-9e88-13fb2a8ed922",
       "name": "¿Liquidado?"
@@ -310,8 +310,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        528,
-        32
+        496,
+        -48
       ],
       "id": "350db7d0-b73e-432c-ad9c-799338d5bdb9",
       "name": "Enviar recibo del abono",
@@ -337,12 +337,152 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        544,
-        -128
+        496,
+        -224
       ],
       "id": "8524d69f-a966-43e5-980e-696b5df19858",
       "name": "Avisar de que puede recoger",
       "webhookId": "f214f1ab-cf19-4aa1-96f0-e43781d703ba",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "uwF8AgoMJxON2MOE",
+          "mode": "list",
+          "cachedResultName": "Configuración",
+          "cachedResultUrl": "/projects/ziZAHUT04WG939ub/datatables/uwF8AgoMJxON2MOE"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "clave",
+              "keyValue": "umbral_venta_grande"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        64
+      ],
+      "id": "1388dfec-60ad-49ef-a7af-07864d52028e",
+      "name": "Leer umbral de venta grande",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "815831e6-1194-4fd1-b2d0-9e74f0faf1e2",
+              "leftValue": "={{ $json.valor }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        288,
+        96
+      ],
+      "id": "ca8e2ebd-6aaa-4d06-9e2f-9c87a6c6922c",
+      "name": "¿Hay umbral?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Falta el umbral de venta grande en la Data table Configuración"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        432,
+        192
+      ],
+      "id": "db5a08d2-daf8-4907-b123-51f93edd70d2",
+      "name": "Falta el umbral"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "d2a325f8-ac15-4069-a6a7-2711318387d3",
+              "leftValue": "={{ $('Evento de la tienda').item.json.body.datos.importe }}",
+              "rightValue": "={{ $json.valor }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        544,
+        112
+      ],
+      "id": "7f465eb1-414c-4182-ad20-26acd55a56e6",
+      "name": "¿Venta grande?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "=Venta grande: {{ $('Evento de la tienda').item.json.body.datos.importe.toFixed(2) }} €",
+        "emailFormat": "text",
+        "text": "=Se ha registrado una venta por encima del umbral.\n\nVenta nº {{ $('Evento de la tienda').item.json.body.datos.id }}\nConcepto: {{ $('Evento de la tienda').item.json.body.datos.concepto }}\nImporte: {{ $('Evento de la tienda').item.json.body.datos.importe.toFixed(2) }} €\nForma de pago: {{ $('Evento de la tienda').item.json.body.datos.forma_pago }}\nFecha: {{ DateTime.fromISO($('Evento de la tienda').item.json.body.datos.fecha).toFormat('dd/MM/yyyy') }}\n\nUmbral actual: {{ $json.valor.toFixed(2) }} €",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        16
+      ],
+      "id": "a2c774ac-2673-481c-a994-ec0c8b51fc57",
+      "name": "Avisar a la tienda: venta grande",
+      "webhookId": "c698b46a-de48-42bb-b224-c5fb2ead2658",
       "credentials": {
         "smtp": {
           "id": "fJ41sXzJzc6Ciubq",
@@ -375,6 +515,13 @@
         [
           {
             "node": "¿Tiene email? (abono)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leer umbral de venta grande",
             "type": "main",
             "index": 0
           }
@@ -427,6 +574,46 @@
           }
         ]
       ]
+    },
+    "Leer umbral de venta grande": {
+      "main": [
+        [
+          {
+            "node": "¿Hay umbral?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay umbral?": {
+      "main": [
+        [
+          {
+            "node": "¿Venta grande?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falta el umbral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Venta grande?": {
+      "main": [
+        [
+          {
+            "node": "Avisar a la tienda: venta grande",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -443,5 +630,5 @@
   "tags": [],
   "active": true,
   "id": "cDr6t9FK9qRYt4Fn",
-  "versionId": "18416c63-2a85-48b4-be2f-3c2548492a21"
+  "versionId": "8b432a79-4465-451a-a003-3dc108481b65"
 }
