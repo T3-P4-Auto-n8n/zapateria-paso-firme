@@ -29,11 +29,11 @@ No publicar ni configurar IMAP de producción como parte de esta prueba.
 
 `node --test tests/test_hu03_extraccion.cjs`: 4/4 superadas sobre los Code nodes y las expresiones del JSON exportado. Incluye ocho pagos de ejemplo, publicidad, conceptos vacíos, datos inventados, esquema inválido, importe negativo, JSON truncado y error del proveedor. No llama a Groq ni a la API de tienda.
 
-La exportación se ejecutó en una instancia n8n local, sin publicar. Los ocho mensajes de pago llegaron a la ruta `buscar` con los tres campos esperados; el anuncio terminó en `ignorar` antes de Groq. El concepto vacío se conservó. No se escribió ningún abono. El primer modelo configurado devolvió `model_not_found`; se consultó la lista de modelos desde la instancia y `openai/gpt-oss-20b` respondió correctamente. Las salidas observadas están en `docs/evidencias/03-hu03-extraccion-resultados.json`; se conservan capturas de Carmen y Silvia. Los identificadores de ejecución de los tres últimos ejemplos no están vinculados en el registro, así que no se inventan.
+La exportación se ejecutó en una instancia n8n local, sin publicar. Los ocho mensajes de pago llegaron a la ruta `buscar` con los tres campos esperados; el anuncio terminó en `ignorar` antes de Groq. El concepto vacío se conservó. No se escribió ningún abono. El primer modelo configurado devolvió `model_not_found`; se consultó la lista de modelos desde la instancia y `openai/gpt-oss-20b` respondió correctamente. Las salidas observadas están en `docs/evidencias/03-hu03-extraccion-resultados.json`; se conservan capturas de Carmen y Silvia. Se verificaron los nueve IDs de ejecución: pagos 5–11 y 13, publicidad 12.
 
 ## Pendiente para completar la revisión
 
 - Importación/validación n8n-mcp de la exportación final y comprobación de que el enlace local a `08` dispara ante un error técnico.
-- Confirmar los tres identificadores de ejecución que faltan y exportar desde la instancia local.
+- Exportar desde la instancia local si se cambia o publica el workflow.
 - Revisar esta entrega en PR antes de considerar #34 cerrado.
 - La recepción real por IMAP pertenece a #32; búsqueda, elegibilidad, registro y avisos de revisión pertenecen a #35–#38.

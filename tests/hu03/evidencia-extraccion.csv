@@ -5,6 +5,6 @@ correo,referencia,id_ejecucion_verificado,modelo_real,ruta_observada
 04_bizum_laura,04_bizum_laura-live-1,8,openai/gpt-oss-20b,buscar
 05_bizum_romero,05_bizum_romero-live-1,9,openai/gpt-oss-20b,buscar
 06_bizum_paula,06_bizum_paula-live-1,10,openai/gpt-oss-20b,buscar
-07_transferencia_desconocido,07_transferencia_desconocido-live-1,,openai/gpt-oss-20b,buscar
-08_publicidad_banco,08_publicidad_banco-live-1,,,ignorar
-09_bizum_silvia,09_bizum_silvia-live-1,,openai/gpt-oss-20b,buscar
+07_transferencia_desconocido,07_transferencia_desconocido-live-1,11,openai/gpt-oss-20b,buscar
+08_publicidad_banco,08_publicidad_banco-live-1,12,,ignorar
+09_bizum_silvia,09_bizum_silvia-live-1,13,openai/gpt-oss-20b,buscar
