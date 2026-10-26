@@ -1145,3 +1145,12 @@ Ninguna por ahora.
 - **Verificación:** pruebas simuladas para autorización, saldo, estado, plazo, 201/422/404/401/5xx y transporte; no se envió POST a la app ni se modificó la base de datos.
 - **Pendiente:** review y prueba de importación en n8n. Para validar escritura real se requiere una base desechable/restaurable; no usar datos de la tienda habitual. Mantener borrador inactivo.
 - **Decisión:** ante timeout no reintentar a ciegas porque el POST pudo haberse aplicado; conciliar antes de cualquier repetición.
+
+
+### Aviso de revisión manual HU-03 (#38)
+
+- **Tarea:** preguntar a Marisa cuando un pago no se registra automáticamente.
+- **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-aviso.json`. Las rutas de revisión por extracción y decisión/registro pasan a un correo plano por Mailpit. Incluye motivo, ordenante, importe, método original si se identifica, concepto, referencia y candidatos disponibles. El mensaje no reenvía el cuerpo original ni ejecuta registros.
+- **Verificación:** suite HU-03 completa — 35/35 pruebas; incluye motivos, candidatos, 422, método Bizum/transferencia y limpieza de saltos de línea/pseudoencabezados. No se envió ningún correo en las pruebas.
+- **Pendiente:** review y validación en n8n/Mailpit. Mantener workflow inactivo y la PR borrador.
+- **Decisión:** mostrar hasta 20 candidatos y advertir si hay más; no poner datos variables en el asunto ni reenviar el correo bancario completo.
