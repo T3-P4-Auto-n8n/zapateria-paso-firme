@@ -1,19 +1,19 @@
 # Flujo 01 · Eventos de la tienda
 
-> **Alcance de esta versión:** router (webhook + Switch), rama de HU-01 (`apartado.creado`) y rama de HU-02 (`abono.registrado`). Las demás ramas se añadirán después:
-> `venta.registrada` → HU-09 (flujo 4) · `apartado.vencido` → HU-07 (aviso de vencido, flujo 6).
+> **Alcance de esta versión:** router (webhook + Switch), rama de HU-01 (`apartado.creado`), rama de HU-02 (`abono.registrado`) y rama de HU-09 (`venta.registrada`, flujo 4). Queda pendiente:
+> `apartado.vencido` → HU-07 (aviso de vencido, flujo 6).
 
 ## 1. Cabecera
 
 - **Flujo:** `01 · Eventos de la tienda` (`workflows/01-eventos-tienda.json`)
-- **HU:** HU-01, HU-02 · HU-09, HU-07 (ramas pendientes)
+- **HU:** HU-01, HU-02, HU-09 · HU-07 (rama pendiente)
 - **Nivel:** Esencial (router, HU-01, HU-02) · Medio (HU-09, HU-07)
 - **Responsable:** Esra
-- **Credenciales y variables:** `Mailpit` (SMTP), ver [docs/credenciales.md](../docs/credenciales.md). El webhook no lleva autenticación.
+- **Credenciales y variables:** `Mailpit` (SMTP) y la Data table `Configuración` (umbral de venta grande), ver [docs/credenciales.md](../docs/credenciales.md). El webhook no lleva autenticación.
 
 ## 2. Objetivo
 
-Recibir en un único webhook todos los avisos de la app, repartir cada uno a su rama según el `evento` y avisar al cliente por correo: confirmación al crear un apartado (o aviso a la tienda si no tiene email) y recibo de cada abono (o aviso de que puede recoger sus zapatos si queda liquidado).
+Recibir en un único webhook todos los avisos de la app, repartir cada uno a su rama según el `evento` y avisar por correo: al cliente, confirmación al crear un apartado (o aviso a la tienda si no tiene email) y recibo de cada abono (o aviso de que puede recoger sus zapatos si queda liquidado); a la tienda, cada venta que supere el umbral que decide Marisa.
 
 ## 3. Disparador y entradas
 
@@ -23,6 +23,7 @@ Recibir en un único webhook todos los avisos de la app, repartir cada uno a su 
   - `$json.body.datos`: el Apartado (más `importe` del Abono en `abono.registrado`), la Venta, o `{ apartado, vale }` en `apartado.vencido`. Ver [docs/guia-de-la-app.md](../docs/guia-de-la-app.md#6-el-webhook-app--n8n).
 - **Rama HU-01** (`apartado.creado`), campos del Apartado que usa: `id`, `cliente`, `email`, `producto`, `talla`, `precio`, `abonado`, `pendiente`, `fecha_limite`.
 - **Rama HU-02** (`abono.registrado`), campos que usa: del Apartado ya actualizado, `email`, `cliente`, `producto`, `talla`, `precio`, `abonado`, `pendiente`, `fecha_limite` y `estado` (estado después del abono); del Abono, `importe` (lo que se acaba de pagar).
+- **Rama HU-09** (`venta.registrada`), campos de la Venta que usa: `id`, `fecha`, `concepto`, `importe` y `forma_pago`. Además lee el umbral de la Data table `Configuración` de n8n (fila con `clave` `umbral_venta_grande`, columna `valor`). No es una entidad de la app: es configuración de n8n, ver [docs/credenciales.md](../docs/credenciales.md#data-tables-de-n8n).
 
 ## 4. Pasos y reglas
 
@@ -32,7 +33,7 @@ Recibir en un único webhook todos los avisos de la app, repartir cada uno a su 
 2. `Según el evento` (Switch, comparación exacta y sensible a mayúsculas sobre `{{ $json.body.evento }}`) envía el item por una de sus 5 salidas:
    - `apartado.creado` → rama HU-01
    - `abono.registrado` → rama HU-02
-   - `venta.registrada` (sin conectar todavía)
+   - `venta.registrada` → rama HU-09
    - `apartado.vencido` (sin conectar todavía)
    - `Evento desconocido` (salida de respaldo: cualquier otro valor o sin `evento`)
 
@@ -49,7 +50,25 @@ Recibir en un único webhook todos los avisos de la app, repartir cada uno a su 
 8. **No liquidado →** `Enviar recibo del abono` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `importe` (lo que acaba de pagar), `abonado`, `pendiente` (2 decimales, valores de la app) y `fecha_limite` (`dd/MM/yyyy`).
 9. **Liquidado →** `Avisar de que puede recoger` (Send Email, credencial `Mailpit`): From `tienda@pasofirme.example`, To `datos.email`, con `producto`, `talla`, `importe` del último abono y `abonado` (total pagado, valor de la app), con 2 decimales. Sin `pendiente` ni `fecha_limite`.
 
-No llama a la API: todos los datos llegan en el aviso.
+**Rama HU-09 · Aviso de ventas grandes** (salida `venta.registrada`, flujo 4)
+
+El umbral no se guarda en el flujo ni en una Variable de n8n (`$vars`), porque nuestra versión community las tiene bloqueadas («Upgrade to unlock variables»). Se guarda en la Data table `Configuración`, y Marisa lo cambia en la tabla sin editar el flujo (ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)).
+
+10. `Leer umbral de venta grande` (Data table, Resource **Row**, Operation **Get**):
+    - Data table: `Configuración` (From list).
+    - Must Match: **All Conditions**. Conditions: Column `clave`, Condition **Equals**, Value `umbral_venta_grande`.
+    - Return All: desactivado; Limit: `1` (si hubiera filas repetidas, solo se usa una y no se envían avisos duplicados).
+    - Settings → **Always Output Data**: activado. Sin esta opción, si no hay fila el nodo no devuelve nada, la ejecución termina ahí y el siguiente IF no llega a ejecutarse (no habría error que avisar).
+    - Tras este nodo, `$json` es la fila de la tabla (`$json.valor`), ya no el aviso de la app. Los datos de la venta se leen con `$('Evento de la tienda').item.json.body.datos`.
+11. IF `¿Hay umbral?`: **Sí** si `{{ $json.valor }}` (Number) **is not empty**. **No** si no hay fila o el `valor` está vacío.
+12. **No →** `Falta el umbral` (Stop and Error, Error Type **Error Message**), con Error Message `Falta el umbral de venta grande en la Data table Configuración`. La ejecución falla y la recoge el Error Workflow `08` (ver [specs/08-error-workflow.md](08-error-workflow.md)).
+13. **Sí →** IF `¿Venta grande?`: **Sí** si `{{ $('Evento de la tienda').item.json.body.datos.importe }}` (Number) **is greater than** `{{ $json.valor }}`. La comparación es estricta: una venta igual al umbral no avisa.
+14. **Venta grande →** `Avisar a la tienda: venta grande` (Send Email, credencial `Mailpit`): From y To `tienda@pasofirme.example`.
+    - Subject: `=Venta grande: {{ $('Evento de la tienda').item.json.body.datos.importe.toFixed(2) }} €`
+    - Texto con `id`, `concepto`, `importe` (`.toFixed(2)`), `forma_pago` y `fecha` en `dd/MM/yyyy` (`{{ DateTime.fromISO($('Evento de la tienda').item.json.body.datos.fecha).toFormat('dd/MM/yyyy') }}`) de la venta, más el umbral actual (`{{ $json.valor.toFixed(2) }}`).
+15. **No es venta grande →** termina sin hacer nada.
+
+No llama a la API: todos los datos llegan en el aviso (y el umbral, en la Data table de n8n).
 
 ## 5. Salidas
 
@@ -60,6 +79,8 @@ No llama a la API: todos los datos llegan en el aviso.
 | Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `abono.registrado` con email y `estado` ≠ `liquidado` | Recibo: `producto`, `talla`, `importe`, `abonado`, `pendiente` (2 decimales) y `fecha_limite` (`dd/MM/yyyy`) |
 | Cliente (`datos.email`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `abono.registrado` con email y `estado` = `liquidado` | Aviso de que puede recoger: `producto`, `talla`, `importe` y `abonado` (total pagado), 2 decimales |
 | — | — | `abono.registrado` sin email | Nada |
+| Tienda (`tienda@pasofirme.example`) | Correo (`Mailpit`), From `tienda@pasofirme.example` | `venta.registrada` con `importe` > umbral | Aviso de venta grande: asunto con el `importe`; texto con `id`, `concepto`, `importe` (2 decimales), `forma_pago`, `fecha` (`dd/MM/yyyy`) y umbral actual |
+| — | — | `venta.registrada` con `importe` ≤ umbral | Nada |
 
 ## 6. Casos de error
 
@@ -68,6 +89,9 @@ No llama a la API: todos los datos llegan en el aviso.
 | Llega un `evento` que no es ninguno de los 4 (o falta) | Sale por `Evento desconocido` y termina sin hacer nada (pendiente: decidir si avisa a la tienda) |
 | `apartado.creado` sin `email` (vacío o `null`) | No falla: va por la rama **No** y avisa a la tienda |
 | `abono.registrado` sin `email` (vacío o `null`) | No falla: termina sin enviar nada (decisión: el cliente está en contacto con la tienda) |
+| `venta.registrada` sin fila `umbral_venta_grande` en `Configuración`, o con `valor` vacío | `Falta el umbral` (Stop and Error) hace fallar la ejecución; el `08` avisa a la tienda |
+| No existe la Data table `Configuración`, o el nodo no la tiene elegida (por ejemplo, tras importar el JSON) | `Leer umbral de venta grande` da error; lo avisa el `08`. Hay que crear la tabla y volver a elegirla en el nodo |
+| `venta.registrada` con `importe` igual al umbral | No avisa: la comparación es estrictamente mayor |
 | Falla el envío del correo (Mailpit caído, credencial mal) | El nodo da error; lo recoge el Error Workflow, ver [specs/08-error-workflow.md](08-error-workflow.md) |
 | Pendiente de mejorar: un `email` con solo espacios (`" "`) pasa el IF `¿Tiene email?` | El envío falla con «No recipients defined»; lo avisa el `08` |
 | Pendiente de mejorar: un evento con datos incompletos (por ejemplo, sin `importe`) | No falla: envía un correo con campos vacíos (y «Invalid DateTime» en la fecha) |
@@ -85,7 +109,11 @@ Payloads en `tests/payloads/`, enviados a la Test URL (`http://localhost:5678/we
 | `abono.registrado.json` | Sale por `abono.registrado` → con email → no liquidado. Llega a `carmen@example.com` el recibo: Botín piel marrón, talla 38, importe 20.00, abonado 30.00, pendiente 59.90, fecha límite 18/01/2027 |
 | `abono.registrado-liquidado.json` | Sale por `abono.registrado` → con email → liquidado. Llega a `carmen@example.com` el aviso de que puede recoger: Botín piel marrón, talla 38, último abono 59.90, total pagado (`abonado`) 89.90; sin pendiente ni fecha límite |
 | `abono.registrado-sin-email.json` | Sale por `abono.registrado` → sin email. No llega ningún correo a Mailpit y la ejecución termina sin error |
-| `venta.registrada.json` | Sale por `venta.registrada` (sin rama todavía) |
+| `venta.registrada-grande.json` (umbral `100`) | Sale por `venta.registrada` → hay umbral → venta grande. Llega a `tienda@pasofirme.example` el aviso «Venta grande: 129.90 €» con la venta 258, Botas de montaña, importe 129.90, tarjeta, fecha 21/10/2026 y umbral 100.00 |
+| `venta.registrada-umbral.json` (umbral `100`) | Sale por `venta.registrada` → hay umbral → no es venta grande (100 no es mayor que 100). No llega ningún correo y la ejecución termina sin error |
+| `venta.registrada.json` (umbral `100`) | Sale por `venta.registrada` → hay umbral → no es venta grande (4.50). No llega ningún correo |
+| Cambiar `valor` a `50` en la tabla `Configuración` (sin tocar el flujo) y enviar `venta.registrada-60.json` | Llega el aviso «Venta grande: 60.00 €» con la venta 260, Sandalia mujer beige, efectivo, fecha 21/10/2026 y umbral 50.00. Es la evidencia del criterio 2 de HU-09. Al terminar, volver a poner `100` |
+| Borrar temporalmente la fila `umbral_venta_grande` y enviar `venta.registrada.json` a la **Production URL** (con el `01` y el `08` publicados) | `¿Hay umbral?` va por **No** y `Falta el umbral` hace fallar la ejecución. Llega a la tienda el correo del `08` «Ha fallado el flujo «01 · Eventos de la tienda»» con el paso `Falta el umbral` y el mensaje «Falta el umbral de venta grande en la Data table Configuración». Al terminar, volver a crear la fila. Por la Test URL no sirve: el `08` solo salta con ejecuciones de producción |
 | `apartado.vencido.json` | Sale por `apartado.vencido` (sin rama todavía) |
 | `evento-desconocido.json` | Sale por `Evento desconocido` |
 
@@ -103,6 +131,10 @@ curl -X POST http://localhost:5678/webhook-test/tienda \
 - Recibo de un abono parcial: [docs/evidencias/01-hu02-recibo-abono.png](../docs/evidencias/01-hu02-recibo-abono.png)
 - Aviso de que puede recoger (apartado liquidado): [docs/evidencias/01-hu02-puede-recoger.png](../docs/evidencias/01-hu02-puede-recoger.png)
 - Abono de un cliente sin email (no se envía nada): [docs/evidencias/01-hu02-abono-sin-email.png](../docs/evidencias/01-hu02-abono-sin-email.png)
+- Aviso de venta grande: [docs/evidencias/01-hu09-aviso-venta-grande.png](../docs/evidencias/01-hu09-aviso-venta-grande.png)
+- Venta igual al umbral sin aviso (ejecución en n8n): [docs/evidencias/01-hu09-venta-igual-umbral.png](../docs/evidencias/01-hu09-venta-igual-umbral.png)
+- Umbral cambiado a 50 en la Data table y aviso de la venta de 60 €: [docs/evidencias/01-hu09-umbral-cambiado.png](../docs/evidencias/01-hu09-umbral-cambiado.png)
+- Aviso del `08` sin fila de umbral: [docs/evidencias/01-hu09-sin-umbral-error.png](../docs/evidencias/01-hu09-sin-umbral-error.png)
 
 ## 8. Criterios de aceptación
 
@@ -122,4 +154,11 @@ Del nivel Esencial del README (el router no tiene HU propia):
 - [x] Cada abono registrado genera un recibo con el importe pagado y lo que queda pendiente.
 - [x] Si el apartado queda liquidado, el mensaje cambia: avisa de que ya puede recoger sus zapatos.
 
-Las checklists de HU-09 y HU-07 se copiarán aquí al añadir cada rama.
+**HU-09 · Aviso de ventas grandes** (flujo 4)
+
+- [x] Las ventas por encima de un importe configurable generan un aviso a Marisa.
+- [x] Cambiar el importe no obliga a editar el flujo (se guarda en una variable).
+
+> En nuestra versión de n8n las Variables están bloqueadas: el «importe configurable» se guarda en la Data table `Configuración` (ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas)).
+
+La checklist de HU-07 se copiará aquí al añadir su rama.
