@@ -14,30 +14,75 @@
     },
     {
       "parameters": {
-        "fromEmail": "tienda@pasofirme.example",
-        "toEmail": "tienda@pasofirme.example",
-        "subject": "=Ha fallado el flujo «{{ $json.workflow.name }}»",
-        "emailFormat": "text",
-        "text": "=Una automatización ha fallado.\n\nFlujo: {{ $json.workflow.name }}\nPaso: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\nEjecución: {{ $json.execution.url }}",
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "=Ha fallado el flujo «{{ $json.workflow.name }}»",
+            "texto": "={{ 'Una automatización ha fallado.\\n\\nFlujo: ' + $json.workflow.name + '\\nPaso: ' + $json.execution.lastNodeExecuted + '\\nError: ' + $json.execution.error.message + '\\nEjecución: ' + $json.execution.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
         "options": {
-          "appendAttribution": false
+          "waitForSubWorkflow": true
         }
       },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
       "position": [
         224,
         0
       ],
-      "id": "4e771a3a-89f0-467c-8fc3-df2439f905bf",
-      "name": "Avisar a la tienda del error",
-      "webhookId": "91e50359-bd42-40cd-aba7-5e6b159b2d1c",
-      "credentials": {
-        "smtp": {
-          "id": "fJ41sXzJzc6Ciubq",
-          "name": "Mailpit"
-        }
-      }
+      "id": "3a58895e-f211-44b3-9962-812a74d92766",
+      "name": "Avisar a la tienda del error"
     }
   ],
   "connections": {
@@ -63,5 +108,5 @@
   "tags": [],
   "active": true,
   "id": "z1T27bO8VvzyoL18",
-  "versionId": "c9995563-0ac0-4cbe-add4-93dbb895c58e"
+  "versionId": "7c5254a9-10c6-4acb-9e9f-9e41fc688318"
 }
