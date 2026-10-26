@@ -1,0 +1,766 @@
+{
+  "name": "09 · Migración del Excel",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Migración del Excel",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "apartados",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".csv",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "ventas",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".csv",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -160,
+        16
+      ],
+      "id": "f22d637e-e651-4215-9f17-d617ab238cd7",
+      "name": "Subir el Excel",
+      "webhookId": "4a3317b0-36bc-429e-9f5a-9d7f93f1e670"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "apartados",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        -80
+      ],
+      "id": "96d18567-a8b8-4051-8c81-76c716816518",
+      "name": "Leer CSV de apartados"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "ventas",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        144
+      ],
+      "id": "9c8f1b30-4078-47de-bf42-91a02ed17bd1",
+      "name": "Leer CSV de ventas"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        272,
+        48
+      ],
+      "id": "60b4700d-d950-4449-a750-11ad54fb8763",
+      "name": "Juntar los dos CSV"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Limpiar y clasificar» · Run Once for All Items\n// Lee las filas de los dos CSV, las limpia (solo formato, sin recalcular importes)\n// y devuelve UN item con el plan: apartados (con sus abonos), ventas, dudosos, omitidas y rango de fechas.\n\nconst ABONO_MINIMO = 5;\nconst FORMAS_PAGO = ['efectivo', 'tarjeta', 'bizum'];\n\n// ---------- Limpieza ----------\n\n// dd/MM/yyyy o d/M/yy → yyyy-MM-dd. Devuelve null si no es una fecha válida.\nfunction limpiarFecha(valor) {\n  const m = String(valor ?? '').trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{2}|\\d{4})$/);\n  if (!m) return null;\n  const dia = Number(m[1]);\n  const mes = Number(m[2]);\n  const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);\n  const f = new Date(Date.UTC(anio, mes - 1, dia));\n  if (f.getUTCFullYear() !== anio || f.getUTCMonth() !== mes - 1 || f.getUTCDate() !== dia) return null;\n  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;\n}\n\n// «15€» → 15 · «1.842,30» → 1842.3 · «6.50» → 6.5. Devuelve null si no es un número.\nfunction limpiarImporte(valor) {\n  let t = String(valor ?? '').replace(/€/g, '').replace(/\\s/g, '');\n  if (t.includes(',')) t = t.replace(/\\./g, '').replace(',', '.');\n  if (!/^\\d+(\\.\\d+)?$/.test(t)) return null;\n  return Number(t);\n}\n\n// «carmen  ruiz» → «Carmen Ruiz»\nfunction limpiarNombre(valor) {\n  return String(valor ?? '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('es')\n    .split(' ').map(p => p.charAt(0).toLocaleUpperCase('es') + p.slice(1)).join(' ');\n}\n\n// «612345002» → «612 345 002» · vacío → null\nfunction limpiarTelefono(valor) {\n  const t = String(valor ?? '').trim();\n  if (!t) return null;\n  const digitos = t.replace(/\\D/g, '');\n  return digitos.length === 9 ? `${digitos.slice(0, 3)} ${digitos.slice(3, 6)} ${digitos.slice(6)}` : t;\n}\n\nconst limpiarTexto = v => String(v ?? '').trim().replace(/\\s+/g, ' ');\nconst centimos = n => Math.round(n * 100);\n\nconst dudosos = [];\nconst omitidas = [];\n\n// Si los ficheros están vacíos o cambiados de campo, parar: lo avisa el 08\nconst primeraApartados = $('Leer CSV de apartados').first()?.json ?? {};\nconst primeraVentas = $('Leer CSV de ventas').first()?.json ?? {};\nif (!('modelo' in primeraApartados) || !('abono' in primeraApartados)) {\n  throw new Error('El fichero de apartados no tiene las columnas esperadas (fecha, cliente, telefono, modelo, talla, precio, abono, resta, notas)');\n}\nif (!('concepto' in primeraVentas) || !('importe' in primeraVentas)) {\n  throw new Error('El fichero de ventas no tiene las columnas esperadas (fecha, concepto, importe, forma_pago)');\n}\n\n// ---------- CSV de apartados ----------\n\nconst filasApartados = [];\n$('Leer CSV de apartados').all().forEach((item, i) => {\n  const r = item.json;\n  const fila = i + 1;\n  const datos = {\n    fecha: limpiarFecha(r.fecha),\n    cliente: limpiarNombre(r.cliente),\n    telefono: limpiarTelefono(r.telefono),\n    producto: limpiarTexto(r.modelo),\n    talla: limpiarTexto(r.talla),\n    precio: limpiarImporte(r.precio),\n    abono: limpiarImporte(r.abono),\n    resta: limpiarImporte(r.resta),\n    notas: limpiarTexto(r.notas),\n  };\n  const resumen = `${limpiarTexto(r.fecha)} · ${limpiarTexto(r.cliente)} · ${limpiarTexto(r.modelo)} · abono ${limpiarTexto(r.abono)}`;\n  let motivo = null;\n  if (!datos.fecha) motivo = `no se pudo leer la fecha («${limpiarTexto(r.fecha)}»)`;\n  else if (!datos.cliente || !datos.producto) motivo = 'falta el cliente o el modelo';\n  else if (datos.precio === null) motivo = `no se pudo leer el precio («${limpiarTexto(r.precio)}»)`;\n  else if (datos.abono === null) motivo = `no se pudo leer el abono («${limpiarTexto(r.abono)}»)`;\n  if (motivo) {\n    dudosos.push({ csv: 'apartados', fila, datos: resumen, motivo, notas: datos.notas });\n    return;\n  }\n  filasApartados.push({ fila, resumen, ...datos });\n});\n\n// Agrupar por cliente normalizado + modelo, en orden de fecha\nconst grupos = new Map();\nfor (const f of filasApartados) {\n  const clave = `${f.cliente.toLocaleLowerCase('es')}|${f.producto.toLocaleLowerCase('es')}`;\n  if (!grupos.has(clave)) grupos.set(clave, []);\n  grupos.get(clave).push(f);\n}\n\nconst apartados = [];\nfor (const [clave, filas] of grupos) {\n  filas.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.fila - b.fila);\n  const [primera, ...siguientes] = filas;\n  if (primera.abono < ABONO_MINIMO) {\n    dudosos.push({ csv: 'apartados', fila: primera.fila, datos: primera.resumen,\n      motivo: `abono inicial de ${primera.abono} € (mínimo ${ABONO_MINIMO} €)`, notas: primera.notas });\n    for (const s of siguientes) {\n      dudosos.push({ csv: 'apartados', fila: s.fila, datos: s.resumen,\n        motivo: `su apartado (fila ${primera.fila}) no se cargó`, notas: s.notas });\n    }\n    continue;\n  }\n  apartados.push({\n    clave,\n    fila: primera.fila,\n    fecha: primera.fecha,\n    cliente: primera.cliente,\n    telefono: primera.telefono,\n    producto: primera.producto,\n    talla: primera.talla,\n    precio: primera.precio,\n    abono_inicial: primera.abono,\n    forma_pago: 'efectivo',\n    origen_forma_pago: 'efectivo por defecto',\n    resta: filas[filas.length - 1].resta, // resta de la última fila, solo para comparar\n    fila_resta: filas[filas.length - 1].fila,\n    notas: primera.notas,\n    abonos: siguientes.map(s => ({\n      fila: s.fila, fecha: s.fecha, importe: s.abono,\n      forma_pago: 'efectivo', origen_forma_pago: 'efectivo por defecto', notas: s.notas,\n    })),\n  });\n}\n\n// ---------- CSV de ventas ----------\n\nconst ventas = [];\nconst duplicadas = []; // filas de pagos de apartados, para tomar su forma de pago\n$('Leer CSV de ventas').all().forEach((item, i) => {\n  const r = item.json;\n  const fila = i + 1;\n  const concepto = limpiarTexto(r.concepto);\n  const resumen = [limpiarTexto(r.fecha), concepto, limpiarTexto(r.importe)].filter(Boolean).join(' · ');\n  if (/^total/i.test(limpiarTexto(r.fecha)) || /^total/i.test(concepto)) {\n    omitidas.push({ csv: 'ventas', fila, datos: resumen, motivo: 'Fila omitida: total calculado a mano' });\n    return;\n  }\n  const fecha = limpiarFecha(r.fecha);\n  const importe = limpiarImporte(r.importe);\n  const forma = limpiarTexto(r.forma_pago).toLowerCase() || 'efectivo';\n  if (/abono|\\(apartado\\)/i.test(concepto)) {\n    omitidas.push({ csv: 'ventas', fila, datos: resumen, motivo: 'Fila omitida: duplicado del CSV de apartados' });\n    if (fecha && importe !== null && FORMAS_PAGO.includes(forma)) duplicadas.push({ fila, fecha, importe, forma_pago: forma });\n    return;\n  }\n  let motivo = null;\n  if (!fecha) motivo = `no se pudo leer la fecha («${limpiarTexto(r.fecha)}»)`;\n  else if (!concepto) motivo = 'falta el concepto';\n  else if (importe === null) motivo = `no se pudo leer el importe («${limpiarTexto(r.importe)}»)`;\n  if (motivo) {\n    dudosos.push({ csv: 'ventas', fila, datos: resumen, motivo, notas: '' });\n    return;\n  }\n  ventas.push({ fila, fecha, concepto, importe, forma_pago: forma });\n});\n\n// ---------- Forma de pago de apartados y abonos (paso 6 de la spec) ----------\n// Una fila duplicada que coincide por fecha + importe con exactamente un pago del CSV de apartados\n// le pasa su forma de pago. Se cuentan todos los pagos limpios (también los dudosos) para saber si es único.\n\nconst pagos = [];\nfor (const f of filasApartados) pagos.push({ fila: f.fila, fecha: f.fecha, importe: f.abono, destino: null });\nfor (const a of apartados) {\n  pagos.find(p => p.fila === a.fila).destino = a;\n  for (const b of a.abonos) pagos.find(p => p.fila === b.fila).destino = b;\n}\nconst asignados = new Map(); // pago → fila de ventas\nfor (const d of duplicadas) {\n  const candidatos = pagos.filter(p => p.fecha === d.fecha && centimos(p.importe) === centimos(d.importe));\n  if (candidatos.length !== 1) continue;\n  const pago = candidatos[0];\n  if (asignados.has(pago)) { asignados.set(pago, null); continue; } // dos filas para el mismo pago: no es único\n  asignados.set(pago, d);\n}\nfor (const [pago, d] of asignados) {\n  if (!d || !pago.destino) continue;\n  pago.destino.forma_pago = d.forma_pago;\n  pago.destino.origen_forma_pago = `CSV de ventas, fila ${d.fila}`;\n}\n\n// ---------- Rango de fechas para las consultas a la app ----------\n\nconst fechas = [...filasApartados.map(f => f.fecha), ...ventas.map(v => v.fecha), ...duplicadas.map(d => d.fecha)].sort();\nconst rango = { desde: fechas[0] ?? null, hasta: fechas[fechas.length - 1] ?? null };\n\nreturn [{ json: { apartados, ventas, dudosos, omitidas, rango } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        48
+      ],
+      "id": "b1522121-4fa0-4550-87fc-ca1a0abf6234",
+      "name": "Limpiar y clasificar"
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        656,
+        48
+      ],
+      "id": "446475c0-1e68-45ad-98c8-df31eaa44693",
+      "name": "Leer apartados de la app",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/abonos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Limpiar y clasificar').first().json.rango.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $('Limpiar y clasificar').first().json.rango.hasta }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        48
+      ],
+      "id": "b7c7be39-f67a-46c2-a5fb-d1bd5a8d96a0",
+      "name": "Leer abonos de la app",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Limpiar y clasificar').first().json.rango.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $('Limpiar y clasificar').first().json.rango.hasta }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1072,
+        48
+      ],
+      "id": "bafd3b28-5f4b-4dcb-a7bc-b9777386a89e",
+      "name": "Leer ventas de la app",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Decidir qué crear» · Run Once for All Items\n// Compara el plan con lo que ya hay en la app y marca cada apartado, abono y venta como «crear» o «ya existía».\n// Devuelve un item por apartado a crear { cuerpo, ref, plan } o, si no hay ninguno, { cuerpo: null, plan }.\n\nconst plan = JSON.parse(JSON.stringify($('Limpiar y clasificar').first().json));\n\n// Las listas vacías llegan como un item vacío (Always Output Data): se ignora\nconst enApp = nombre => $(nombre).all().map(i => i.json).filter(j => j && j.id != null);\nconst apartadosApp = enApp('Leer apartados de la app');\nconst abonosApp = enApp('Leer abonos de la app');\nconst ventasApp = enApp('Leer ventas de la app');\n\nconst nombre = v => String(v ?? '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('es');\nconst texto = v => String(v ?? '').trim().replace(/\\s+/g, ' ');\nconst centimos = n => Math.round(Number(n) * 100);\n\n// Cada registro de la app solo puede «usarse» una vez (por si hay dos iguales)\nconst usados = new Set();\nfunction tomar(lista, coincide, prefijo) {\n  const encontrado = lista.find(x => !usados.has(`${prefijo}${x.id}`) && coincide(x));\n  if (encontrado) usados.add(`${prefijo}${encontrado.id}`);\n  return encontrado;\n}\n\n// Apartados: cliente normalizado + producto + talla + fecha\nfor (const a of plan.apartados) {\n  const existente = tomar(apartadosApp, x =>\n    nombre(x.cliente) === nombre(a.cliente) &&\n    nombre(x.producto) === nombre(a.producto) &&\n    texto(x.talla) === texto(a.talla) &&\n    String(x.fecha) === a.fecha, 'apartado');\n  if (existente) {\n    a.estado = 'ya existía';\n    a.id = existente.id;\n    // Su abono inicial ya está en la app: se descuenta antes de mirar los demás abonos\n    tomar(abonosApp, x => x.apartado_id === a.id && String(x.fecha) === a.fecha &&\n      centimos(x.importe) === centimos(a.abono_inicial), 'abono');\n  } else {\n    a.estado = 'crear';\n    a.id = null;\n  }\n  // Abonos: apartado_id + fecha + importe (si el apartado es nuevo, todos se crean)\n  for (const b of a.abonos) {\n    const hay = a.id != null && tomar(abonosApp, x => x.apartado_id === a.id && String(x.fecha) === b.fecha &&\n      centimos(x.importe) === centimos(b.importe), 'abono');\n    b.estado = hay ? 'ya existía' : 'crear';\n  }\n}\n\n// Ventas: fecha + concepto + importe\nfor (const v of plan.ventas) {\n  const hay = tomar(ventasApp, x => String(x.fecha) === v.fecha && texto(x.concepto) === v.concepto &&\n    centimos(x.importe) === centimos(v.importe), 'venta');\n  v.estado = hay ? 'ya existía' : 'crear';\n}\n\n// Un item por apartado a crear, con el cuerpo del POST /api/apartados\nconst salida = plan.apartados.filter(a => a.estado === 'crear').map(a => {\n  const cuerpo = {\n    cliente: a.cliente, producto: a.producto, precio: a.precio, abono_inicial: a.abono_inicial,\n    forma_pago: a.forma_pago, fecha: a.fecha,\n  };\n  if (a.telefono) cuerpo.telefono = a.telefono;\n  if (a.talla) cuerpo.talla = a.talla;\n  return { json: { cuerpo, ref: { clave: a.clave, fila: a.fila }, plan } };\n});\n\nreturn salida.length ? salida : [{ json: { cuerpo: null, plan } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        48
+      ],
+      "id": "71b2c729-65eb-432d-b3de-6f019cf656ae",
+      "name": "Decidir qué crear"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ea18d3bb-6c2a-4ee4-9047-ccce62153ad6",
+              "leftValue": "={{ !!$json.cuerpo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1424,
+        48
+      ],
+      "id": "683f8130-9a02-463d-b82b-17ad9c0fe948",
+      "name": "¿Hay apartados que crear?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1648,
+        -48
+      ],
+      "id": "5ebfa96c-09cd-425f-a4c2-f9b6258ee5b8",
+      "name": "Crear apartados",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar abonos» · Run Once for All Items\n// Recoge los resultados de «Crear apartados» (si se ejecutó), apunta los id nuevos y devuelve\n// un item por abono a crear { apartado_id, cuerpo, ref, plan } o, si no hay ninguno, { cuerpo: null, plan }.\n\nconst plan = JSON.parse(JSON.stringify($('Decidir qué crear').first().json.plan));\nplan.errores = plan.errores ?? [];\n\n// Resultados de un nodo, o [] si no se ejecutó (rama false del IF)\nfunction resultadosDe(nombre) {\n  try {\n    if ($(nombre).isExecuted === false) return [];\n    return $(nombre).all();\n  } catch (e) {\n    return [];\n  }\n}\n\n// Mensaje de la app: {\"detail\": \"...\"} o, si falla la validación, {\"detail\": [{msg: ...}]}\nfunction detalle(body) {\n  let b = body;\n  if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { return b; } }\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? JSON.stringify(b);\n}\nconst cuerpo = body => (typeof body === 'string' ? JSON.parse(body) : body);\n\n// Los resultados vienen en el mismo orden que los items a crear\nconst aCrear = $('Decidir qué crear').all().filter(i => i.json.cuerpo);\nif (aCrear.length) {\n  const resultados = resultadosDe('Crear apartados');\n  if (resultados.length !== aCrear.length) {\n    throw new Error(`Crear apartados: se esperaban ${aCrear.length} respuestas y llegaron ${resultados.length}`);\n  }\n  aCrear.forEach((item, i) => {\n    const a = plan.apartados.find(x => x.clave === item.json.ref.clave);\n    const r = resultados[i].json;\n    if (r.statusCode >= 200 && r.statusCode < 300) {\n      a.estado = 'creado';\n      a.id = cuerpo(r.body).id;\n    } else if (r.statusCode === 422) {\n      a.estado = 'error';\n      a.error = detalle(r.body);\n      plan.errores.push({ csv: 'apartados', fila: a.fila, datos: `${a.fecha} · ${a.cliente} · ${a.producto}`, error: a.error });\n      // Sus abonos no se pueden registrar: pasan a dudosos\n      for (const b of a.abonos) {\n        b.estado = 'dudoso';\n        plan.dudosos.push({ csv: 'apartados', fila: b.fila, datos: `${b.fecha} · ${a.cliente} · ${a.producto} · abono ${b.importe}`,\n          motivo: `su apartado (fila ${a.fila}) no se cargó: la app respondió «${a.error}»`, notas: b.notas });\n      }\n    } else {\n      // 401, 404, 5xx...: no es un problema de los datos. Se para y lo avisa el 08\n      throw new Error(`Crear apartados (fila ${a.fila}): la app respondió ${r.statusCode}: ${detalle(r.body)}`);\n    }\n  });\n}\n\n// Un item por abono a crear de los apartados que tienen id (nuevos o que ya existían)\nconst salida = [];\nfor (const a of plan.apartados) {\n  if (a.id == null) continue;\n  for (const b of a.abonos) {\n    if (b.estado !== 'crear') continue;\n    salida.push({ json: {\n      apartado_id: a.id,\n      cuerpo: { importe: b.importe, forma_pago: b.forma_pago, fecha: b.fecha },\n      ref: { clave: a.clave, fila: b.fila },\n      plan,\n    } });\n  }\n}\n\nreturn salida.length ? salida : [{ json: { cuerpo: null, plan } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        32
+      ],
+      "id": "ebaa4f88-cba9-4482-831b-b7e518466bb9",
+      "name": "Preparar abonos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ea18d3bb-6c2a-4ee4-9047-ccce62153ad6",
+              "leftValue": "={{ !!$json.cuerpo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1520,
+        320
+      ],
+      "id": "126c0791-24fa-4b75-97ae-3c8cb92e936e",
+      "name": "¿Hay abonos que crear?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://tienda:8000/api/apartados/{{ $json.apartado_id }}/abonos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1728,
+        224
+      ],
+      "id": "eed36025-9bd6-4f1c-a1dd-3e12cd13aea8",
+      "name": "Registrar abonos",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar ventas» · Run Once for All Items\n// Recoge los resultados de «Registrar abonos» (si se ejecutó) y devuelve\n// un item por venta a crear { cuerpo, ref, plan } o, si no hay ninguna, { cuerpo: null, plan }.\n\nconst plan = JSON.parse(JSON.stringify($('Preparar abonos').first().json.plan));\n\n// Resultados de un nodo, o [] si no se ejecutó (rama false del IF)\nfunction resultadosDe(nombre) {\n  try {\n    if ($(nombre).isExecuted === false) return [];\n    return $(nombre).all();\n  } catch (e) {\n    return [];\n  }\n}\n\nfunction detalle(body) {\n  let b = body;\n  if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { return b; } }\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? JSON.stringify(b);\n}\n\n// Los resultados vienen en el mismo orden que los abonos a crear\nconst aCrear = $('Preparar abonos').all().filter(i => i.json.cuerpo);\nif (aCrear.length) {\n  const resultados = resultadosDe('Registrar abonos');\n  if (resultados.length !== aCrear.length) {\n    throw new Error(`Registrar abonos: se esperaban ${aCrear.length} respuestas y llegaron ${resultados.length}`);\n  }\n  aCrear.forEach((item, i) => {\n    const a = plan.apartados.find(x => x.clave === item.json.ref.clave);\n    const b = a.abonos.find(x => x.fila === item.json.ref.fila);\n    const r = resultados[i].json;\n    if (r.statusCode >= 200 && r.statusCode < 300) {\n      b.estado = 'creado';\n    } else if (r.statusCode === 422) {\n      b.estado = 'error';\n      b.error = detalle(r.body);\n      plan.errores.push({ csv: 'apartados', fila: b.fila, datos: `${b.fecha} · ${a.cliente} · ${a.producto} · abono ${b.importe}`, error: b.error });\n    } else {\n      throw new Error(`Registrar abonos (fila ${b.fila}): la app respondió ${r.statusCode}: ${detalle(r.body)}`);\n    }\n  });\n}\n\nconst salida = plan.ventas.filter(v => v.estado === 'crear').map(v => ({ json: {\n  cuerpo: { concepto: v.concepto, importe: v.importe, forma_pago: v.forma_pago, fecha: v.fecha },\n  ref: { fila: v.fila },\n  plan,\n} }));\n\nreturn salida.length ? salida : [{ json: { cuerpo: null, plan } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        384
+      ],
+      "id": "333c847d-9335-47b2-9d64-7c91854f32be",
+      "name": "Preparar ventas"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ea18d3bb-6c2a-4ee4-9047-ccce62153ad6",
+              "leftValue": "={{ !!$json.cuerpo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2080,
+        384
+      ],
+      "id": "ed8b573d-90a4-439b-b599-6aa719685753",
+      "name": "¿Hay ventas que crear?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2272,
+        272
+      ],
+      "id": "150ec1a8-7c79-4062-ac01-542b4c7ee2d7",
+      "name": "Registrar ventas",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2448,
+        400
+      ],
+      "id": "6491db50-5154-4a8f-97c7-a4d1bdd4cd28",
+      "name": "Comprobar pendientes",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar informe» · Run Once for All Items\n// Recoge los resultados de «Registrar ventas» (si se ejecutó), compara el pendiente de la app con la resta\n// del Excel y devuelve { asunto, texto } para el correo. No recalcula nada: el pendiente es el de la app.\n\nconst plan = JSON.parse(JSON.stringify($('Preparar ventas').first().json.plan));\n\n// Resultados de un nodo, o [] si no se ejecutó (rama false del IF)\nfunction resultadosDe(nombre) {\n  try {\n    if ($(nombre).isExecuted === false) return [];\n    return $(nombre).all();\n  } catch (e) {\n    return [];\n  }\n}\n\nfunction detalle(body) {\n  let b = body;\n  if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { return b; } }\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? JSON.stringify(b);\n}\n\n// Resultados de las ventas, en el mismo orden que los items a crear\nconst aCrear = $('Preparar ventas').all().filter(i => i.json.cuerpo);\nif (aCrear.length) {\n  const resultados = resultadosDe('Registrar ventas');\n  if (resultados.length !== aCrear.length) {\n    throw new Error(`Registrar ventas: se esperaban ${aCrear.length} respuestas y llegaron ${resultados.length}`);\n  }\n  aCrear.forEach((item, i) => {\n    const v = plan.ventas.find(x => x.fila === item.json.ref.fila);\n    const r = resultados[i].json;\n    if (r.statusCode >= 200 && r.statusCode < 300) {\n      v.estado = 'creado';\n    } else if (r.statusCode === 422) {\n      v.estado = 'error';\n      v.error = detalle(r.body);\n      plan.errores.push({ csv: 'ventas', fila: v.fila, datos: `${v.fecha} · ${v.concepto} · ${v.importe}`, error: v.error });\n    } else {\n      throw new Error(`Registrar ventas (fila ${v.fila}): la app respondió ${r.statusCode}: ${detalle(r.body)}`);\n    }\n  });\n}\n\n// Pendiente de la app frente a la resta del Excel\nconst apartadosApp = $('Comprobar pendientes').all().map(i => i.json).filter(j => j && j.id != null);\nconst diferencias = [];\nconst sinComprobar = [];\nfor (const a of plan.apartados) {\n  if (a.id == null) continue;\n  const enApp = apartadosApp.find(x => x.id === a.id);\n  if (!enApp) { sinComprobar.push(`- ${a.cliente} · ${a.producto} (id ${a.id}): no aparece en la app`); continue; }\n  a.pendiente_app = enApp.pendiente;\n  if (a.resta === null || a.resta === undefined) { sinComprobar.push(`- ${a.cliente} · ${a.producto} (id ${a.id}): el Excel no tiene resta`); continue; }\n  if (Math.round(enApp.pendiente * 100) !== Math.round(a.resta * 100)) {\n    diferencias.push(`- ${a.cliente} · ${a.producto} (id ${a.id}): pendiente en la app ${enApp.pendiente.toFixed(2)} € · resta en el Excel ${a.resta.toFixed(2)} € (fila ${a.fila_resta})`);\n  }\n}\n\n// ---------- Texto del informe ----------\n\nconst e = n => `${Number(n).toFixed(2)} €`;\nconst pago = x => `${x.forma_pago} (${x.origen_forma_pago})`;\nconst lineaApartado = a => `- ${a.id != null ? `#${a.id} · ` : ''}${a.fecha} · ${a.cliente} · ${a.producto}${a.talla ? ` T${a.talla}` : ''} · precio ${e(a.precio)} · abono inicial ${e(a.abono_inicial)} · ${pago(a)} (fila ${a.fila})`;\nconst abonos = plan.apartados.flatMap(a => a.abonos.map(b => ({ a, b })));\nconst lineaAbono = ({ a, b }) => `- ${b.fecha} · ${a.cliente} · ${a.producto} · ${e(b.importe)} · ${pago(b)} (fila ${b.fila})`;\nconst lineaVenta = v => `- ${v.fecha} · ${v.concepto} · ${e(v.importe)} · ${v.forma_pago} (fila ${v.fila})`;\n\nfunction seccion(titulo, lineas) {\n  return `${titulo} (${lineas.length})\\n${lineas.length ? lineas.join('\\n') : '- Ninguno'}\\n`;\n}\n\nconst creados = {\n  apartados: plan.apartados.filter(a => a.estado === 'creado'),\n  abonos: abonos.filter(x => x.b.estado === 'creado'),\n  ventas: plan.ventas.filter(v => v.estado === 'creado'),\n};\nconst existian = {\n  apartados: plan.apartados.filter(a => a.estado === 'ya existía'),\n  abonos: abonos.filter(x => x.b.estado === 'ya existía'),\n  ventas: plan.ventas.filter(v => v.estado === 'ya existía'),\n};\n\nconst texto = [\n  'Informe de la migración del Excel',\n  '',\n  'CREADOS',\n  seccion('Apartados', creados.apartados.map(lineaApartado)),\n  seccion('Abonos (sin contar los iniciales)', creados.abonos.map(lineaAbono)),\n  seccion('Ventas', creados.ventas.map(lineaVenta)),\n  'YA EXISTÍAN (no se han vuelto a crear)',\n  seccion('Apartados', existian.apartados.map(lineaApartado)),\n  seccion('Abonos', existian.abonos.map(lineaAbono)),\n  seccion('Ventas', existian.ventas.map(lineaVenta)),\n  seccion('DUDOSOS (no se han cargado: decide Marisa)', plan.dudosos.map(d =>\n    `- CSV de ${d.csv}, fila ${d.fila}: ${d.datos}. Motivo: ${d.motivo}${d.notas ? `. Notas: «${d.notas}»` : ''}`)),\n  seccion('FILAS OMITIDAS', plan.omitidas.map(o => `- CSV de ${o.csv}, fila ${o.fila}: ${o.datos}. ${o.motivo}`)),\n  seccion('DIFERENCIAS CON LA RESTA DEL EXCEL (no se corrigen)', diferencias),\n  ...(sinComprobar.length ? [seccion('SIN COMPROBAR', sinComprobar)] : []),\n  seccion('ERRORES DE LA API (422)', plan.errores.map(x => `- CSV de ${x.csv}, fila ${x.fila}: ${x.datos}. La app respondió: «${x.error}»`)),\n].join('\\n');\n\nconst asunto = `Migración del Excel: ${creados.apartados.length} apartados, ${creados.abonos.length} abonos y ${creados.ventas.length} ventas creados · ${plan.dudosos.length} dudosos · ${plan.errores.length} errores`;\n\nreturn [{ json: { asunto, texto } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        352
+      ],
+      "id": "0569c863-d461-401a-94d2-408d16dd07cb",
+      "name": "Preparar informe"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "={{ $json.asunto }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texto }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2832,
+        352
+      ],
+      "id": "2d54e9fb-bf45-4ec5-8240-a8b0eb159b0d",
+      "name": "Enviar informe de migración",
+      "webhookId": "a8beaa52-472a-40c9-abf9-5241cf05fc7f",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Subir el Excel": {
+      "main": [
+        [
+          {
+            "node": "Leer CSV de apartados",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leer CSV de ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer CSV de apartados": {
+      "main": [
+        [
+          {
+            "node": "Juntar los dos CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer CSV de ventas": {
+      "main": [
+        [
+          {
+            "node": "Juntar los dos CSV",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar los dos CSV": {
+      "main": [
+        [
+          {
+            "node": "Limpiar y clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar y clasificar": {
+      "main": [
+        [
+          {
+            "node": "Leer apartados de la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer apartados de la app": {
+      "main": [
+        [
+          {
+            "node": "Leer abonos de la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer abonos de la app": {
+      "main": [
+        [
+          {
+            "node": "Leer ventas de la app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer ventas de la app": {
+      "main": [
+        [
+          {
+            "node": "Decidir qué crear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir qué crear": {
+      "main": [
+        [
+          {
+            "node": "¿Hay apartados que crear?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay apartados que crear?": {
+      "main": [
+        [
+          {
+            "node": "Crear apartados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar abonos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear apartados": {
+      "main": [
+        [
+          {
+            "node": "Preparar abonos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar abonos": {
+      "main": [
+        [
+          {
+            "node": "¿Hay abonos que crear?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay abonos que crear?": {
+      "main": [
+        [
+          {
+            "node": "Registrar abonos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar abonos": {
+      "main": [
+        [
+          {
+            "node": "Preparar ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar ventas": {
+      "main": [
+        [
+          {
+            "node": "¿Hay ventas que crear?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay ventas que crear?": {
+      "main": [
+        [
+          {
+            "node": "Registrar ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Comprobar pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar ventas": {
+      "main": [
+        [
+          {
+            "node": "Comprobar pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar pendientes": {
+      "main": [
+        [
+          {
+            "node": "Preparar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar informe": {
+      "main": [
+        [
+          {
+            "node": "Enviar informe de migración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": false,
+  "id": "15mfvy5WXhWg3IFb",
+  "versionId": "728cfaee-0726-4570-8001-28fb79dccd36"
+}
