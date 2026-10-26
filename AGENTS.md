@@ -49,7 +49,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 ## 5. Convenciones de nombres
 
 - **Ramas:** `feature/`, `docs/`, `fix/` o `chore/`, siempre creadas desde `dev`. Las PR van **siempre a `dev`**. A `main` solo se llega desde `dev` al cerrar un nivel.
-- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual` y `08 · Error Workflow`.
+- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual` y `08 · Error Workflow`. Los sub-workflows reutilizables (no son flujos del README) llevan el `10`: `10 · Buscar apartado` y `10 · Enviar notificación` ([specs/10-sub-workflows.md](specs/10-sub-workflows.md)).
 - **Nodos:** nombres descriptivos en español, por ejemplo `Buscar apartado por id`.
 - **Specs:** `specs/NN-nombre.md` · **Workflows:** `workflows/NN-nombre.json` (mismo `NN` que el flujo).
 - **Commits y PRs:** en inglés, con Conventional Commits (`docs: ...`, `feat: ...`, `fix: ...`, `chore: ...`). La documentación del proyecto (specs, `docs/`, `AGENTS.md`) sigue en español.
@@ -91,6 +91,13 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 |---|---|---|
 | Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Confirmada por el profesor |
 | Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda) | En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada abono la llenaría de correos | Tomada |
+| Los dos sub-workflows comparten el número `10` (`10 · Buscar apartado`, `10 · Enviar notificación`) | No son flujos del README, así que no tienen número propio; salen de la misma tarea (#92) y de la misma spec (`specs/10-sub-workflows.md`), y el `09` ya es la migración del Excel | Tomada |
+| `Buscar apartado` devuelve siempre un solo item `{ total, apartados }`; 0 resultados no es un error | Un nodo sin items corta el flujo que llama; con `total` el que llama decide en un IF | Tomada |
+| `Buscar apartado` para con error si no recibe `id`, `texto` ni `estado` | Sin filtros devolvería todos los apartados con los datos de todos los clientes (riesgo en el asistente de Telegram, HU-11 y HU-14) | Tomada |
+| `Buscar apartado` busca un número de apartado con `GET /api/apartados/{id}` y no con `q` | `q` también encuentra los teléfonos que contienen ese número | Tomada |
+| Los sub-workflows no tienen Error workflow: sus errores los avisa el `08` del flujo que llama | Así no hay avisos duplicados, y `Enviar notificación` no puede llamarse a sí mismo a través del `08` si falla | Tomada |
+| `Enviar notificación` no decide qué hacer si el cliente no tiene email; para con error si falta `para` o `asunto` | Cada flujo tiene su regla (HU-01 avisa a la tienda; HU-02 no envía nada); el error es solo una red de seguridad | Tomada |
+| El `08` envía su aviso con `Enviar notificación` | Lo pide #92 y el `08` no lo toca ningún PR abierto; si el sub-workflow falla, el aviso se pierde igual que hoy si falla su Send Email | Pendiente de revisión |
 
 ## 9. Lo que el agente NO debe hacer
 
