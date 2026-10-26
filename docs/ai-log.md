@@ -1103,3 +1103,12 @@ HU-08 (issue #70): vamos a construir `07 · Informe mensual` a mano en n8n, sigu
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
+
+### Filtro de avisos bancarios HU-03 (#33)
+
+- **Autora:** Beste.
+- **Tarea:** añadir el filtro determinista que distingue pagos recibidos, publicidad y entradas inválidas.
+- **Resultado:** `workflows/03-abonos-distancia-filtro.json`, generador reproducible, código del nodo, cinco pruebas y `docs/hu03-filtro.md`. La salida `extraer` prepara el siguiente paso (#34); `ignorar` termina; `revisar` no registra pagos. Esta rama continúa #32.
+- **Verificación local:** `node --test tests/test_hu03_filtro.cjs tests/test_hu03_entrada.cjs` — 11/11 superadas. El JSON se regeneró y `git diff --check` no encontró errores.
+- **Pendiente:** importación y validación n8n-mcp siguen sin realizarse para la exportación específica de #33. Esta PR se mantiene como borrador.
+- **Decisión:** el filtro reconoce las plantillas del repositorio y no autentica el banco. IA, búsqueda, registro y avisos corresponden a tareas posteriores.
