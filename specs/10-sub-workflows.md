@@ -32,6 +32,11 @@ Que la búsqueda de apartados y el envío de correos se hagan en un solo sitio y
 
 Los dos empiezan con un **Execute Workflow Trigger** («When Executed by Another Workflow»), versión 1.3, con **Input data mode** «Define using fields below». Así, en el nodo que llama (**Execute Workflow**, versión 1.4, **Source** Database, **Workflow** From list) aparecen los campos para rellenar o mapear.
 
+**Regla para quien llama: cada llamada a un sub-workflow es una sola petición.**
+- El Execute Workflow que llama usa siempre **Mode: Run once for each item**. n8n ejecuta el sub-workflow una vez por cada item que le llega y devuelve una salida por cada item, en el mismo orden.
+- **Por qué:** los Code de los sub-workflows leen solo `$input.first()`. Con **Run once with all items**, el sub-workflow recibiría todos los items en una sola ejecución y solo atendería el primero; los demás se perderían **sin error**. Es el caso del flujo 6 (un recordatorio por cliente) o de un flujo que envía un aviso por cada fila.
+- Así los sub-workflows quedan sencillos (una petición, una respuesta) y el flujo que llama decide cuántas veces llama. Ver [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas).
+
 ### 3.1 `10 · Buscar apartado` (#93)
 
 - **Disparador:** `Al buscar un apartado`.
@@ -146,7 +151,7 @@ El `08` está en `dev` y ningún PR abierto lo toca.
 | Antes | Después |
 |---|---|
 | `Si falla un flujo` (Error Trigger) | Sin cambios |
-| `Avisar a la tienda del error` (Send Email, `Mailpit`, From y To `tienda@pasofirme.example`, texto, sin atribución) | `Avisar a la tienda del error` (**Execute Workflow**, versión 1.4): **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once with all items, **Options → Wait For Sub-Workflow Completion** activado. **Workflow Inputs:** `para` = `tienda@pasofirme.example`; `asunto` = `Ha fallado el flujo «{{ $json.workflow.name }}»`; `texto` = el mismo texto de ahora (flujo, paso, error y enlace); `html` vacío |
+| `Avisar a la tienda del error` (Send Email, `Mailpit`, From y To `tienda@pasofirme.example`, texto, sin atribución) | `Avisar a la tienda del error` (**Execute Workflow**, versión 1.4): **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once for each item (la regla de la sección 3; el Error Trigger da un solo item, pero el `08` sigue la regla igual que los demás), **Options → Wait For Sub-Workflow Completion** activado. **Workflow Inputs:** `para` = `tienda@pasofirme.example`; `asunto` = `Ha fallado el flujo «{{ $json.workflow.name }}»`; `texto` = el mismo texto de ahora (flujo, paso, error y enlace); `html` vacío |
 
 - El nodo conserva el nombre, así que la spec del `08` solo cambia en el paso 2.
 - El correo que llega tiene que ser igual que antes: mismo remitente, destinatario, asunto y texto, y sin firma de n8n.
@@ -188,6 +193,7 @@ Como siempre, solo en ejecuciones de producción.
 | Enviar notificación | Falta `para`, `asunto` o el cuerpo, o `para` sin `@` | Para con error sin enviar nada |
 | Enviar notificación | Mailpit caído o credencial `Mailpit` mal | Falla el Send Email; lo avisa el `08` del flujo que llama, salvo si quien llama es el propio `08` (4.4) |
 | Los dos | El sub-workflow no existe, no se puede llamar (Settings → This workflow can be called by) o no está publicado si n8n 2.4.5 lo exige | Falla el Execute Workflow del flujo que llama |
+| Los dos | Un flujo llama con **Run once with all items** y le pasa varios items (incumple la regla de la sección 3) | El sub-workflow solo atiende el primer item: `Enviar notificación` envía un correo y los demás se pierden; `Buscar apartado` solo hace la primera búsqueda. **No hay error** y el `08` no avisa. Se evita con la regla y se comprueba en la revisión de cada flujo que llame (el Mode se ve en el JSON exportado: `"mode": "each"`) |
 
 ## 7. Prueba
 
@@ -229,12 +235,25 @@ Los resultados por texto dependen del día en que se cargó el seed. Se comparan
 
 > La prueba de HU-05 es la del correo con `email` `" "` («No recipients defined»), no un `401`.
 
+**Varios items con Run once for each item** (`Enviar notificación`). Se usa un flujo de prueba que **no se exporta**: su nombre no empieza por `NN · `, así que `scripts/flujos.py` lo ignora. Por ejemplo, `Prueba de sub-workflows (no exportar)`, con estos nodos:
+
+1. Manual Trigger.
+2. Code `Dos avisos`, que devuelve 2 items:
+   `[{ json: { para: 'tienda@pasofirme.example', asunto: 'Aviso 1 de 2', texto: 'Primero' } }, { json: { para: 'tienda@pasofirme.example', asunto: 'Aviso 2 de 2', texto: 'Segundo' } }]`
+3. Execute Workflow `Enviar los avisos`: `10 · Enviar notificación`, **Mode** Run once for each item. **Workflow Inputs:** `para` = `{{ $json.para }}`, `asunto` = `{{ $json.asunto }}` y `texto` = `{{ $json.texto }}`.
+
+| Entrada | Resultado esperado |
+|---|---|
+| Execute workflow con **Run once for each item** | Llegan a Mailpit **2 correos**, «Aviso 1 de 2» y «Aviso 2 de 2». `Enviar los avisos` da 2 items con `enviado` `true` y dos `messageId` distintos. En las ejecuciones se ven 2 de `10 · Enviar notificación` |
+| Lo mismo cambiando el Mode a **Run once with all items** (para ver el fallo) | Llega **1 correo** («Aviso 1 de 2»), una sola ejecución del sub-workflow, y ningún error. Al terminar, volver a poner Run once for each item, o borrar el flujo de prueba |
+
 **Evidencias previstas** (todavía no existen):
 
 - Ejecución de `Buscar apartado` con 0 resultados: `docs/evidencias/10-buscar-apartado-sin-resultados.png`
 - Ejecución de `Buscar apartado` con resultados: `docs/evidencias/10-buscar-apartado-texto.png`
 - Correo HTML de `Enviar notificación` en Mailpit: `docs/evidencias/10-enviar-notificacion-html.png`
 - Aviso del `08` enviado a través de `Enviar notificación`: `docs/evidencias/10-08-aviso-con-sub-workflow.png`
+- Los 2 correos de la prueba con varios items: `docs/evidencias/10-enviar-notificacion-varios-items.png`
 
 ## 8. Criterios de aceptación
 

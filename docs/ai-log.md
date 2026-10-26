@@ -663,6 +663,96 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 
 </details>
 
+### Código de los nodos Code · #92 (`specs/10-sub-workflows.md`)
+
+- **Autora:** Esra
+- **Tarea:** issue #92: código JavaScript de los 4 nodos Code de `10 · Buscar apartado` y `10 · Enviar notificación`, y los pasos del cambio del `08`.
+- **Reparto:** la pareja construye a mano en n8n los nodos y las conexiones, con los nombres de la spec; el agente escribe solo el código de los Code y la configuración de los demás nodos. El código y el `LEEME.md` quedan fuera del repo (`~/subflujos/`) y entran con el JSON de los workflows al exportarlos.
+- **Resultado:**
+  - `1-comprobar-la-busqueda.js` y `2-preparar-resultado.js` (`Buscar apartado`); `3-comprobar-la-notificacion.js` y `4-preparar-respuesta.js` (`Enviar notificación`).
+    - Los mensajes de error son los de la spec.
+    - Un campo vacío (`null`, `""` o ausente) se trata igual.
+    - No recalculan `abonado` ni `pendiente`.
+  - `LEEME.md`:
+    - qué recibe y devuelve cada Code;
+    - la configuración de los triggers (campos y tipos), los IF, los 2 `GET`, los 2 Send Email y las Settings (sin Error workflow);
+    - el cambio del `08` paso a paso, con el texto actual copiado de `workflows/08-error-workflow.json`;
+    - los JSON de pin data de la sección 7 y los dibujos de las conexiones.
+  - El agente consultó con n8n-mcp:
+    - Execute Workflow Trigger: Workflow Input Schema, Input data mode;
+    - Execute Workflow: Workflow Inputs; un campo quitado llega como `null`; Wait For Sub-Workflow Completion;
+    - HTTP Request: Include Response Headers and Status.
+  - En el backend comprobó:
+    - el `detail` del `401` («Falta la cabecera X-API-Key o no es válida») y del `404` («Apartado no encontrado»);
+    - que `q` y `estado` vacíos no filtran.
+- **Prueba en local (agente):** con `node`, `GET` reales a la API (la clave leída del `.env` sin imprimirla) y la salida del HTTP Request simulada como un item `{ statusCode, body }`.
+  - **`Buscar apartado`:**
+    - `id` 22 → 1 (vencido, salida sin `abonos` ni `vale`);
+    - `id` 22 + `activo` → 0;
+    - `id` 9999 → 0 (`404`);
+    - «Carmen Ruiz» → 1;
+    - `600000001` → igual que `600 000 001`;
+    - «Nadie Inventado» → 0;
+    - `estado` `activo` → 20, igual que `/api/apartados/resumen`;
+    - `id` `#7` con `texto` → manda el `id`.
+  - **Errores (Code 1 y 3):**
+    - sin campos, `estado` «pagado», `id` -3 y «doce» → error;
+    - clave mal → «Buscar apartado: la app respondió 401: Falta la cabecera X-API-Key o no es válida»;
+    - `para` vacío, sin `@` o `null`, `asunto` vacío y sin cuerpo → error con el mensaje de la spec.
+  - Coincide con la sección 7.
+- **Problemas encontrados:**
+  - **Teléfono repetido en la app.** El seed usa el formato `600 000 001`, como dice la spec. Pero `600000001` da 2 resultados: el apartado 1 y el 27, un apartado de prueba creado a mano con el mismo teléfono. La sección 7 no da un número fijo, así que sigue valiendo.
+  - **`q=12` en los datos actuales.** Solo da el apartado 12, porque su teléfono `600 000 012` también contiene `12`. El riesgo de la spec sigue siendo real con otros teléfonos (por ejemplo, los `612 345 ...` del Excel).
+  - **El ejemplo de salida de la spec** (Laura Ortega, `pendiente` 45) es ilustrativo: en la app el apartado 12 tiene `pendiente` 10. La forma es correcta y no se cambió.
+  - **Una sola petición por ejecución** (detectado en la revisión de la pareja, antes de construir).
+    - Los 4 Code leen solo `$input.first()` y `$('Comprobar la notificación').first()`.
+    - Si un flujo llamara con el Execute Workflow en **Run once with all items** y varios items (por ejemplo, el flujo 6 con un recordatorio por cliente), solo se enviaría el primer correo y los demás se perderían sin error.
+    - **Se resolvió con una regla, sin cambiar los Code:** cada llamada es una sola petición y el Execute Workflow que llama usa siempre **Mode: Run once for each item**. Se añadió:
+      - en la spec, a las secciones 3, 4.4 (el `08` pasa a Run once for each item), 6 (el caso y qué pasaría) y 7 (una prueba con un flujo de prueba no exportado: 2 items, 2 correos);
+      - a `AGENTS.md`, sección 8;
+      - al `LEEME.md`.
+  - **Pendiente de comprobar al construir:**
+    - que con Include Response Headers and Status una lista llegue en un item (el Code también acepta varios);
+    - cómo llega un campo sin rellenar del Execute Workflow;
+    - si hay que publicar el sub-workflow;
+    - que el error del sub-workflow llegue al `08`.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#92: vamos a construir a mano en n8n `10 · Buscar apartado`, `10 · Enviar notificación` y el cambio del `08 · Error Workflow`, siguiendo `specs/10-sub-workflows.md`. Tú escribes solo el JavaScript de los 4 nodos Code; la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/10-sub-workflows.md` (secciones 3, 4, 6 y 7), `specs/08-error-workflow.md`, `workflows/08-error-workflow.json` (texto actual del aviso), `AGENTS.md`.
+- `backend/routes/apartados.py` y `backend/models/apartado.py`: forma de la respuesta de `GET /api/apartados` y `GET /api/apartados/{id}`, y el `detail` de los errores.
+- n8n-mcp (n8n 2.4.5): Execute Workflow Trigger 1.3 con «Define using fields below» (cómo llegan los campos vacíos: `null`, `""` o ausentes), Execute Workflow 1.4 (Workflow Inputs, Wait For Sub-Workflow Completion), HTTP Request con Include Response Headers and Status + Never Error (forma de `body` cuando la API devuelve una lista: ¿un item con la lista o un item por elemento?), salida del Send Email (`messageId`), y Pin data en un trigger.
+- Como ejemplo de estilo: `~/hu08/` y `~/hu10-codigo/` (Code y `LEEME.md`).
+
+## Contenido
+
+1. En `~/subflujos/` (fuera del repo, no se sube):
+   - `1-comprobar-la-busqueda.js`, `2-preparar-resultado.js` (`10 · Buscar apartado`).
+   - `3-comprobar-la-notificacion.js`, `4-preparar-respuesta.js` (`10 · Enviar notificación`).
+   - Comentarios cortos en español, sin librerías externas, sin recalcular `abonado` ni `pendiente`. Mensajes de error exactamente como en la spec.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto); la configuración exacta de los demás nodos de los dos sub-workflows (trigger con sus campos y tipos, IF, los 2 `GET`, los 2 Send Email, Settings sin Error workflow); el cambio del `08` paso a paso (qué nodo se borra, el Execute Workflow con sus Workflow Inputs y el texto actual copiado del JSON); y los JSON de pin data de la sección 7 listos para pegar. Con un dibujo de las conexiones de cada uno.
+2. Comprueba la lógica en local con node: haz `GET` a la API (con la clave del `.env`, sin imprimirla) para los casos de `Buscar apartado` de la sección 7, simula la salida del HTTP Request con Never Error y ejecuta los Code 1 y 2. Prueba también los casos de error de los Code 1 y 3. Dime los resultados. Si la API no devuelve lo que dice la spec (por ejemplo, el formato del teléfono de los datos de ejemplo), dímelo.
+3. `specs/10-sub-workflows.md`: solo si algo de la sección 4 no coincide con lo que has visto en el backend o en n8n-mcp, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · #92 (`specs/10-sub-workflows.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store` ni `workflows/09-migracion-excel.json`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
