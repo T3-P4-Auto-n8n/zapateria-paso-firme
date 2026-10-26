@@ -655,6 +655,102 @@ HU-08 · Informe mensual (flujo 7), issue #70 y sub-issues #71–#76, nivel Medi
 
 </details>
 
+### Código de los nodos Code · HU-08 (`specs/07-informe-mensual.md`)
+
+- **Autora:** Esra
+- **Tarea:** issue #70: código JavaScript de los 2 nodos Code del workflow `07 · Informe mensual`.
+- **Reparto:** la pareja construye a mano en n8n los nodos y las conexiones, con los nombres de la spec; el agente escribe solo el código de los Code y la configuración de los otros 7 nodos. El código y el `LEEME.md` quedan fuera del repo (`~/hu08/`) y entran con el JSON del workflow al exportarlo.
+- **Resultado:**
+  - `1-calcular-periodo.js` (`Calcular periodo`): el mes de la fecha del formulario o, sin ella, el mes anterior a hoy en `Europe/Madrid`, con Luxon. El nombre del mes va en español con una lista propia, sin depender del idioma de Node.
+  - `2-preparar-informe.js` (`Preparar informe`): las cifras del paso 7 de la spec, el mes sin movimientos y `{ asunto, html }`.
+    - Suma en céntimos e ignora el item vacío de Always Output Data.
+    - Escapa `&`, `<` y `>`, y no recalcula `pendiente`.
+    - HTML con estilos en línea y tablas con borde.
+  - `LEEME.md`: qué recibe y devuelve cada Code, la configuración de los dos disparadores, los 4 `GET`, el Send Email y las Settings, y el dibujo de las conexiones.
+  - `informe-septiembre.html`: el correo de septiembre, para verlo en el navegador.
+  - El agente consultó con n8n-mcp:
+    - el nodo Code (modo Run Once for All Items);
+    - Form Trigger (campo Date, Label, Custom Field Name y Placeholder);
+    - Schedule Trigger y Send Email (Email Format HTML).
+  - En el backend comprobó que `GET /api/abonos` admite `desde` sin `hasta`, porque `hasta` vale `9999-12-31` por defecto, y que `GET /api/vales` no admite filtros.
+- **Prueba en local (agente):** con `node` se simuló `$()` con los datos reales de la API (solo `GET`, la clave leída del `.env` sin imprimirla).
+  - **Septiembre de 2026:**
+    - ventas 3772.75 (109), abonos 289.00 (21) y total 4061.75;
+    - pendiente 787.05 en 20 activos;
+    - 6 nuevos, 2 liquidados (nº 9 y 20) y 0 vencidos.
+    - Coincide con la sección 7 de la spec.
+  - **Enero de 2026:** todo a 0.00 y «No hubo movimientos en enero de 2026». Coincide.
+  - **Casos extra:**
+    - sin `mes` (programado) el 26/10 → septiembre;
+    - el 01/01/2027 → diciembre de 2026, y el 01/03/2026 → febrero (28 días);
+    - una fecha no válida → error;
+    - octubre de 2026 → sale el vencido nº 22 (`VALE-00022`);
+    - un nombre con `<b>` y `&` sale escapado;
+    - 0.10 + 0.20 → 0.30.
+- **Problemas encontrados:**
+  - **Descripción del campo del formulario.** La spec ponía una descripción en el campo `mes`, pero el Form Trigger no tiene descripción por campo. Se corrigió en la spec: el texto va en **Form Description**. Además, en el Form Trigger 2.5 o posterior, si se rellena **Custom Field Name**, la clave de salida cambia; el `LEEME.md` pide dejarlo vacío.
+  - **Fallo del arnés de prueba.** El primer intento de fijar la fecha con `Settings.now` de Luxon entró en recursión. Era un fallo del arnés, no del código; se corrigió.
+  - **Pendiente de comprobar al construir:**
+    - el formato exacto en que llega el campo Date del formulario en n8n 2.4.5 (el código toma los 10 primeros caracteres como `yyyy-MM-dd` y, si no es una fecha, para con error);
+    - si existe **If Execution Is Missed** en el Schedule Trigger.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-08 (issue #70): vamos a construir `07 · Informe mensual` a mano en n8n, siguiendo `specs/07-informe-mensual.md`. Tú escribes solo el JavaScript de los 2 nodos Code; la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/07-informe-mensual.md` (sobre todo las secciones 3, 4, 5 y 7), `AGENTS.md`, `docs/ontologia.md`.
+- `backend/routes/` y `backend/models/`: forma exacta de lo que devuelven `GET /api/ventas`, `/api/abonos`, `/api/apartados` y `/api/vales`, y si `/api/abonos` admite `desde` sin `hasta`.
+- n8n-mcp: nodo Code (Run Once for All Items, `$('Nodo').all()`, `.first()`, Luxon `DateTime`), salida del Form Trigger con un campo Date, salida del Schedule Trigger.
+- Como ejemplo de estilo: `~/hu10-codigo/` (los Code y el `LEEME.md` de HU-10).
+
+## Contenido
+
+1. En `~/hu08/` (fuera del repo, no se sube):
+   - `1-calcular-periodo.js`: si llega `mes` del formulario, el mes de esa fecha; si no (Schedule Trigger), el mes anterior a hoy en `Europe/Madrid`. Devuelve un item `{ desde, hasta, nombre_mes }` con `nombre_mes` en español («septiembre de 2026»).
+   - `2-preparar-informe.js`: las cifras de la tabla de la sección 4 (paso 7), el mes sin movimientos (paso 8) y `{ asunto, html }` (paso 9 y sección 5). Suma en céntimos, ignora los items vacíos de Always Output Data, escapa `&`, `<`, `>` en los textos, no recalcula `pendiente`. HTML sencillo con estilos en línea (tablas con borde), que se lea bien en Mailpit y en el móvil.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto) y la configuración exacta de los otros nodos para la pareja: los dos disparadores (campos y opciones), los 4 `GET` (URL, query, Settings), el Send Email (campos y opciones) y las Settings del workflow (Error workflow `08`, zona `Europe/Madrid`). Con un dibujo de las conexiones.
+2. Prueba en local con node: haz `GET` a la API (con la clave del `.env`, sin imprimirla) para traer los datos reales, simula `$()` con ellos y ejecuta los dos Code para septiembre de 2026 y para enero de 2026. Dime los resultados y si coinciden con la sección 7 de la spec. Guarda el HTML de septiembre en `~/hu08/informe-septiembre.html` para que la pareja lo vea en el navegador.
+3. `specs/07-informe-mensual.md`: solo si algo de la sección 4 no coincide con lo que has visto en el backend o en n8n-mcp, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-08 (`specs/07-informe-mensual.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del flujo · HU-08 (`workflows/07-informe-mensual.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n el workflow `07 · Informe mensual` según `specs/07-informe-mensual.md` y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los 7 nodos que no son Code y pegó el código de los 2 Code. En total son 9 nodos, con los nombres de la spec, el `08` como Error workflow y la zona `Europe/Madrid`. Los 2 Code del JSON exportado son idénticos a `~/hu08/1-calcular-periodo.js` y `~/hu08/2-preparar-informe.js`.
+  - **Pruebas** (Test URL del formulario, datos de ejemplo):
+    - **Septiembre de 2026** (`mes` = 15/09/2026): «Informe de septiembre de 2026: 4061.75 € recaudados». Todas las cifras coinciden con la sección 7: ventas 3772.75 (109), abonos 289.00 (21), pendiente 787.05 en 20 activos, 6 nuevos, 2 liquidados y 0 vencidos.
+    - **Enero de 2026:** «Informe de enero de 2026: 0.00 € recaudados», con «No hubo movimientos en enero de 2026», todo a 0 y pendiente 787.05.
+    - **Octubre de 2026** (prueba añadida para ver la tabla de vencidos con datos): «Informe de octubre de 2026: 2552.75 € recaudados».
+      - Ventas 1854.45 (63) y abonos 698.30 (48), los de la base de datos.
+      - 13 nuevos y 7 liquidados, entre ellos el 19 y el 18, que en septiembre salían como nuevos.
+      - 1 vencido: apartado 22, `VALE-00022`, 25.00 €, con fecha límite 11/09/2026.
+    - **Disparador programado:** Execute step en `Día 1 a las 8:00` y en `Calcular periodo` el 26/10/2026 a las 14:25 (Europe/Madrid) da `2026-09-01` a `2026-09-30`.
+    - **`401` y aviso del `08`:** no se hizo. El `08` ya se probó con un `401` en HU-05 y este flujo lo tiene como Error workflow. Hacerla obligaba a publicar el `07` y a crear una credencial falsa.
+  - Se resolvió lo que quedaba por comprobar: el campo Date del formulario llega en un formato que el código lee bien (septiembre salió correcto). **If Execution Is Missed** no se cambió; la spec lo recoge así.
+- **Problemas encontrados:**
+  - **El export vuelve a reescribir `01`** con la rama de HU-09, que es del PR #159. Ese cambio se descartó con `git restore`.
+  - **Zona horaria.** La del workflow se quedó en *Default* y se puso `Europe/Madrid` en Settings, como pide la spec.
+- **Decisión:** aceptado.
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

@@ -1,6 +1,6 @@
 # Flujo 07 · Informe mensual
 
-> **Alcance de esta versión:** spec con los valores esperados de septiembre de 2026 calculados con los datos de ejemplo. El flujo todavía no está construido.
+> **Alcance de esta versión:** flujo construido en n8n, exportado en `workflows/07-informe-mensual.json` (9 nodos) y probado con los datos de ejemplo (sección 7).
 
 ## 1. Cabecera
 
@@ -21,8 +21,8 @@ Enviar a Marisa el día 1 de cada mes un correo con lo recaudado el mes anterior
 - **Disparador:** dos disparadores que van al mismo nodo `Calcular periodo`.
   - **`Día 1 a las 8:00`** (Schedule Trigger): **Trigger Interval** Months, **Months Between Triggers** `1`, **Trigger at Day of Month** `1`, **Trigger at Hour** 8am, **Trigger at Minute** `0`. Informa del **mes anterior**. Solo funciona con el flujo publicado (lo publica la pareja).
     - A las 8:00 la tienda aún no ha abierto, así que ese día no hay movimientos que se queden fuera, y Marisa lo tiene al empezar el día.
-    - Si la versión de n8n muestra la opción **If Execution Is Missed**, poner *Run the Most Recent Missed Execution Per Rule*: si n8n estaba parado a las 8:00 del día 1, el informe sale al arrancar.
-  - **`Elegir mes`** (Form Trigger) para las pruebas y para repetir un informe: un campo **Date** `mes`, obligatorio, con la descripción «Cualquier día del mes del que quieres el informe». Informa del mes de esa fecha (por ejemplo, `2026-09-15` → septiembre de 2026). Se usa por la Test URL, sin publicar el flujo.
+    - **If Execution Is Missed** se ha dejado en su valor por defecto (el JSON exportado no la cambia): si n8n está parado a las 8:00 del día 1, el informe no sale solo y se pide con el formulario.
+  - **`Elegir mes`** (Form Trigger) para las pruebas y para repetir un informe: un campo **Date** con **Label** `mes` (sin Custom Field Name), obligatorio. El texto «Elige cualquier día del mes del que quieres el informe» va en **Form Description**, porque los campos no tienen descripción propia. Informa del mes de esa fecha (por ejemplo, `2026-09-15` → septiembre de 2026). Se usa por la Test URL, sin publicar el flujo.
 - **Por qué un formulario y no un Manual Trigger:** con el Manual Trigger habría que editar el flujo (un Set con el mes) para cada prueba. El formulario deja elegir el mes sin tocar nada y es el mismo patrón que `09 · Migración del Excel`. Un campo Date evita los errores de formato de un texto `AAAA-MM`.
 - **Entradas** (todas de la API, campos de [docs/ontologia.md](../docs/ontologia.md)):
   - **Venta:** `fecha`, `concepto`, `importe` y `forma_pago`.
@@ -102,7 +102,7 @@ No escribe nada en la app: solo hace `GET`.
 | Una lista vacía (ninguna venta, abono, apartado o vale) | Sigue (Always Output Data): el Code ignora el item vacío y esa cifra sale a `0.00` o «Ninguno» |
 | Mes sin ningún movimiento | El informe lo dice (paso 8) y se envía igual |
 | Falla el envío (Mailpit caído) | El nodo da error y lo avisa el `08` |
-| n8n parado a las 8:00 del día 1 | Si está **If Execution Is Missed** (paso del disparador), sale al arrancar. Si no, se envía a mano con el formulario |
+| n8n parado a las 8:00 del día 1 | El informe no sale solo (If Execution Is Missed está en su valor por defecto): se pide a mano con el formulario |
 | Un apartado se vence con retraso (el flujo 6 no se ejecutó a tiempo) | Cuenta en el mes de la `fecha` del vale, no en el de su `fecha_limite` |
 
 ## 7. Prueba
@@ -136,27 +136,46 @@ Asunto esperado: «Informe de septiembre de 2026: 4061.75 € recaudados».
 - El informe dice «No hubo movimientos en enero de 2026», con el pendiente de cobro igual que en la prueba 1.
 - Asunto: «Informe de enero de 2026: 0.00 € recaudados».
 
-**Prueba 3 · disparador programado**
+**Prueba 3 · octubre de 2026, con un vencido** (formulario con un día de octubre de 2026 en `mes`)
+
+Prueba añadida al construir, para ver la tabla de vencidos con datos.
+
+- Ventas directas 1854.45 (63), abonos 698.30 (48) y total 2552.75, los de la base de datos. Asunto: «Informe de octubre de 2026: 2552.75 € recaudados».
+- 13 apartados nuevos.
+- 7 liquidados, entre ellos los nº 19 y 18, que en septiembre salían como nuevos y se liquidaron en octubre.
+- **1 vencido:** nº 22, Beatriz Medina, Bailarina roja, fecha límite 11/09/2026, `VALE-00022`, 25.00 €. Es el caso de vencimiento con retraso de la sección 6: cuenta en octubre, el mes de su vale.
+
+**Prueba 4 · disparador programado**
 
 Se comprueba sin esperar al día 1. En `Calcular periodo`, con **Execute step** desde el Schedule Trigger (sin `mes`), el periodo debe ser el del mes anterior al de hoy: hoy 26/10/2026 → `2026-09-01` a `2026-09-30`.
 
 No hace falta cambiar la programación. Comprobar también en **Settings** que la zona es `Europe/Madrid`.
 
-**Prueba 4 · error** (Production URL del formulario, con el `07` y el `08` publicados)
+**Prueba 5 · error** (Production URL del formulario, con el `07` y el `08` publicados)
 
 Cambiar temporalmente la credencial del `Leer ventas del mes` por una con clave mal. Llega a la tienda el correo del `08` con el paso `Leer ventas del mes` y el `401`. Al terminar, volver a poner `API Tienda`.
 
-**Evidencias previstas** (todavía no existen):
+**Resultado real** (todas por la Test URL del formulario, con los datos de ejemplo):
 
-- Informe de septiembre en Mailpit, con la tabla: `docs/evidencias/07-hu08-informe-septiembre.png`
-- Informe de un mes sin movimientos: `docs/evidencias/07-hu08-mes-sin-movimientos.png`
-- Periodo calculado desde el Schedule Trigger (ejecución en n8n): `docs/evidencias/07-hu08-periodo-programado.png`
-- Aviso del `08` con el `401`: `docs/evidencias/07-hu08-error-401.png`
+| Prueba | Resultado |
+|---|---|
+| 1 · Septiembre (`mes` = 15/09/2026) | Asunto «Informe de septiembre de 2026: 4061.75 € recaudados». Todas las cifras coinciden con las esperadas: ventas 3772.75 (109), abonos 289.00 (21), pendiente 787.05 en 20 activos, 6 nuevos, 2 liquidados y 0 vencidos |
+| 2 · Enero | «Informe de enero de 2026: 0.00 € recaudados», con «No hubo movimientos en enero de 2026», todo a 0 y pendiente 787.05 |
+| 3 · Octubre | Asunto «Informe de octubre de 2026: 2552.75 € recaudados», con las cifras esperadas y el vencido nº 22 en la tabla |
+| 4 · Programado | **Execute step** en `Día 1 a las 8:00` y en `Calcular periodo` el 26/10/2026 a las 14:25 (Europe/Madrid): `2026-09-01` a `2026-09-30`. La zona del workflow es `Europe/Madrid` |
+| 5 · Error | **No realizada.** El `08` ya se probó con un `401` en HU-05 ([specs/08-error-workflow.md](08-error-workflow.md)) y este flujo lo tiene como Error workflow. Hacerla obligaba a publicar el `07` y a crear una credencial falsa |
+
+**Evidencias:**
+
+- Informe de septiembre en Mailpit, con la tabla: [docs/evidencias/07-hu08-informe-septiembre.png](../docs/evidencias/07-hu08-informe-septiembre.png)
+- Informe de un mes sin movimientos: [docs/evidencias/07-hu08-mes-sin-movimientos.png](../docs/evidencias/07-hu08-mes-sin-movimientos.png)
+- Informe de octubre, con el vencido: [docs/evidencias/07-hu08-informe-octubre.png](../docs/evidencias/07-hu08-informe-octubre.png)
+- Periodo calculado desde el Schedule Trigger (ejecución en n8n): [docs/evidencias/07-hu08-periodo-programado.png](../docs/evidencias/07-hu08-periodo-programado.png)
 
 ## 8. Criterios de aceptación
 
 **HU-08 · Informe mensual** (flujo 7)
 
-- [ ] El día 1 llega un informe con lo recaudado el mes anterior (ventas directas y abonos por separado).
-- [ ] Incluye el total pendiente de cobro, y los apartados nuevos, liquidados y vencidos del mes.
-- [ ] Los importes coinciden con los de la app.
+- [x] El día 1 llega un informe con lo recaudado el mes anterior (ventas directas y abonos por separado).
+- [x] Incluye el total pendiente de cobro, y los apartados nuevos, liquidados y vencidos del mes.
+- [x] Los importes coinciden con los de la app.
