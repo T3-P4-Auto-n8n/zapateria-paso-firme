@@ -583,6 +583,222 @@ No ejecutes nada más.
 
 **Instrucción de trabajo:** especificar HU-03 con el disparador de desarrollo y final, extracción de ordenante/importe/concepto, búsqueda y decisiones mediante API, registro y errores 422, avisos a Marisa y resultados esperados para los nueve correos. Aplicar la plantilla y las decisiones de AGENTS.md. La IA solo extrae los tres datos; las reglas del flujo deciden.
 
+### Spec de la migración del Excel · HU-10 (`specs/09-migracion-excel.md`)
+
+- **Autora:** Esra
+- **Tarea:** issues #84 y #85: primera subtarea de HU-10. Spec de `09 · Migración del Excel` con la plantilla y el análisis fila a fila de `data/excel_actual_apartados.csv` y `data/excel_actual_ventas.csv`. Solo documentación; el flujo no se construye todavía.
+- **Resultado:**
+  - `specs/09-migracion-excel.md`:
+    - Disparador: Form Trigger `Subir el Excel` con dos campos de fichero, más Extract from File (CSV).
+    - Limpieza en un Code: fechas, importes, nombres y teléfonos, sin recalcular importes.
+    - Agrupación de apartados por cliente normalizado + modelo; dudosos (abono inicial < 5 € y abonos sin apartado cargado); ventas sin las filas de abono ni el TOTAL.
+    - Carga por API con la `fecha` original, con idempotencia (apartado: cliente + producto + fecha; abono: fecha + importe; venta: concepto + importe del día).
+    - Comprobación de `pendiente` frente a `resta`.
+    - `422` al informe y el resto de errores al `08`.
+    - Informe en un solo correo y procedimiento (despublicar el `01` durante la migración).
+    - Tablas de prueba fila a fila: 7 apartados, 3 abonos, 6 ventas, 2 dudosos de Lucía Gómez, 4 filas omitidas y 0 diferencias en la 1.ª ejecución; todo «ya existía» en la 2.ª.
+  - `AGENTS.md`: `09 · Migración del Excel` en la sección 5 y tres decisiones en la sección 8.
+  - El agente consultó con n8n-mcp Form Trigger (campo File: Multiple Files, Accepted File Types), Extract from File (Extract From CSV, Input Binary Field, Header Row), HTTP Request (Authentication → Generic Credential Type) y Code.
+- **Problemas encontrados:**
+  - **Prompt cortado.** El prompt llegó con texto cortado en varios puntos (5 a 14 y Límites); el agente reconstruyó por contexto los motivos, los endpoints, las comparaciones y la decisión de las ventas. Hay que revisarlo.
+  - **Forma de pago.** La decisión «el Excel no indica la forma de pago» no es exacta del todo: el CSV de ventas trae la de los 3 pagos de apartados que se omiten, y el abono inicial de Sofía Navarro fue `bizum`. Queda como pregunta abierta en la spec.
+  - **Datos de ejemplo.** `backend/seed.py` tiene los mismos 8 clientes del Excel y los mismos conceptos e importes de venta. Una venta de ejemplo del mismo día, concepto e importe haría que la del Excel saliera como «ya existía». La spec recomienda probar con una app sin datos de ejemplo, sin `docker compose down -v`, que borra también n8n. Además, el riesgo de coincidencia de apartados queda como pregunta (comparar también `talla` y `telefono`).
+  - **Gotchas de n8n.**
+    - Un `GET` sin resultados no devuelve items, así que la spec pide Always Output Data.
+    - Con On Error → Continue (using error output), un `401` también sale por la salida de error: la spec separa el `422` (al informe) del resto (al `08`).
+    - Por la Test URL del formulario, el `08` no salta.
+  - **Detectado por el agente al cruzar los CSV y el seed:**
+    - el abono inicial de Sofía Navarro (06/10, 10 €) fue `bizum` según el CSV de ventas, y con la regla inicial se habría registrado como `efectivo`;
+    - las ventas del seed pueden coincidir con las del Excel (mismo día, concepto e importe) y dar un falso «ya existía»;
+    - un apartado del seed podría coincidir con uno del Excel.
+  - **Decisiones de la pareja:**
+    - **Forma de pago:** si una fila de ventas omitida como duplicado coincide por `fecha` + importe con exactamente un pago del CSV de apartados, se usa su `forma_pago`; si no, `efectivo`. El informe indica el origen de cada una. Así, Sofía Navarro va como `bizum` y Miguel Ángel López y Ana Torres (03/10) como `efectivo` del CSV de ventas.
+    - **Coincidencia del apartado:** cliente normalizado + `producto` + `talla` + `fecha`.
+    - Las dos preguntas abiertas se quitaron de la spec, y la decisión de la forma de pago se reescribió en la sección 8 de `AGENTS.md`.
+- **Decisión:** aceptado con cambios.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Primera subtarea de HU-10 (issues #84 y #85): escribe la spec de la migración del Excel en specs/09-migracion-excel.md a partir de specs/_plantilla.md, con el análisis fila a fila de los dos CSV. Solo documentación: todavía no construimos el flujo.
+
+## Fuentes
+
+- README.md: HU-10, sección de datos (data/) y nivel Medio ("Migración del Excel actual").
+- data/excel_actual_apartados.csv y data/excel_actual_ventas.csv.
+- docs/guia-de-la-app.md (POST /api/apartados, /abonos, /ventas, parámetro `fecha`, filtros `q`, `desde`, `hasta`), docs/ontologia.md, AGENTS.md, specs/01-eventos-tienda.md (estilo), specs/08-error-workflow.md.
+- backend/models/apartado.py (`listar`: `q` usa LIKE sobre cliente, producto y teléfono) y backend/seed.py (clientes que ya existen en la app).
+- n8n-mcp: consulta Form Trigger (campo de tipo fichero), Extract from File (CSV), Code y HTTP Request para usar nombres y parámetros reales.
+
+## Contenido
+
+1. Cabecera: flujo `09 · Migración del Excel` (workflows/09-migracion-excel.json), HU-10, nivel Medio, responsable Esra. Credenciales: `API Tienda` (Header Auth) y `Mailpit`. Error Workflow: 08.
+2. Disparador: Form Trigger "Subir el Excel" con dos campos de fichero (apartados y ventas). Motivo: el contenedor de n8n no ve la carpeta data/ del repo, y así no tocamos docker-compose.yml. Después, Extract from File (CSV) para cada fichero.
+3. Limpieza (nodo Code), sin recalcular importes:
+   - Fechas: dd/MM/yyyy y d/M/yy → yyyy-MM-dd.
+   - Importes: quitar €, coma decimal → punto, a número.
+   - Nombres: espacios y mayúsculas normalizados ("carmen ruiz" → "Carmen Ruiz").
+   - Teléfonos: formato "612 345 001"; vacío → sin teléfono.
+4. Apartados CSV: agrupar por cliente normalizado + modelo, ordenado por fecha. La primera fila es el apartado (precio, abono → abono_inicial); las siguientes son abonos.
+   - Dudoso (no se carga, va al informe): abono inicial < 5 €, y cualquier abono cuyo apartado no se cargó.
+5. Ventas CSV: cargar las ventas normales. No cargar como venta:
+   - filas cuyo concepto contiene "abono" o "(apartado)" (ya están en el CSV de apartados; cargarlas contarí
+   - la fila TOTAL.                                                                 Las tres filas de abono somitida: duplicado del CSV de apartados".                                                                      6. Carga por API con la `fecpartados, POST/api/apartados/{id}/abonos, POST /api/ventas), credencial `API Tienda`.          7. Idempotencia (ejecutarlo
+   - Apartado: GET /api/apartados?q=<cliente> y comparar cliente normalizado +   producto + fecha. Ojo: la apeed con el mismo nombre(Carmen Ruiz, Jorge Martín, Lucía Gómez) y otros productos: comparar solo por    nombre asignaría abonos al a
+   - Abono: GET /api/apartados/{id} y comparar fecha + importe en `abonos`.         - Venta: GET /api/ventas?a> y comparar concepto +importe.                                                                            - Si ya existe, no se cremo "ya existía".
+8. Comprobación: tras cargar cada apartado y sus abonos, comparar el `pendiente` de la app con la columna `re a mano). Si no coincide, vaal informe; nunca se corrige a mano.
+9. Informe: un correo a tienlpit) con los creados, losque ya existían, los dudosos con su motivo, las filas omitidas y las diferencias
+con `resta`.
+10. Errores: 422 de la API → la fila va al informe con el mensaje de la app (On
+Error → Continue en los HTTP → Error Workflow 08.
+11. Procedimiento: despublicar `01 · Eventos de la tienda` antes de migrar y
+volver a publicarlo después.ado dispara HU-01 y, como elExcel no tiene email, llegarían 7 avisos "sin email" a la tienda.
+12. Tabla de prueba fila a frado de la primera ejecución(7 apartados, 3 abonos, 6 ventas, 2 dudosos de Lucía Gómez, 3 filas de abono
+omitidas, la fila TOTAL omitreados, todo "ya existía").Criterios de HU-10 copiados literal y sin marcar.
+13. AGENTS.md:
+    - Sección 5, convención de nombres: añadir `09 · Migración del Excel`.
+    - Sección 8, decisiones
+      - Los apartados y abonos del Excel sin forma de pago se registran como `efectivo` (el valor por deforme lo indica.
+      - Se migran también las ventas, salvo las filas de abono y el TOTAL (README: los dos CSV son para la migr
+      - Un abono cuyo apartado no se pudo cargar también va al informe como
+dudoso.
+14. docs/ai-log.md: entrada "### Spec de la migración del Excel · HU-10
+(`specs/09-migracion-excel.mual y este prompt literal enun bloque <details>.
+
+## Límites
+
+- No toques n8n, workflows/, backend/, frontend/ ni docker-compose.yml.
+- No llames a la API ni carg
+- No hagas commit, push ni PR. Cuando termines, dime qué archivos has cambiado.
+```
+
+</details>
+
+<details><summary>Prompt (revisión)</summary>
+
+```text
+Revisado, muy buen análisis. Cerramos las dos preguntas abiertas:
+
+1. Forma de pago (paso 6): si una fila del CSV de ventas omitida como duplicado coincide por fecha + importe con exactamente un apartado (abono inicial) o abono del CSV de apartados, se usa su forma_pago; si no, `efectivo`. Resultado: Sofía Navarro `bizum`, Miguel Ángel López y Ana Torres (03/10) `efectivo`, el resto `efectivo` por defecto. El informe indica para cada uno si la forma de pago viene del CSV de ventas o es `efectivo` por defecto. Actualiza los pasos, las tablas de prueba (fila 12 → bizum) y quita la "Pregunta abierta".
+2. Coincidencia del apartado (paso 9 y fila de riesgo de la sección 6): cliente normalizado + producto + talla + fecha. Quita la "Pregunta abierta" de esa fila.
+3. AGENTS.md, sección 8: cambia la fila de `efectivo` por "Los apartados y abonos del Excel se registran con la forma de pago del CSV de ventas cuando el mismo pago aparece allí (misma fecha e importe); si no, `efectivo`" | "El CSV de apartados no la indica; `efectivo` es el valor por defecto de la app. El informe indica de dónde sale cada una" | Tomada.
+4. docs/ai-log.md, entrada de HU-10: añade en "Problemas encontrados" que el agente detectó el caso de Sofía (bizum) y el riesgo de coincidencia con las ventas del seed, y las dos decisiones de la pareja. "Decisión: aceptado con cambios." Añade este prompt al bloque <details> después del primero.
+
+No hagas commit. Dime qué has cambiado.
+```
+
+</details>
+
+### Código de los nodos Code · HU-10 (`specs/09-migracion-excel.md`)
+
+- **Autora:** Esra
+- **Tarea:** issues #86 a #90: código JavaScript de los 5 nodos Code del workflow `09 · Migración del Excel`.
+- **Reparto:** la pareja construye a mano en n8n los nodos y las conexiones, con los nombres ya decididos; el agente escribe solo el código de los Code y la configuración que hay que poner en los otros 15 nodos. El código y el `LEEME.md` quedan fuera del repo y entran con el JSON del workflow al exportarlo.
+- **Resultado:**
+  - 5 ficheros `.js`: `Limpiar y clasificar`, `Decidir qué crear`, `Preparar abonos`, `Preparar ventas` y `Preparar informe`. Llevan comentarios cortos en español, no usan librerías y no recalculan `abonado` ni `pendiente`.
+  - Un `LEEME.md` con lo que recibe y devuelve cada Code (con ejemplo) y la configuración exacta de los otros 15 nodos.
+  - La sección 4 de `specs/09-migracion-excel.md` está adaptada al flujo real: tres `GET` de listas, un IF antes de cada `POST`, `Never Error` + respuesta completa y un único `GET` final para comprobar los pendientes. Se quitan el Loop Over Items, el Switch y la búsqueda por `q`.
+  - El agente consultó con n8n-mcp el nodo Code (modo Run Once for All Items) y HTTP Request (Include Response Headers and Status, Response Format, Authentication).
+- **Prueba en local (agente):** con `node` se simularon `$()` y una app falsa con las reglas de `backend/models`, y se usaron los dos CSV de `data/`:
+  - **1.ª ejecución:**
+    - 7 apartados, 3 abonos y 6 ventas creados;
+    - 2 dudosos (Lucía Gómez) y 4 omitidas;
+    - 0 diferencias y 0 errores;
+    - Sofía `bizum` (CSV de ventas, fila 8); Miguel y Ana del 03/10 `efectivo` del CSV de ventas.
+  - **2.ª ejecución:** 0 creados y todo «ya existía». Coincide con la sección 7 de la spec.
+  - **Casos extra:**
+    - una venta de ejemplo que coincide sale como «ya existía»;
+    - un apartado de ejemplo de Carmen Ruiz con otra talla no se confunde;
+    - un abono que supera lo pendiente → `422` en el informe y diferencia con la resta;
+    - un `401` → error con el código y el mensaje de la app.
+- **Problemas encontrados:**
+  - **Los 0 items.** Un nodo que no devuelve items corta el flujo. Por eso:
+    - los `GET` llevan Always Output Data, y el Code ignora el item vacío;
+    - los Code nunca devuelven 0 items: si no hay nada que crear, devuelven `{ cuerpo: null }`;
+    - un IF antes de cada `POST` evita enviar ese item vacío (sería un `422`) y deja seguir al siguiente Code.
+  - **Leer los resultados de una rama que no se ejecutó.** Si se lee la salida de un `POST` que no se ejecutó (rama false del IF), n8n da error. El código usa `isExecuted` y, por si en n8n 2.4.5 se comporta distinto, un `try/catch`. Las respuestas se emparejan por orden con los items enviados, y si no cuadra el número, el flujo para.
+  - **Peticiones a la vez.** El HTTP Request puede enviar las peticiones en paralelo. Con dos abonos del mismo apartado, los dos se comprobarían contra el mismo `pendiente`. El agente lo detectó al revisar el diseño y el `LEEME.md` pide Batching de 1 en los `POST`.
+  - **Fallos de la primera versión,** encontrados en la prueba local y corregidos: a las líneas de diferencias del informe les faltaba el guion, y la fila TOTAL salía con un separador vacío.
+  - **Pendiente de comprobar al construir:** el nombre del campo binario que crea el Form Trigger (Input Binary Field de los Extract from File) y que `isExecuted` funciona en n8n 2.4.5.
+  - **Prompt cortado.** El prompt llegó cortado en los puntos 7 a 11 y Contenido 1, 2, 3 y 5; el agente reconstruyó por contexto la carpeta (`~/hu10-codigo/`), el nombre del 5.º fichero (`5-preparar-informe.js`) y el título de esta entrada.
+  - El prompt se corrompió al pegarlo en la terminal; el agente completó los pasos con la spec. Se sustituyó por el texto original.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-10 (issues #86–#90): vamos a construir el workflow `09 · Migración del Excel` a mano en n8n. Tú escribes solo el JavaScript de los 5 nodos Code; la pareja crea los demás nodos y pega tu código. Los nombres de los nodos y las conexiones ya están decididos (abajo): úsalos exactamente.
+
+## Fuentes
+
+- specs/09-migracion-excel.md (reglas de limpieza, clasificación, idempotencia, forma de pago, informe), AGENTS.md, docs/guia-de-la-app.md.
+- backend/routes/ y backend/models/: forma exacta de las respuestas de GET /api/apartados, /api/abonos y /api/ventas y de los POST.
+- n8n-mcp: nodo Code (modo Run Once for All Items, `$('Nodo').all()`, `.first()`, `.isExecuted`) y HTTP Request (opciones Never Error e Include Response Headers and Status).
+
+## Flujo (nombres exactos)
+
+1. `Subir el Excel` (Form Trigger): campos File `apartados` y `ventas`.
+2. `Leer CSV de apartados` y `Leer CSV de ventas` (Extract from File, CSV, Header Row), en paralelo desde el formulario → `Juntar los dos CSV` (Merge, Append).
+3. Code `Limpiar y clasificar`: lee `$('Leer CSV de apartados').all()` y `$('Leer CSV de ventas').all()`. Devuelve UN solo item: `{ apartados: [...con sus abonos], ventas: [...], dudosos: [...], omitidas: [...], rango: { desde, hasta } }`.
+4. `Leer apartados de la app` (GET /api/apartados), `Leer abonos de la app` (GET /api/abonos?desde=&hasta= con `rango`), `Leer ventas de la app` (GET /api/ventas?desde=&hasta=), en cadena, con Execute Once y Always Output Data (si la lista está vacía llega un item vacío: ignóralo).
+5. Code `Decidir qué crear`: compara (apartado: cliente normalizado + producto + talla + fecha; abono: apartado_id + fecha + importe; venta: fecha + concepto + importe) y guarda el plan completo. Devuelve un item por apartado a crear `{ cuerpo: {...body del POST}, ref: {...}, plan }`, o, si no hay ninguno, un único item `{ cuerpo: null, plan }`.
+6. IF `¿Hay apartados que crear?` (`$json.cuerpo` existe). true → `Crear apartados` (POST /api/apartados, body `$json.cuerpo`, Never Error + respuesta completa) → `Preparar abonos`. false → `Preparar abonos`.
+7. Code `Preparar abonos`: plan de `$('Decidir qué crear').first().json.plan`; resultados de `Crear apartados` solo si `.isExecuted` (emparejados por orden con los items a crear). Une id nuevos y existentes con sus abonos; si un apartado dio 422, sus abonos pasan a dudosos. Si un POST dio un código que no es 2xx ni 422, lanza un Error (lo recoge el 08). Devuelve un item por abono a crear `{ apartado_id, cuerpo, ref }`, en orden de fecha, o un único `{ cuerpo: null }`.
+8. IF `¿Hay abonos que crear?` → `Registrar abonos` (POST /api/apartados/{{ $json.apartado_id }}/abonos) → `Preparar ventas`; false → `Preparar ventas`.
+9. Code `Preparar ventas`: igual (comprueba los resultados de `Registrar abonos`), devuelve las ventas a crear o `{ cuerpo: null }`.
+10. IF `¿Hay ventas que crear?` → `Registrar ventas` (POST /api/ventas) → `Comprobar pendientes`; false → `Comprobar pendientes` (GET /api/apartados, Execute Once, Always Output Data).
+11. Code `Preparar informe`: lee todos los nodos con `.isExecuted`, comprueba los resultados de `Registrar ventas`, compara pendiente con resta y devuelve `{ asunto, texto }` en texto plano con las secciones de la spec (creados, ya existían, dudosos, omitidas, diferencias, errores de la API y de dónde sale cada forma de pago) → `Enviar informe de migración` (Send Email).
+
+## Contenido
+
+1. Escribe los 5 códigos en ~/hu10-codigo/ (fuera del repo, no se suben): `1-limpiar-y-clasificar.js`, `2-decidir-que-crear.js`, `3-preparar-abonos.js`, `4-preparar-ventas.js`, `5-preparar-informe.js`. Comentarios cortos en español, sin librerías externas, sin recalcular abonado ni pendiente.
+2. En ~/hu10-codigo/LEEME.md: para cada Code, qué recibe y qué devuelve (con un ejemplo corto), y la configuración exacta de los otros 15 nodos que debe saber la pareja (URL, query, body, opciones de HTTP, condiciones de los IF).
+3. Comprueba la lógica de 1, 2 y 5 con node en local usando los dos CSV de data/ (simulando `$()` con datos falsos de la app vacía y de la app con todo ya creado). Dime los resultados: deben coincidir con la tabla de la sección 7 de la spec.
+4. specs/09-migracion-excel.md: actualiza la sección 4 a este flujo (nombres reales, IF antes de cada POST y por qué).
+5. docs/ai-log.md: entrada "### Código de los nodos Code · HU-10" con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código; problema de los 0 items y la solución con IF) y este prompt literal en un bloque <details>.
+
+## Límites
+
+- No toques n8n, workflows/, backend/, frontend/ ni docker-compose.yml.
+- No llames a la API.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del flujo · HU-10 (`workflows/09-migracion-excel.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n el workflow `09 · Migración del Excel` según `specs/09-migracion-excel.md` y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los 15 nodos que no son Code y pegó el código de los 5 Code. En total son 20 nodos, con los nombres de la spec, y el `08` está configurado como Error Workflow.
+  - **Preparación de la prueba:**
+    - copia de la base de datos de la app;
+    - app vacía con `SEED=0`;
+    - `01 · Eventos de la tienda` despublicado, porque si no la app dispara un evento por apartado creado;
+    - al terminar, se restauró la copia (con el seed) y se volvió a publicar el `01`.
+  - **1.ª ejecución:**
+    - `Crear apartados` 7, `Registrar abonos` 3 y `Registrar ventas` 6;
+    - asunto «Migración del Excel: 7 apartados, 3 abonos y 6 ventas creados · 2 dudosos · 0 errores»;
+    - 2 dudosos (Lucía Gómez, filas 3 y 9), 4 omitidas (filas 1, 6, 8 y 10 del CSV de ventas), 0 diferencias y 0 errores de la API;
+    - en la app, 7 apartados, 10 abonos (7 iniciales + 3) y 6 ventas, cada abono en su apartado (Ana Torres, id 7, con su abono de 20 €).
+  - **2.ª ejecución** (mismos CSV):
+    - los tres IF van por false y no se ejecuta ningún `POST`;
+    - asunto «0 apartados, 0 abonos y 0 ventas creados · 2 dudosos · 0 errores» y «Ya existían» 7 / 3 / 6;
+    - la app sigue con 7 / 10 / 6.
+  - Coincide con la sección 7 de la spec. Los 5 Code del JSON exportado son idénticos a los ficheros de `~/hu10-codigo/`.
+  - Se resolvió lo que quedaba por comprobar: el Form Trigger crea los campos binarios `apartados` y `ventas`, y los Code leen sin error los `POST` que no se ejecutaron (2.ª ejecución), con `isExecuted` o con el `try/catch`.
+- **Problemas encontrados:**
+  - **Conexión duplicada:** una conexión repetida hacía que `Leer ventas de la app` se ejecutara dos veces. Se borró la que sobraba.
+  - **URL de `Registrar abonos`** en modo Fixed en vez de Expression: el `{{ $json.apartado_id }}` no se sustituía. Se cambió a Expression.
+  - **El export también reescribe `01`** con la rama de HU-09, que pertenece a otro PR (#159). Ese cambio se descartó con `git restore`.
+- **Decisión:** aceptado.
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
 ### Spec de la rama HU-09 · Venta grande (`specs/01-eventos-tienda.md`)
 
 - **Autora:** Esra

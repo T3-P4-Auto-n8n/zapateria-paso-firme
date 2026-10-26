@@ -49,7 +49,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 ## 5. Convenciones de nombres
 
 - **Ramas:** `feature/`, `docs/`, `fix/` o `chore/`, siempre creadas desde `dev`. Las PR van **siempre a `dev`**. A `main` solo se llega desde `dev` al cerrar un nivel.
-- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual` y `08 · Error Workflow`.
+- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow` y `09 · Migración del Excel`.
 - **Nodos:** nombres descriptivos en español, por ejemplo `Buscar apartado por id`.
 - **Specs:** `specs/NN-nombre.md` · **Workflows:** `workflows/NN-nombre.json` (mismo `NN` que el flujo).
 - **Commits y PRs:** en inglés, con Conventional Commits (`docs: ...`, `feat: ...`, `fix: ...`, `chore: ...`). La documentación del proyecto (specs, `docs/`, `AGENTS.md`) sigue en español.
@@ -91,6 +91,9 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 |---|---|---|
 | Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Confirmada por el profesor |
 | Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda) | En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada abono la llenaría de correos | Tomada |
+| Los apartados y abonos del Excel se registran con la forma de pago del CSV de ventas cuando el mismo pago aparece allí (misma fecha e importe); si no, `efectivo` | El CSV de apartados no la indica; `efectivo` es el valor por defecto de la app. El informe indica de dónde sale cada una | Tomada |
+| Se migran también las ventas, salvo las filas de abono y el TOTAL | README: los dos CSV son para la migración; las filas de abono ya están en el CSV de apartados y el TOTAL no es una venta | Tomada |
+| Un abono cuyo apartado no se pudo cargar también va al informe como dudoso | Sin su apartado no se puede registrar, y Marisa decide qué hacer | Tomada |
 | El umbral de venta grande se guarda en una Data table de n8n (`Configuración`) | Las Variables de n8n requieren licencia de pago | Tomada |
 
 ## 9. Lo que el agente NO debe hacer
