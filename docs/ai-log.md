@@ -1127,3 +1127,12 @@ Ninguna por ahora.
 - **Tarea:** consultar la API con la URL ya elegida por #34 (ID explícito o búsqueda conservadora) y entregar la respuesta a #36.
 - **Resultado:** se añade `workflows/03-abonos-distancia-busqueda.json`, generador determinista, prueba automatizada y guía. El nodo es un GET autenticado con `API Tienda`; no hay escritura ni SMTP. El 404 explícito conserva su estado para revisión; fallos de red paran la ejecución.
 - **Pendiente:** importar y validar en n8n, asignar credenciales y seleccionar el 08 local. Mantener la PR como borrador y el workflow inactivo.
+
+
+### Decisión de apartado HU-03 (#36)
+
+- **Tarea:** validar candidatos de la API contra ordenante y concepto; exigir un único apartado activo, en plazo y con saldo suficiente antes de pasar a #37.
+- **Resultado:** borrador parcial `workflows/03-abonos-distancia-decision.json`, generado desde #35. La rama válida entrega el apartado a #37; las demás entregan motivo y candidatos a #38. No registra abonos ni envía correos.
+- **Verificación:** pruebas locales cubren coincidencias por nombre/producto, acentos e iniciales, concepto vacío, candidatos cero o múltiples, discrepancias, fecha límite, estado, pendiente, 404 explícito y errores HTTP técnicos.
+- **Pendiente:** revisión y validación en n8n con credenciales locales; workflow inactivo y PR borrador.
+- **Decisión:** 401 y 5xx se mantienen como errores técnicos para 08; un 404 de ID explícito requiere revisión manual y nunca activa una búsqueda alternativa.
