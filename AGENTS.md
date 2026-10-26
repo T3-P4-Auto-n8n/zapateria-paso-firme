@@ -91,6 +91,10 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 |---|---|---|
 | Las transferencias bancarias se registran con `forma_pago` `"bizum"` | La app no acepta `"transferencia"` (devuelve `422`) | Confirmada por el profesor |
 | Un abono de un cliente sin email no envía nada (ni al cliente ni a la tienda) | En un abono el cliente está en contacto con la tienda; avisar a la tienda en cada abono la llenaría de correos | Tomada |
+| En el informe mensual, un apartado cuenta como liquidado en el mes de la `fecha` de su último abono | La app no guarda la fecha de liquidación; un apartado `liquidado` no admite más abonos, así que su último abono es el que lo liquidó | Tomada |
+| En el informe mensual, un apartado cuenta como vencido en el mes de la `fecha` de su vale | La app no guarda la fecha de vencimiento; el vale se genera el día en que n8n lo vence. La `fecha_limite` es el plazo, no el día en que venció | Tomada |
+| El informe mensual se prueba con un Form Trigger con un campo Date `mes`, además del Schedule Trigger del día 1 | Permite pedir cualquier mes sin editar el flujo ni esperar al día 1; mismo patrón que la migración del Excel | Tomada |
+| El informe mensual va en una tabla HTML en el correo, no en PDF | El README admite las dos; se ve directamente en el correo y no necesita nodos ni servicios para generar el PDF | Tomada |
 
 ## 9. Lo que el agente NO debe hacer
 

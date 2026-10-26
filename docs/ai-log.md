@@ -583,6 +583,78 @@ No ejecutes nada más.
 
 **Instrucción de trabajo:** especificar HU-03 con el disparador de desarrollo y final, extracción de ordenante/importe/concepto, búsqueda y decisiones mediante API, registro y errores 422, avisos a Marisa y resultados esperados para los nueve correos. Aplicar la plantilla y las decisiones de AGENTS.md. La IA solo extrae los tres datos; las reglas del flujo deciden.
 
+### Spec del informe mensual · HU-08 (`specs/07-informe-mensual.md`)
+
+- **Autora:** Esra (la HU era de Beste)
+- **Tarea:** issue #70 y sub-issues #71–#76: spec del flujo `07 · Informe mensual`. Solo documentación; el flujo todavía no se construye.
+- **Resultado:**
+  - Spec nueva con la plantilla. Tiene dos disparadores:
+    - Schedule Trigger el día 1 a las 8:00, con la zona `Europe/Madrid` en Settings;
+    - Form Trigger `Elegir mes` (campo Date `mes`) para probar y repetir informes.
+  - **Flujo:** `Calcular periodo` (Code, Luxon), cuatro `GET` en cadena con Execute Once y Always Output Data (ventas del mes, abonos desde el día 1, apartados y vales), `Preparar informe` (Code) y `Enviar informe mensual` (HTML, sin atribución).
+  - Cada cifra tiene su endpoint y su regla. El pendiente de cobro es la suma del `pendiente` de la app de los apartados `activo`, en el momento de ejecutar el flujo.
+  - **Pruebas:**
+    - valores esperados de septiembre de 2026 calculados con una consulta de solo lectura a la base de datos de la app (sin `POST`): ventas 3772.75, abonos 289.00, total 4061.75, pendiente 787.05, 6 nuevos, 2 liquidados y 0 vencidos;
+    - un mes vacío (enero de 2026), el periodo calculado desde el Schedule Trigger y un `401`.
+  - Cuatro decisiones nuevas en la sección 8 de `AGENTS.md`: liquidados, vencidos, disparador de prueba y HTML en vez de PDF. `07 · Informe mensual` ya estaba en la sección 5.
+  - El agente consultó con n8n-mcp:
+    - Schedule Trigger (versión 1.4, intervalo Months, opción If Execution Is Missed);
+    - Form Trigger (campo Date);
+    - Send Email (Email Format HTML, campo `html`).
+- **Problemas encontrados:**
+  - **Sin fecha de liquidación ni de vencimiento.** La app no las guarda. Se usa la `fecha` del último abono para los liquidados y la `fecha` del vale para los vencidos.
+  - **Abonos del mes y regla de liquidados.** Si se leyeran solo los abonos del mes, un apartado con abonos en septiembre y liquidado en octubre contaría como liquidado en septiembre. Por eso se leen los abonos **desde** el día 1, sin `hasta`.
+  - **Vencido con retraso en los datos de ejemplo.** El apartado 22 tiene la `fecha_limite` del 11/09, pero su vale es del 21/10 (el día que se cargó el seed). Con la regla elegida sale en octubre, no en septiembre. Queda como caso de prueba.
+  - **El pendiente es el de hoy.** La app no guarda el histórico. Al pedir un mes antiguo por el formulario, el pendiente es el del momento de ejecutar; la spec y el informe lo indican.
+  - **Valores ligados al seed.** Los valores esperados dependen del día en que se cargó el seed (21/10/2026). Si se recarga, hay que recalcularlos.
+  - **Opción que puede no estar.** If Execution Is Missed aparece en la versión 1.4 del Schedule Trigger de n8n-mcp; está por confirmar que exista en n8n 2.4.5. Si no, el informe se repite a mano con el formulario.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-08 · Informe mensual (flujo 7), issue #70 y sub-issues #71–#76, nivel Medio. Escribe la spec. Después la pareja construirá el flujo en n8n; ahora solo la spec. Rama `feature/hu-08-informe-mensual` (sale de `dev`). La HU era de Beste y ahora es de Esra.
+
+## Fuentes
+
+- README: HU-08, fila del flujo 7 en «Automatizaciones a construir» y nivel Medio («Informe mensual en PDF o con tabla en el correo»).
+- `AGENTS.md`, `docs/ontologia.md`, `docs/guia-de-la-app.md`, `specs/_plantilla.md`, y como ejemplo de estilo `specs/01-eventos-tienda.md` y `specs/09-migracion-excel.md`.
+- `backend/routes/` y `backend/models/`: qué devuelven y qué filtros admiten `GET /api/ventas`, `GET /api/abonos`, `GET /api/apartados`, `GET /api/apartados/resumen` y el endpoint de vales. Comprueba qué fechas existen (el apartado no tiene fecha de liquidación ni de vencimiento).
+- n8n-mcp: Schedule Trigger (día 1 de cada mes, zona horaria), Send Email con HTML, y cómo probar el flujo sin esperar al día 1.
+
+## Contenido
+
+1. `specs/07-informe-mensual.md` con la plantilla:
+   - **Disparador:** Schedule Trigger el día 1 a una hora razonable, zona `Europe/Madrid`. Más una forma de probarlo con un mes concreto (por ejemplo, un Manual Trigger o Form Trigger con el mes); decide cuál y por qué.
+   - **Periodo:** el mes anterior completo (del día 1 al último día), calculado en el flujo.
+   - **Contenido del informe**, cada cifra con su endpoint y su regla:
+     - recaudado en ventas directas y en abonos, por separado, y el total; si es útil, desglose por `forma_pago`;
+     - total pendiente de cobro: suma de `pendiente` de los apartados activos, tal como lo da la app (no se recalcula);
+     - apartados nuevos del mes (por `fecha` del apartado);
+     - apartados liquidados del mes: la app no guarda la fecha de liquidación; propón la regla (por ejemplo, la fecha del último abono de un apartado `liquidado`) y anótala como decisión;
+     - apartados vencidos del mes (por la `fecha` del vale, o lo que permita la API);
+     - qué hacer si un mes no tiene movimientos (el informe lo dice, no falla).
+   - **Salida:** un correo a Marisa con tabla HTML (credencial `Mailpit`, From y To según la convención de las otras specs, sin atribución de n8n). Asunto con el mes y el total recaudado.
+   - **Casos de error:** `401`, la app no responde, listas vacías. Error workflow `08`.
+   - **Prueba:** con los datos de ejemplo de la app (`SEED=1`, cubre los últimos 75 días): mes de prueba septiembre de 2026. Calcula con la API o la base de datos de solo lectura los valores esperados (no hagas `POST`) y ponlos en una tabla para comparar con el correo («los importes coinciden con los de la app»). Evidencias previstas en `docs/evidencias/07-hu08-*.png`.
+   - **Criterios de aceptación:** los 3 de la HU-08 del README, tal cual.
+2. `AGENTS.md`:
+   - Sección 5: `07 · Informe mensual`, si no está.
+   - Sección 8: las decisiones que tomes (regla de liquidados, de vencidos, disparador de prueba, HTML en vez de PDF), con su porqué.
+3. `docs/ai-log.md`: entrada «### Spec del informe mensual · HU-08 (`specs/07-informe-mensual.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo la spec: no toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. Puedes hacer `GET` a la API para calcular los valores esperados, nunca `POST`.
+- Usa solo campos de `docs/ontologia.md`; si falta algo, déjalo como pregunta.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
