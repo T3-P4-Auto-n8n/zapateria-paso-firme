@@ -94,6 +94,7 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 | Los apartados y abonos del Excel se registran con la forma de pago del CSV de ventas cuando el mismo pago aparece allí (misma fecha e importe); si no, `efectivo` | El CSV de apartados no la indica; `efectivo` es el valor por defecto de la app. El informe indica de dónde sale cada una | Tomada |
 | Se migran también las ventas, salvo las filas de abono y el TOTAL | README: los dos CSV son para la migración; las filas de abono ya están en el CSV de apartados y el TOTAL no es una venta | Tomada |
 | Un abono cuyo apartado no se pudo cargar también va al informe como dudoso | Sin su apartado no se puede registrar, y Marisa decide qué hacer | Tomada |
+| El umbral de venta grande se guarda en una Data table de n8n (`Configuración`) | Las Variables de n8n requieren licencia de pago | Tomada |
 
 ## 9. Lo que el agente NO debe hacer
 
