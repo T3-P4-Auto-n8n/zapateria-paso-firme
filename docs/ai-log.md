@@ -4,16 +4,37 @@ Registro de cómo usamos agentes de IA en el proyecto: herramientas, prompts cla
 
 ## 1. Herramientas y modelos
 
-| Uso | Herramienta | Modelo | Estado |
-|---|---|---|---|
-| Agente de desarrollo | Claude Code | Claude Opus 5.5 (`claude-opus-5-5`) | En uso |
-| Nodos de IA dentro de n8n | Groq (capa gratuita) | Por decidir | Pendiente de configurar |
-| Documentación y validación de nodos | n8n-mcp (modo solo documentación) | — | En uso |
+| Uso | Quién | Herramienta | Modelo | Estado |
+|---|---|---|---|---|
+| Agente de desarrollo | Esra | Claude Code | Claude Opus 5.5 (`claude-opus-5-5`) | En uso |
+| Agente de desarrollo | Beste | Codex (OpenAI) | No consta en el repo | En uso (por ejemplo, en HU-04: «Autora: Beste, con Codex») |
+| Nodo de IA dentro de n8n | El flujo 3 (`03 · Abonos a distancia`, nodo `Extraer datos con Groq`) | Groq, capa gratuita (credencial `Groq`) | `openai/gpt-oss-20b`, temperatura 0, JSON Object Mode | En uso en el flujo 3 (rama `feature/39-hu03-prueba-correos`, todavía sin fusionar) |
+| Documentación y validación de nodos | Las dos | n8n-mcp, en modo solo documentación (`.mcp.json`) | — | En uso |
 
-**Por qué Claude Code y no OpenCode.** El README recomienda OpenCode, pero permite otras herramientas si se justifica la elección. Usamos Claude Code porque ya lo tenemos las dos.
+**Por qué Claude Code y Codex, y no OpenCode.** El README recomienda OpenCode y admite alternativas si se justifican. También admite IAs de pago, si se tiene en cuenta para no pisar el trabajo del equipo y se delimita bien su alcance. Cada una usa el agente que ya tenía: Esra, Claude Code; Beste, Codex. Así delimitamos el alcance:
 
-- **Alcance:** specs, documentación, JSON de los flujos y revisión.
-- **Para no pisarnos:** cada una lo usa en su propia rama y en su propia tarea.
+- **Cada una en su rama y en su tarea** (una tarea = una rama = una PR, [AGENTS.md, sección 6](../AGENTS.md#6-forma-de-trabajo)). Dos agentes distintos no trabajan nunca sobre la misma rama, así que no se pisan.
+- **El mismo contexto para los dos.** Los dos leen el mismo [`AGENTS.md`](../AGENTS.md): Claude Code lo carga desde `CLAUDE.md` (que solo contiene `@AGENTS.md`), y Codex lee `AGENTS.md` directamente. Las reglas de negocio, las convenciones y los límites son los mismos para los dos.
+- **El agente no toca n8n.** No activa ni publica flujos, no escribe claves y no modifica `backend/` ni `frontend/` ([AGENTS.md, sección 9](../AGENTS.md#9-lo-que-el-agente-no-debe-hacer)). n8n-mcp no tiene API key (ver abajo).
+- **Qué hace el agente y qué hace la pareja.** El agente escribe las specs, el código de los nodos Code y la documentación, y comprueba los JSON exportados. La pareja construye los nodos a mano en n8n, pega el código, prueba y exporta (por ejemplo, «Construcción del flujo · HU-13»).
+- **Todo pasa por una PR revisada** antes de llegar a `dev`. El agente no hace push a `main` ni a `dev`, ni fusiona PRs.
+
+**Modelo gratuito: Groq con `openai/gpt-oss-20b` en el flujo 3.** Es el único flujo con IA. Por qué:
+
+- **Capa gratuita**, como pide el README (es uno de sus ejemplos).
+- **Compatible con OpenAI.** El nodo es un HTTP Request a `https://api.groq.com/openai/v1/chat/completions` con la credencial `Groq`. Si cambia el modelo, solo cambia `model` en el cuerpo de la petición.
+- **La IA solo extrae; no decide.** Devuelve `ordenante`, `importe` y `concepto`, en un JSON con exactamente esas tres claves. Las decisiones las toma el flujo con la API: buscar el apartado, comprobar el plazo y lo pendiente, y registrar o preguntar a Marisa ([AGENTS.md, sección 9](../AGENTS.md#9-lo-que-el-agente-no-debe-hacer)). `Validar extracción` compara la respuesta con el texto del correo antes de seguir, y lo que no cuadra va a revisión.
+- **Temperatura 0 y JSON Object Mode**, para que la salida sea siempre un objeto JSON y lo más estable posible.
+
+**Qué datos personales recibe Groq.** Solo un JSON `{ ordenante, importe, concepto }`. `Preparar correo` lo recorta del cuerpo del aviso bancario antes de llamar a Groq. No se envían el asunto, el resto del cuerpo, la referencia del correo, las cuentas ni los datos de los apartados candidatos. El `ordenante` (nombre de quien paga) y el `concepto` (que puede llevar un nombre o un producto) son los datos personales que se envían, y son imprescindibles: son justo lo que hay que extraer. La publicidad del banco no llega a Groq: la descarta antes el filtro.
+
+**Comparativa de modelos:** pendiente, en [#96](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/issues/96) y [#98](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/issues/98) (Beste).
+
+**Por qué n8n-mcp sin API key.** El README dice que n8n-mcp, conectado a la API de la instancia, deja al agente crear, validar y actualizar flujos. Lo usamos **sin** esa conexión:
+
+- **Sin API key, el agente no puede crear, cambiar ni publicar flujos** en n8n. Es una garantía de la sección 9 de AGENTS.md que no depende de que el agente la cumpla.
+- **Para qué lo usamos:** consultar nodos y parámetros antes de escribir una spec (`search_nodes`, `get_node`) y validar los JSON de `workflows/` con `validate_workflow` antes de cada PR.
+- **Cómo se configura:** [`.mcp.json`](../.mcp.json) lanza `npx -y n8n-mcp` (necesita Node.js) con `MCP_MODE=stdio`, sin `N8N_API_URL` ni `N8N_API_KEY`. Claude Code pide aprobar el servidor al abrir el proyecto ([AGENTS.md, sección 6](../AGENTS.md#herramientas-del-agente)).
 
 ## 2. Cómo registramos
 
@@ -1762,6 +1783,67 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
   - **Sin página de vales.** La app no tiene página de vales: cada vale se ve en la página de su apartado. Se corrigió en la spec del `06`.
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
+
+### Agente, modelos y n8n-mcp · #8
+
+- **Autora:** Esra
+- **Tarea:** #8 [Base del proyecto]: dejar documentados y justificados el agente, el modelo gratuito y n8n-mcp, en la sección 1 de este documento. Rama `docs/8-agente-ia`. Solo documentación.
+- **Resultado:** sección 1 reescrita.
+  - **Tabla:**
+    - un agente de desarrollo por persona: Esra con Claude Code; Beste con Codex, cuyo modelo no consta en el repo;
+    - el modelo de n8n: Groq con `openai/gpt-oss-20b`, sacado del nodo `Extraer datos con Groq` del JSON del `03`, en uso en el flujo 3;
+    - n8n-mcp en modo solo documentación.
+  - **Por qué Claude Code y Codex, y no OpenCode:** cada una usa el agente que ya tenía. El alcance se delimita con hechos del repo:
+    - una rama y una tarea por persona;
+    - el mismo `AGENTS.md` para los dos agentes;
+    - la sección 9 de AGENTS.md;
+    - la pareja construye los nodos y el agente escribe specs, código y documentación;
+    - todo pasa por una PR revisada.
+  - **Modelo gratuito:** por qué Groq y ese modelo, y que la IA solo extrae y el flujo decide. Qué datos recibe Groq: solo `{ ordenante, importe, concepto }`, recortados antes en `Preparar correo`, y por qué son los imprescindibles. Enlace a la comparativa pendiente (#96, #98).
+  - **Por qué n8n-mcp sin API key**, y cómo se configura.
+- **Problemas encontrados:**
+  - **Error nuestro en la sección 1.** Decía que usábamos Claude Code «porque ya lo tenemos las dos». No era así: Esra usa Claude Code y Beste usa Codex, como dice su entrada de HU-04 en `origin/feature/hu04-cierre-diario` («Autora: Beste, con Codex»). Se corrigió.
+  - **La sección 1 estaba desactualizada.** El modelo de Groq seguía «Por decidir / Pendiente de configurar», aunque el flujo 3 ya usa `openai/gpt-oss-20b` («Extracción estructurada HU-03 (#34)», prueba real del 26/10/2026).
+  - **No se puede comprobar en el repo:**
+    - el modelo que usa Codex;
+    - el límite de la capa gratuita de Groq;
+    - que el código del `03` siga igual al fusionarse, porque solo está en la rama de HU-03.
+    - No se afirma nada de eso: la tabla dice «No consta en el repo» para el modelo de Codex y que el `03` está «todavía sin fusionar».
+- **Decisión:** pendiente de revisión de la pareja. Que Beste confirme la fila de Codex y lo que se dice del flujo 3.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#8 [Base del proyecto] «Agente de IA elegido y configurado + modelo gratuito + n8n-mcp (justificar la elección en ai-log)». Todo está ya en uso; falta dejarlo documentado y justificado en `docs/ai-log.md`, sección «1. Herramientas y modelos», que está desactualizada (dice que el modelo de Groq está «Por decidir / Pendiente de configurar»). Rama `docs/8-agente-ia`. Solo documentación.
+
+## Fuentes
+
+- README, sección «🤖 Desarrollo Agéntico con IA» (Herramientas) y requisito técnico 10.
+- `docs/ai-log.md` (sección 1 y las entradas: qué se ha hecho con el agente, qué errores se detectaron), `AGENTS.md` (sección 6 «Herramientas del agente» y sección 9), `.mcp.json`.
+- El modelo de Groq que usa el flujo 3: `git show origin/feature/39-hu03-prueba-correos:workflows/03-abonos-distancia.json` (nodo `Extraer datos con Groq`) y `specs/03-abonos-distancia.md`.
+- Issues #96 y #98 (comparativa de modelos, de Beste): solo para enlazarla, no la hagas.
+
+## Contenido
+
+1. `docs/ai-log.md`, sección 1, actualizada:
+   - **Corrección:** el párrafo actual dice que usamos Claude Code «porque ya lo tenemos las dos». No es así: **Esra usa Claude Code y Beste usa Codex** (OpenAI; ver su entrada de HU-04 en `origin/feature/hu04-cierre-diario`, «Autora: Beste, con Codex»). Corrígelo y deja constancia en la entrada nueva de que era un error nuestro.
+   - Tabla: un agente de desarrollo por persona (Esra: Claude Code y su modelo; Beste: Codex, sin inventar el modelo si no está en el repo), modelo de IA dentro de n8n (Groq, capa gratuita, el modelo exacto del JSON del `03`, «En uso» en el flujo 3), n8n-mcp (modo solo documentación, «En uso»).
+   - **Por qué Claude Code y Codex y no OpenCode** (sustituye el párrafo actual): cada una usa el agente que ya tenía. El README admite IAs de pago si se delimita el alcance; di cuál es ese alcance y cómo lo delimitamos, con hechos del repo: cada una en su rama y su tarea, así dos agentes distintos no se pisan; los dos leen el mismo `AGENTS.md` (Claude Code lo carga con `CLAUDE.md` → `@AGENTS.md`; Codex lee `AGENTS.md` directamente); el agente no toca n8n ni publica (AGENTS.md, sección 9); la pareja construye los nodos a mano y el agente escribe specs, código de los nodos Code y documentación; todo pasa por PR revisada.
+   - **Modelo gratuito:** por qué Groq y ese modelo para el flujo 3 (capa gratuita, compatible con OpenAI, solo extrae ordenante, importe y concepto; las decisiones las toma el flujo). Qué datos personales se le envían y por qué son los imprescindibles. Enlace a la comparativa de modelos (#96) como pendiente.
+   - **Por qué n8n-mcp sin API key:** sin conexión a la instancia, el agente no puede crear ni publicar flujos; lo usamos para consultar nodos y para `validate_workflow` antes de cada PR. Cómo se configura (`.mcp.json`, aprobar el servidor al abrir el proyecto).
+2. `docs/ai-log.md`: entrada «### Agente, modelos y n8n-mcp · #8» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo `docs/ai-log.md`. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No escribas ninguna clave. Solo hechos que estén en el repo; si algo no lo puedes comprobar, dilo en tu respuesta en lugar de inventarlo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué has cambiado.
+```
+
+</details>
 
 ## 4. Decisiones abiertas
 
