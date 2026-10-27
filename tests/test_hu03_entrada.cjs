@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
-const workflow = JSON.parse(fs.readFileSync(path.join(root,'workflows/03-abonos-distancia-entrada.json'),'utf8'));
+const workflow = JSON.parse(fs.readFileSync(path.join(root,'workflows/03-abonos-distancia.json'),'utf8'));
 const normalizer = workflow.nodes.find(n => n.type === 'n8n-nodes-base.code');
 const normalize = input => JSON.parse(JSON.stringify(vm.runInNewContext('(function(){'+normalizer.parameters.jsCode+'\n})()',{$json:input}).json));
 
@@ -58,7 +58,7 @@ test('normalization does not filter advertising, extract a payment or pass throu
  assert.equal(result.cuerpo,'Oferta: hasta 150 EUR');
  assert.deepEqual(Object.keys(result).sort(),['asunto','cuerpo','entrada_valida','motivo','origen','referencia']);
 });
-test('the exported boundary is inactive, both triggers reach the same normalizer, and there are no write-capable nodes', () => {
+test('the integrated export is inactive, both triggers share normalization, and side effects are downstream of HU-03 guards', () => {
  assert.equal(workflow.active,false);
  for (const trigger of workflow.nodes.filter(n=>['n8n-nodes-base.formTrigger','n8n-nodes-base.emailReadImap'].includes(n.type))) {
   assert.equal(workflow.connections[trigger.name].main[0][0].node,normalizer.name);
@@ -71,5 +71,14 @@ test('the exported boundary is inactive, both triggers reach the same normalizer
  assert.equal(imap.disabled,true);
  assert.equal(imap.parameters.downloadAttachments,false);
  assert.equal(imap.parameters.format,'simple');
- assert(workflow.nodes.every(n=>['formTrigger','emailReadImap','code','stickyNote'].some(t=>n.type==='n8n-nodes-base.'+t)));
+ assert(workflow.nodes.some(n=>n.name==='Filtrar aviso bancario'));
+ assert(workflow.nodes.some(n=>n.name==='Extraer datos con Groq'));
+ assert(workflow.nodes.some(n=>n.name==='Decidir apartado (#36)'));
+ assert(workflow.nodes.some(n=>n.name==='Registrar abono'));
+ assert(workflow.nodes.some(n=>n.name==='Avisar a la tienda para revisar el pago'));
+ assert.deepEqual(workflow.connections['¿Se puede registrar? (#36)'].main.map(xs=>xs.map(x=>x.node)),[
+  ['Continuar con registro (#37)'],['Revisar pago (#38)']
+ ]);
+ assert.equal(workflow.connections['Fin tras éxito HU-02 (#37)'],undefined);
+ assert.equal(workflow.nodes.find(n=>n.name==='Registrar abono').parameters.method,'POST');
 });

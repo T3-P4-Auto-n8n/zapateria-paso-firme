@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
-const file=path.join(root,'workflows/03-abonos-distancia-registro.json');
+const file=path.join(root,'workflows/03-abonos-distancia.json');
 function workflow(){return JSON.parse(fs.readFileSync(file,'utf8'));}
 function node(w,name){return w.nodes.find(n=>n.name===name);}
 const approved={decision:'registrar',importe:10,apartado:{id:1,estado:'activo',pendiente:20,fecha_limite:'2027-01-01'},referencia:'test.eml'};
@@ -54,7 +54,7 @@ test('HTTP auth/server and transport errors throw to workflow 08',()=>{
  for(const status of [401,500,503]) assert.throws(()=>response(approved,status,{detail:'failure'}),new RegExp(`HTTP ${status}`));
  assert.throws(()=>response(approved,undefined,undefined,{message:'socket timeout'}),/error técnico/i);
 });
-test('workflow wires only approved requests, success and 422 review; no email or automatic retry',()=>{
+test('workflow wires only approved requests, success and 422 review; keeps Mailpit review and no automatic retry',()=>{
  const w=workflow(); assert.equal(w.active,false);
  assert.deepEqual(w.connections['Continuar con registro (#37)'].main[0].map(x=>x.node),['Preparar solicitud de abono (#37)']);
  assert.deepEqual(w.connections['¿Registrado? (#37)'].main.map(xs=>xs.map(x=>x.node)),[
@@ -62,6 +62,8 @@ test('workflow wires only approved requests, success and 422 review; no email or
  ]);
  const posts=w.nodes.filter(n=>n.type==='n8n-nodes-base.httpRequest'&&n.parameters.method==='POST');
  assert.equal(posts.length,2); // Groq extraction plus payment registration
- assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.emailSend'));
+ assert(w.nodes.some(n=>n.type==='n8n-nodes-base.emailSend'&&n.parameters.toEmail==='tienda@pasofirme.example'));
+ assert.deepEqual(w.connections['Revisar pago (#38)'].main[0].map(x=>x.node),['Preparar aviso de revisión (#38)']);
+ assert.deepEqual(w.connections['Fin tras éxito HU-02 (#37)'],undefined);
  assert.equal(w.settings.errorWorkflow,JSON.parse(fs.readFileSync(path.join(root,'workflows/08-error-workflow.json'),'utf8')).id);
 });

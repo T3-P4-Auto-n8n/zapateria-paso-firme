@@ -1,15 +1,13 @@
 # HU-03 · Decisión de apartado (#36)
 
-## Alcance
+## Workflow integrado
 
-Esta etapa recibe la respuesta HTTP de #35 y los campos ya validados por #34. Solo permite continuar a #37 si hay un único candidato compatible con el ordenante y el producto, el apartado sigue activo, está dentro de plazo y `pendiente` cubre el importe. Concepto vacío, cero o varios candidatos, discrepancias o reglas incumplidas van a revisión (#38). No registra abonos ni envía correo.
+La decisión está integrada en `workflows/03-abonos-distancia.json`, después de la consulta GET. **Decidir apartado (#36)** solo devuelve `registrar` si hay un único apartado compatible con ordenante y producto, activo, en plazo y con pendiente suficiente. La siguiente condición permite a #37 preparar el POST solo por esa salida; el resto se deriva a revisión #38 y Mailpit.
 
-Un ID explícito nunca se sustituye por una búsqueda nominal cuando la API responde 404. Se comparan nombres y productos sin distinguir mayúsculas ni tildes; las iniciales del ordenante pueden coincidir con el nombre completo de la API cuando el producto también concuerda. Si el GET devuelve 401 o 5xx, la etapa lanza un error técnico para el workflow 08.
+Un concepto vacío, cero o varios candidatos, discrepancias, un apartado vencido/inactivo, saldo insuficiente o 404 explícito requieren revisión. Un ID explícito nunca cambia a búsqueda nominal si falla. Se comparan nombres y productos sin distinguir mayúsculas o tildes; las iniciales solo pueden coincidir si también concuerda el producto. 401 y 5xx son errores técnicos para el workflow 08.
 
-## Configuración y seguridad
+## Pruebas
 
-Importar `workflows/03-abonos-distancia-decision.json` en n8n, asignar `Groq` y `API Tienda`, y elegir el `08 · Error Workflow` local en **Settings**. Mantener IMAP deshabilitado, el workflow inactivo y usar solo los correos ficticios. El handoff a #37 es un No Operation: la escritura se implementa en la tarea siguiente. La rama #38 también queda como No Operation hasta su tarea de aviso. No publicar este flujo.
+`node --test tests/test_hu03_decision.cjs` ejecuta el Code node de la exportación integrada con respuestas simuladas y cubre coincidencia única, concepto vacío, candidatos cero/múltiples, discrepancias, tildes/iniciales, vencimiento, estado, saldo, 404 y errores HTTP. La prueba estructural confirma que `registrar` va al POST protegido de #37 y las decisiones dudosas al correo de revisión.
 
-## Verificación
-
-`tests/test_hu03_decision.cjs` ejecuta el Code node con respuestas simuladas: coincidencia válida, concepto vacío, cero/múltiples candidatos, identidad/producto discrepante, tildes e iniciales, vencimiento, estado no activo, saldo insuficiente, 404 explícito y errores 401/5xx. También comprueba que solo la llamada de Groq es POST y que no hay nodos de email. Estas pruebas no sustituyen la importación y prueba real en n8n; siguen pendientes la credencial, llamada a la API y selección del workflow 08 local.
+Esta prueba no sustituye la ejecución E2E en n8n. Mantener el workflow inactivo y usar solo correos de ejemplo con una API desechable aislada.

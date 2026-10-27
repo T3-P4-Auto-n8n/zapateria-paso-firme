@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
-const file=path.join(root,'workflows/03-abonos-distancia-decision.json');
+const file=path.join(root,'workflows/03-abonos-distancia.json');
 function workflow(){return JSON.parse(fs.readFileSync(file,'utf8'));}
 function node(w,name){return w.nodes.find(n=>n.name===name);}
 const FixedDate=class extends Date { constructor(...args){super(...(args.length?args:['2026-10-26T12:00:00+01:00']));} };
@@ -47,7 +47,7 @@ test('authorization and server errors remain technical failures for workflow 08'
  assert.throws(()=>decide(base,[],401),/HTTP 401/);
  assert.throws(()=>decide(base,[],503),/HTTP 503/);
 });
-test('workflow sends only registrar to #37 and review to #38; no writes or email',()=>{
+test('workflow sends only registrar to the guarded #37 POST and review to the store email',()=>{
  const w=workflow();
  assert.equal(w.active,false);
  assert.deepEqual(w.connections['Buscar apartado'].main[0].map(x=>x.node),['Resultados de búsqueda']);
@@ -55,7 +55,12 @@ test('workflow sends only registrar to #37 and review to #38; no writes or email
  assert.deepEqual(w.connections['¿Se puede registrar? (#36)'].main.map(xs=>xs.map(x=>x.node)),[
   ['Continuar con registro (#37)'],['Revisar pago (#38)']
  ]);
- const posts=w.nodes.filter(n=>n.type==='n8n-nodes-base.httpRequest'&&n.parameters.method==='POST');
- assert.equal(posts.length,1); // Groq only
- assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.emailSend'));
+ const groq=node(w,'Extraer datos con Groq'),payment=node(w,'Registrar abono');
+ assert.equal(groq.parameters.method,'POST');
+ assert.equal(payment.parameters.method,'POST');
+ assert.deepEqual(w.connections['¿Solicitud de abono válida? (#37)'].main.map(xs=>xs.map(x=>x.node)),[
+  ['Registrar abono'],['Revisar pago (#38)']
+ ]);
+ assert.deepEqual(w.connections['Revisar pago (#38)'].main[0].map(x=>x.node),['Preparar aviso de revisión (#38)']);
+ assert(w.nodes.some(n=>n.type==='n8n-nodes-base.emailSend'));
 });

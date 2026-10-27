@@ -4,8 +4,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const root=path.resolve(__dirname,'..');
-const exported=path.join(root,'workflows/03-abonos-distancia-extraccion.json');
+const exported=path.join(root,'workflows/03-abonos-distancia.json');
 function workflow(){return JSON.parse(fs.readFileSync(exported,'utf8'));}
+function node(w,name){return w.nodes.find(n=>n.name===name);}
 function run(name,input,prior={}){
  const code=workflow().nodes.find(n=>n.name===name).parameters.jsCode;
  return JSON.parse(JSON.stringify(vm.runInNewContext('(function(){'+code+'\n})()',{
@@ -64,21 +65,27 @@ test('advertisement stops at the filter while provider outages fail the extracti
  const prior={'Preparar correo':prepared('01_bizum_carmen')};
  assert.throws(()=>run('Validar extracción',{statusCode:429,body:{}},prior),/Error técnico/);
 });
-test('partial extraction export cannot register a payment or send a duplicate receipt',()=>{
+test('integrated extraction export gates API writes and routes review notices without duplicating HU-02 receipts',()=>{
  const w=workflow();
  const handler=JSON.parse(fs.readFileSync(path.join(root,'workflows/08-error-workflow.json'),'utf8'));
  assert.equal(w.settings.errorWorkflow,handler.id);
  assert.equal(w.active,false);
  assert(w.nodes.find(n=>n.type.endsWith('.emailReadImap')).disabled);
- const requests=w.nodes.filter(n=>n.type.endsWith('.httpRequest'));
- assert.equal(requests.length,1);
- assert.equal(requests[0].parameters.url,'https://api.groq.com/openai/v1/chat/completions');
- assert.equal(requests[0].credentials.groqApi.name,'Groq');
- assert(!w.nodes.some(n=>n.type.endsWith('.emailSend')));
+ const groq=node(w,'Extraer datos con Groq');
+ assert.equal(groq.parameters.url,'https://api.groq.com/openai/v1/chat/completions');
+ assert.equal(groq.credentials.groqApi.name,'Groq');
+ assert.equal(node(w,'Buscar apartado').parameters.method,'GET');
+ assert.equal(node(w,'Registrar abono').parameters.method,'POST');
+ assert.equal(w.nodes.filter(n=>n.type.endsWith('.httpRequest')).length,3);
+ assert.equal(w.nodes.filter(n=>n.type.endsWith('.emailSend')).length,1);
+ assert.deepEqual(w.connections['¿Se puede registrar? (#36)'].main.map(xs=>xs.map(x=>x.node)),[
+  ['Continuar con registro (#37)'],['Revisar pago (#38)']
+ ]);
+ assert.deepEqual(w.connections['Fin tras éxito HU-02 (#37)'],undefined);
  assert.equal(w.connections['¿Es un pago?'].main[0][0].node,'Preparar correo');
  assert.equal(w.connections['¿Extracción válida?'].main[0][0].node,'Continuar con búsqueda (#35)');
  assert.equal(w.connections['¿Extracción válida?'].main[1][0].node,'Revisar extracción (#38)');
- const promptBody=requests[0].parameters.jsonBody;
+ const promptBody=groq.parameters.jsonBody;
  const evaluated=vm.runInNewContext(promptBody.slice(3,-3),{$json:prepared('01_bizum_carmen')});
  const request=JSON.parse(evaluated);
  assert.equal(request.response_format.type,'json_object');

@@ -1,17 +1,13 @@
 # HU-03 · Búsqueda del apartado (#35)
 
-## Alcance
+## Workflow integrado
 
-Esta etapa toma `url_busqueda` de la validación de #34 y ejecuta un GET autenticado contra la API. El código anterior ya eligió la ruta por ID explícito o una consulta conservadora `estado=activo&q=...`. El resultado se entrega a `Resultados de búsqueda (#36)` para la decisión de candidatos.
+La búsqueda forma parte de `workflows/03-abonos-distancia.json`. El node **Buscar apartado** hace un GET autenticado con `API Tienda` usando la URL elegida por la validación, y **Resultados de búsqueda** entrega la respuesta a #36. No importar un JSON parcial.
 
-No sustituye un ID explícito si la API responde 404. No compara candidatos, decide si se registra un abono ni envía mensajes: eso corresponde a #36–#38. La exportación permanece inactiva; el HTTP Request es de solo lectura.
+La consulta usa el API de la tienda configurado para la instancia. En n8n seleccionar la credencial Header Auth local `API Tienda` con cabecera `X-API-Key`; revisar que la URL de escritura apunta solo a una base desechable antes de probar el workflow. En **Settings → Error Workflow**, elegir el `08 · Error Workflow` local. Mantener IMAP deshabilitado y el workflow inactivo.
 
-## Configuración
-
-Al importar `workflows/03-abonos-distancia-busqueda.json` en n8n, asignar las credenciales existentes `Groq` y `API Tienda` al workflow. En **Settings → Error Workflow**, seleccionar el `08 · Error Workflow` local. Mantener IMAP deshabilitado y el workflow sin publicar.
-
-Todas las solicitudes usan `X-API-Key` mediante Header Auth. Un 404 se entrega con el código de estado para la revisión de #36; un fallo de red detiene la ejecución para que actúe el workflow 08. No contiene llamadas POST a la tienda ni envíos de correo.
+Un ID explícito no se sustituye por una búsqueda nominal si da 404. Un 404 queda disponible para la decisión manual; 401, 5xx y fallos de red son errores técnicos para el workflow 08. El GET por sí solo no registra abonos; la escritura solo ocurre tras las reglas de #36 y #37.
 
 ## Verificación
 
-`tests/test_hu03_busqueda.cjs` comprueba el método y URL, credencial, respuesta completa, conexión hacia #36 y ausencia de escrituras/SMTP. La importación y validación en n8n, incluida la prueba de 404 y de credenciales, siguen pendientes; no publicar esta exportación.
+`node --test tests/test_hu03_busqueda.cjs` comprueba el método, URL, autenticación y el paso hacia la decisión integrada. También comprueba que el POST y el correo están conectados únicamente a ramas posteriores con guardas. Es una prueba estática/local; no acredita una consulta en vivo de n8n.

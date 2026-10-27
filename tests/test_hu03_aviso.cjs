@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
-const file=path.join(root,'workflows/03-abonos-distancia-aviso.json');
+const file=path.join(root,'workflows/03-abonos-distancia.json');
 function workflow(){return JSON.parse(fs.readFileSync(file,'utf8'));}
 function node(w,name){return w.nodes.find(n=>n.name===name);}
 const candidate={id:12,cliente:'Laura Ortega',producto:'Deportivas blancas',talla:'38',pendiente:10,fecha_limite:'2027-01-01',estado:'activo'};
