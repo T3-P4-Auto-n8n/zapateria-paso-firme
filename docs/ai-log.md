@@ -1583,6 +1583,186 @@ HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `
 - **Decisión:** aceptado. Con los días del Schedule Trigger corregidos, todos los criterios de la sección 8 de la spec están cumplidos.
 - No hay prompt: el flujo lo construyó la pareja a mano.
 
+### Spec de vencimientos · HU-07 (`specs/06-recordatorios-vencimientos.md`, `specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** HU-07 (#64, sub-issues #65–#69): spec de las dos partes ya repartidas. **Parte A** (criterios 1 y 3): el `06 · Recordatorios y vencimientos`, solo con la rama de vencimientos. **Parte B** (criterio 2): la rama `apartado.vencido` del `01`, que envía el vale al cliente con `10 · Enviar notificación`. Solo documentación; la pareja construye a mano en n8n. Rama `feature/hu-07-vencidos`, que sale de `feature/95-sub-workflows-en-01` (PR #170).
+- **Resultado:**
+  - **`specs/06-recordatorios-vencimientos.md`** (nuevo), nodo a nodo:
+    - `Cada mañana a las 9:00` (todos los días) y `Probar a mano` (Manual Trigger);
+    - `Leer apartados activos` (`Buscar apartado` con `estado` `activo`, Run once for each item);
+    - `Elegir los fuera de plazo` (Code: `fecha_limite` < hoy en `Europe/Madrid`, `{ id: null }` si no hay ninguno) y el IF `¿Hay apartados que vencer?`;
+    - `Vencer apartado` (`POST /vencer` con Batching 1 y Never Error);
+    - `Preparar lista` (Code: `200` vencido, `404`/`422` a la lista, otro código para con error y nombra los ya vencidos);
+    - `Enviar lista a la tienda` (`Enviar notificación`).
+    - Sección 4.2 para HU-06, «pendiente, Beste», con lo que tiene que saber para compartir el workflow (los disparadores, la lectura y que los dos conjuntos de apartados no se cruzan), sin escribirla.
+    - Casos de error, 4 pruebas, criterios y 3 preguntas (validez del vale, hora de apertura, día sin vencidos).
+  - **`specs/01-eventos-tienda.md`:** nota de alcance, campos de la rama, pasos 16–18 (`¿Tiene email? (vencido)`, `Enviar vale al cliente`, `Avisar a la tienda: vencido sin email`) con los Workflow Inputs de una línea, salidas, casos de error, pruebas y el criterio 2.
+  - **`tests/payloads/apartado.vencido-sin-email.json`** (nuevo): `apartado.vencido.json` con `email` `null`, para la rama No.
+  - **`specs/10-sub-workflows.md`, sección 4.3:** el vale al cliente pasa del `06` al `01`.
+  - **`AGENTS.md`, sección 8:** 4 filas (el reparto, «Tomada»; la hora y la regla de fuera de plazo, el día sin vencidos y el vencido sin email, «Pendiente de revisión»).
+  - **Lo que hace la app al vencer** (`backend/models/apartado.py`): `200` con `{ apartado, vale }` (vale `VALE-<id con 5 cifras>`, `importe` = `abonado`) y el webhook `apartado.vencido`; `422` si no está `activo` («El apartado ya está …») o si hoy ≤ `fecha_limite` («no vence hasta …»); `404` si no existe. Usa `date.today()` con `TZ=Europe/Madrid`.
+  - **Datos reales** (`GET /api/apartados?estado=activo`, solo lectura): 20 activos; fuera de plazo el 27/10/2026, el 16 (Paula Ramos), el 15 (Sergio Delgado), el 14 (Marta Molina) y el 13 (Pablo Rubio), como decía el prompt. Los 4 tienen email, así que se esperan 4 correos a clientes, 0 avisos de «sin email» y 1 lista.
+  - **Comprobado en local con node y Luxon:**
+    - las expresiones de la parte B con `apartado.vencido.json`, con el payload sin email y con los 4 avisos que enviará la app (construidos con el `GET` real y el vale del backend);
+    - el filtro y la lista de la parte A con el `GET` real y respuestas de `/vencer` simuladas: los 4 apartados en orden de `fecha_limite`; con un `422` simulado, 3 vencidos y 1 con error; con los activos que quedan después, `{ id: null }`.
+- **Decisiones tomadas en la spec:**
+  - **Hora y días:** 9:00, todos los días. Por la mañana n8n y la app tienen el mismo «hoy», no se cruza con el datáfono (22:00) ni con el cierre, y los recordatorios de HU-06 no pueden saltarse el domingo.
+  - **Fuera de plazo:** `fecha_limite` anterior a hoy. El de hoy no se vence, porque la app daría `422`.
+  - **Día sin vencidos:** no se envía nada. La lista es para actuar y un correo diario vacío acaba sin leerse; los fallos los avisa el `08`.
+  - **Vencido sin email:** aviso a la tienda con el teléfono y el vale, como HU-01. Un vencimiento ocurre sin el cliente delante.
+  - **Error a mitad:** un `401` o `5xx` para el flujo, y el mensaje del `08` lleva los apartados ya vencidos con su vale, para que la tienda no pierda esa lista.
+- **Problemas encontrados:**
+  - **El payload de prueba no coincide con los datos de ejemplo.** En `apartado.vencido.json`, el 16 tiene talla 39 y fecha límite 18/10/2026; en la app, talla 40 y 23/09/2026. Se anota en la spec del `01`; las pruebas del webhook usan el payload y la de extremo a extremo, los datos reales.
+  - **El resultado depende del día de carga del seed.** Con un seed cargado otro día, cambian los apartados fuera de plazo. Desde el 29/10 también saldrían el 11 y el 12 (vencen el 28/10).
+  - **Un webhook perdido no se recupera.** Si el `01` no está publicado cuando se vence un apartado, el cliente no recibe el vale. La lista de la tienda lleva el código para avisarle.
+  - **La app no dice cómo se usa ni cuánto dura un vale** (`usado` siempre `0`, sin endpoint). El correo no pone caducidad; queda como pregunta.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-07 · Apartados vencidos con su vale (#64, nivel Medio; sub-issues #65–#69). Escribe la spec. La pareja construirá a mano en n8n después; ahora solo documentación. Rama `feature/hu-07-vencidos`, que sale de `feature/95-sub-workflows-en-01` (PR #170, sin fusionar: el flujo 1 del `01` ya usa `10 · Enviar notificación`).
+
+Criterios (README):
+1. Los apartados fuera de plazo se vencen por API y la app genera el vale.
+2. El cliente recibe un mensaje con el código y el importe de su vale.
+3. Marisa recibe la lista de zapatos que vuelven a la venta.
+
+## Reparto ya decidido
+
+- **Parte A (criterios 1 y 3):** workflow nuevo **`06 · Recordatorios y vencimientos`** (`specs/06-recordatorios-vencimientos.md`, `workflows/06-recordatorios-vencimientos.json`), con **solo la rama de vencimientos**. La rama de recordatorios (HU-06, 7 días y 1 día) la añadirá Beste después **en el mismo workflow**: deja la spec preparada para eso (sección para HU-06 «pendiente, Beste»), sin escribirla.
+- **Parte B (criterio 2):** en el `01 · Eventos de la tienda`, la salida `apartado.vencido` del Switch (hoy sin conectar, ver `specs/01-eventos-tienda.md`) envía al cliente su vale con `10 · Enviar notificación` (Execute Workflow, Mode Run once for each item, Workflow Inputs de una línea, como el flujo 1 en #95). Sin email: decide qué hacer (mira cómo lo resuelve el flujo 1) y justifícalo.
+
+## Fuentes
+
+- README (HU-06, HU-07, flujo 6), `AGENTS.md`, `docs/ontologia.md` (Apartado, Vale), `docs/guia-de-la-app.md` (webhook `apartado.vencido`: `datos.apartado` + `datos.vale`), `tests/payloads/apartado.vencido.json`.
+- `backend/routes/apartados.py`, `backend/controllers/apartados.py` y el modelo/servicio de `vencer`: qué devuelve `POST /api/apartados/{id}/vencer`, qué errores da (no está fuera de plazo, ya vencido, liquidado…) y que envía el webhook.
+- `specs/10-sub-workflows.md` y `workflows/10-*.json` (`Buscar apartado` con `estado` `activo`, `Enviar notificación`, regla Run once for each item, mensaje genérico de error), `~/subflujos/LEEME-95.md` (Workflow Inputs de una línea con `\n`).
+- Patrones ya probados: `specs/11-datafono.md` y `~/hu13/` (Schedule + Form/Manual de prueba, POST con Batching 1 + Never Error, `{ cuerpo: null }`, informe a la tienda con el sub-workflow), `specs/07-informe-mensual.md`.
+- `specs/01-eventos-tienda.md` en esta rama (flujo 1 con el sub-workflow).
+
+## Contenido
+
+1. `specs/06-recordatorios-vencimientos.md` (plantilla), parte A nodo a nodo:
+   - Disparador: Schedule cada mañana (hora y días; justifica respecto al datáfono 22:00 y al cierre) + un disparador manual o formulario para probar.
+   - Leer los activos con `Buscar apartado` (`estado` `activo`) y quedarse con los de `fecha_limite` < hoy (Europe/Madrid). Sin recalcular nada.
+   - `POST /api/apartados/{id}/vencer` uno a uno (Batching 1, Never Error); qué hacer con un error de un apartado (seguir con los demás y ponerlo en la lista) y con `401`/`5xx` (parar → `08`).
+   - Lista a la tienda con `Enviar notificación`: zapatos que vuelven a la venta (producto, talla, cliente, `id`, código y importe del vale) y los que fallaron. Día sin vencidos: decide si se envía «ningún apartado vencido hoy» o nada, y justifícalo.
+   - Casos de error, prueba y criterios.
+2. `specs/01-eventos-tienda.md`: la rama `apartado.vencido` (parte B) nodo a nodo, con los Workflow Inputs listos (texto con código, importe del vale, producto y cómo usarlo; sin recalcular nada), el caso sin email, prueba con `tests/payloads/apartado.vencido.json` y nota de alcance.
+3. **Prueba con datos reales** (las dos partes juntas): con los datos de ejemplo de hoy, los apartados activos fuera de plazo son el 16 (Paula Ramos), 15 (Sergio Delgado), 14 (Marta Molina) y 13 (Pablo Rubio) — compruébalo con `GET /api/apartados?estado=activo` (solo lectura, clave del `.env` sin imprimirla). Resultado esperado: 4 vencidos, 4 vales (código e importe = `abonado` de cada uno), 4 correos a clientes (o lo que toque si falta email), 1 lista a la tienda; segunda ejecución: 0 vencidos. Copia de la base de datos antes y restauración después (como en HU-13).
+4. `AGENTS.md` (sección 5 si hace falta, sección 8 con las decisiones) y `docs/ai-log.md`: entrada «### Spec de vencimientos · HU-07 (`specs/06-recordatorios-vencimientos.md`, `specs/01-eventos-tienda.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación: no toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. Solo `GET` a la API, nunca `POST`; no escribas la clave en ningún fichero ni en la salida.
+- Usa solo campos de `docs/ontologia.md`.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
+### Código de los nodos Code · HU-07 (`specs/06-recordatorios-vencimientos.md`)
+
+- **Autora:** Esra
+- **Tarea:** escribir el JavaScript de los 2 nodos Code de la rama de vencimientos del `06` (`Elegir los fuera de plazo`, `Preparar lista`) y un `LEEME.md` con la configuración de los demás nodos del `06` y los pasos de la rama `apartado.vencido` del `01`. **Reparto:** la pareja construye los nodos en n8n y pega el código; el agente solo escribe el código.
+- **Resultado:**
+  - **`~/hu07/`** (fuera del repo): `1-elegir-los-fuera-de-plazo.js`, `2-preparar-lista.js` y `LEEME.md`.
+    - El `LEEME.md` lleva qué recibe y qué devuelve cada Code, la configuración de los demás nodos del `06` (disparadores, `Leer apartados activos`, el IF, `Vencer apartado`, `Enviar lista a la tienda`, Settings) y el esquema de conexiones.
+    - Los pasos del `01`, con `para`, `asunto` y `texto` copiados de la spec, cada uno en su bloque (comprobado que son idénticos).
+    - Cómo hacer cada prueba: los `curl` de la rama del `01`, la copia y la restauración de la base de datos y el pin data de la prueba 3, listo para pegar.
+  - Mismos patrones que HU-10 y HU-13:
+    - `{ id: null }` cuando no hay nada que vencer;
+    - respuestas del `POST` con Never Error, emparejadas por orden con Batching 1;
+    - `detail` de la app en los `404` y `422`.
+  - No hace falta `isExecuted`: `Preparar lista` solo se ejecuta por la rama true, después de `Vencer apartado`.
+  - **Prueba en local con node:**
+    - `GET /api/apartados?estado=activo` real, con la clave del `.env` sin imprimirla, pasado por la forma de `Buscar apartado` (`{ total, apartados }`, solo los campos de la lista);
+    - los `POST /vencer` simulados como los hace `backend/models/apartado.py` (vale `VALE-<id con 5 cifras>` con `importe` = `abonado`, `422` y `404` con su `detail`).
+    - **Prueba 1:** 16, 15, 14 y 13 vencidos, con `VALE-00016` 5.00 €, `VALE-00015` 60.00 €, `VALE-00014` 45.00 € y `VALE-00013` 30.00 €. Asunto «Vencimientos del 27/10/2026: 4 pares vuelven a la venta».
+    - **Prueba 2** (con los 16 activos que quedan): `{ id: null }`, sin `POST` ni correo.
+    - **Prueba 3** (pin data con el 22 y el 9999): `404` «Apartado no encontrado» y `422` «El apartado ya está vencido»; «0 pares vuelven a la venta · 2 con error».
+    - **`500` en el 14:** para con «Vencer apartado: la app respondió 500 en el apartado 14: Internal Server Error. Ya vencidos: 16 (VALE-00016), 15 (VALE-00015), 13 (VALE-00013)».
+    - **`401` en todos:** para con «… respondió 401 en el apartado 16: Falta la cabecera X-API-Key o no es válida (y en 3 más: 15, 14, 13). Ya vencidos: ninguno».
+    - **Otros casos:** menos respuestas que apartados, una entrada sin `apartados` (paran con su error) y un solo vencido sin talla («1 par vuelve a la venta», sin «talla»).
+- **Problemas encontrados:**
+  - **Never Error sigue después de un `500`.** La spec decía que el mensaje del `08` lleva «los que ya se vencieron». Con Never Error, `Vencer apartado` intenta todos los `POST`, así que también se pueden vencer los de después del que falla. El código los incluye todos, y se corrigió la spec (paso 8) con los mensajes exactos.
+  - **Mensajes que no estaban en la spec.** Se añadieron a la sección 4 el de las respuestas que no cuadran (paso 7) y el de una entrada sin `{ total, apartados }` (paso 4). Sin este último, un Execute Workflow mal configurado parecería un día sin vencidos.
+  - **Singular en el asunto** («1 par vuelve a la venta»): añadido a la sección 5.
+  - **Comprobado al construir:** el `POST` sin cuerpo funciona y las 4 respuestas llegaron en orden (cada vale emparejado con su apartado); el pin data de `Leer apartados activos` no se probó, porque la prueba 3 no se hizo en n8n (ver «Construcción de los vencimientos · HU-07»).
+- **Decisión:** aceptado. Los 2 Code del JSON exportado son idénticos a `~/hu07/*.js`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`, siguiendo `specs/06-recordatorios-vencimientos.md` y `specs/01-eventos-tienda.md`. Tú escribes solo el JavaScript de los 2 nodos Code del `06` (`Elegir los fuera de plazo`, `Preparar lista`); la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/06-recordatorios-vencimientos.md` (secciones 3, 4, 5, 6 y 7), `specs/01-eventos-tienda.md` (rama HU-07), `AGENTS.md`.
+- Estilo y patrones ya probados: `~/hu13/` (Code, `LEEME.md`, emparejar respuestas por orden con Batching 1 + Never Error, `isExecuted`), `~/subflujos/LEEME.md` y `~/subflujos/LEEME-95.md` (Execute Workflow a los sub-workflows, Workflow Inputs de una línea).
+- `backend/models/apartado.py` (`vencer`) y las rutas: forma de la respuesta de `POST /vencer` y los `detail`.
+- `workflows/10-buscar-apartado.json` (qué devuelve `{ total, apartados }`).
+
+## Contenido
+
+1. En `~/hu07/` (fuera del repo, no se sube):
+   - `1-elegir-los-fuera-de-plazo.js` y `2-preparar-lista.js`. Comentarios cortos en español, sin librerías externas, mensajes de error exactamente como en la spec, sin recalcular importes.
+   - `LEEME.md`:
+     - qué recibe y qué devuelve cada Code (con un ejemplo corto);
+     - la configuración exacta de los demás nodos del `06` (2 disparadores, `Leer apartados activos` con sus Workflow Inputs, el IF, `Vencer apartado`, `Enviar lista a la tienda`, Settings con Error workflow `08` y zona horaria), con un dibujo de las conexiones;
+     - los pasos en el `01` para la rama `apartado.vencido`: conectar la salida del Switch, el IF `¿Tiene email? (vencido)` y los 2 Execute Workflow, con `para`, `asunto` y `texto` **copiados de la spec**, cada valor en su propio bloque para copiarlo de uno en uno;
+     - cómo hacer cada prueba de la sección 7 (con los `curl` de la rama del `01`, la copia de la base de datos y la restauración).
+2. Comprueba la lógica en local con node: `GET /api/apartados?estado=activo` real (clave del `.env`, sin imprimirla), simula la salida de `Buscar apartado` y las respuestas de `/vencer` (200 con el vale como lo genera la app, un 422 y un 404), y ejecuta los 2 Code. Prueba 1 (4 vencidos: 16, 15, 14, 13), prueba 2 (`{ id: null }`), prueba 3 (422 + 404) y un `500` (para con el mensaje de la spec). Dime los resultados y el texto completo de la lista de la prueba 1.
+3. `specs/06-recordatorios-vencimientos.md`: solo si algo de la sección 4 no cuadra con lo que has visto, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-07 (`specs/06-recordatorios-vencimientos.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción de los vencimientos · HU-07 (`workflows/06-recordatorios-y-vencimientos.json`, `workflows/01-eventos-tienda.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n la rama de vencimientos de `06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`, según `specs/06-recordatorios-vencimientos.md` y `specs/01-eventos-tienda.md`, y exportarlas.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 2 Code.
+    - El `06` tiene 8 nodos con los nombres de la spec, Error workflow `08` y zona horaria `Europe/Madrid`. Los 2 Code del JSON son idénticos a `~/hu07/*.js`.
+    - En el `01` hay 3 nodos nuevos (`¿Tiene email? (vencido)`, `Enviar vale al cliente` y `Avisar a la tienda: vencido sin email`), conectados a la salida `apartado.vencido` del Switch. Sus Workflow Inputs son idénticos a los de la spec. El resto del `01` no cambia: solo se movieron nodos en el canvas y en Settings se añadió la zona horaria `Europe/Madrid`.
+  - Los dos JSON pasan `validate_workflow` de n8n-mcp sin errores ni avisos (8 y 17 nodos).
+  - El `06` está **sin publicar** (`"active": false`) a propósito. Publicado, vencería de verdad a las 9:00 los apartados fuera de plazo, entre ellos el 16, que la prueba de HU-03 (correo `06_bizum_paula`) necesita `activo` y fuera de plazo. Se publicará cuando terminen las pruebas de HU-03.
+  - **Pruebas** (copia de la base de datos en `~/tienda-antes-hu07.db`, restaurada al terminar):
+    - **Rama del `01`** (Test URL):
+      - con `apartado.vencido.json` llega a `paula16@example.com` el vale `VALE-00016` de 5.00 €;
+      - con `apartado.vencido-sin-email.json` llega a la tienda el aviso con el teléfono y el vale.
+    - **Prueba 1 del `06`** (Probar a mano, con el `01` publicado):
+      - total 20; 4 elegidos (16, 15, 14 y 13); 4 respuestas `200`;
+      - en Mailpit, 5 correos: la lista «4 pares vuelven a la venta» y los 4 vales (5.00, 60.00, 45.00 y 30.00 €);
+      - en la app, `resumen` 16 / 9 / 5 y 5 vales. El del apartado 15 (60,00 €) es la suma de sus abonos (10 + 20 + 20 + 10).
+    - **Prueba 2:** `{ id: null }`, el IF va por false, sin `POST` ni correo.
+    - **Prueba 3** (pin data con `422` y `404`): no se hizo en n8n. Sus caminos están comprobados en local («Código de los nodos Code · HU-07»).
+    - **Prueba 4** (programada): no se hizo, porque el `06` está sin publicar.
+  - Evidencias: los 6 `docs/evidencias/06-hu07-*.png`, enlazados en la sección 7 de las dos specs.
+- **Problemas encontrados:**
+  - **Mode de `Enviar lista a la tienda`.** Al principio se quedó con el Mode por defecto (Run once with all items). Con un solo item funcionaba, pero incumplía la regla de `AGENTS.md`. Se cambió a Run once for each item y se volvió a exportar.
+  - **Nombre del archivo.** El export lo llama `06-recordatorios-y-vencimientos.json`: `scripts/flujos.py` quita «de», «la» y «del», pero no «y». La spec decía `06-recordatorios-vencimientos.json`; se cambió en la spec. La spec mantiene su nombre (`specs/06-recordatorios-vencimientos.md`): `AGENTS.md` solo pide el mismo `NN`, y renombrarla rompería los enlaces de las otras specs y de los prompts literales.
+  - **«Execute Sub-workflow».** En n8n, el nodo Execute Workflow aparece con ese nombre. Se anotó en las dos specs.
+  - **Sin página de vales.** La app no tiene página de vales: cada vale se ve en la página de su apartado. Se corrigió en la spec del `06`.
+- **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
+- No hay prompt: los flujos los construyó la pareja a mano.
+
 ### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)
 
 - **Autora:** Esra

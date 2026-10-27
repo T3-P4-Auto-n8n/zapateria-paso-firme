@@ -1,0 +1,360 @@
+{
+  "name": "06 · Recordatorios y vencimientos",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -976,
+        -352
+      ],
+      "id": "66f1e194-bc1f-4118-8820-c772dbdac860",
+      "name": "Cada mañana a las 9:00"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -80
+      ],
+      "id": "5a106ca5-f7c7-414d-827c-1bd4f07260d5",
+      "name": "Probar a mano"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "O7p1CtzUTrhjchSm",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/O7p1CtzUTrhjchSm",
+          "cachedResultName": "10 · Buscar apartado"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "estado": "activo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        -704,
+        -208
+      ],
+      "id": "8a1b9639-0669-427b-aa41-e89cf3da4078",
+      "name": "Leer apartados activos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Elegir los fuera de plazo» (06 · Recordatorios y vencimientos) · Run Once for All Items\n// Recibe la salida de «Leer apartados activos» ({ total, apartados }) y devuelve un item por apartado\n// con fecha_limite anterior a hoy, o un solo item { id: null, hoy, activos } si no hay ninguno.\n\nconst busqueda = $input.first().json;\nif (!Array.isArray(busqueda.apartados)) {\n  throw new Error('Elegir los fuera de plazo: «Leer apartados activos» no ha devuelto { total, apartados }');\n}\nconst activos = busqueda.total ?? busqueda.apartados.length;\n\n// Hoy en la zona de la tienda, AAAA-MM-DD (la app también usa Europe/Madrid)\nconst hoy = DateTime.now().setZone('Europe/Madrid').toISODate();\n\n// Fuera de plazo: fecha_limite anterior a hoy. El que vence hoy todavía admite abonos (la app daría 422).\n// Las fechas AAAA-MM-DD se comparan como texto. No se recalcula nada\nconst fuera = busqueda.apartados\n  .filter(a => a.estado === 'activo' && String(a.fecha_limite) < hoy)\n  .sort((a, b) => String(a.fecha_limite).localeCompare(String(b.fecha_limite)) || a.id - b.id);\n\nconst salida = fuera.map(a => ({ json: { ...a, hoy, activos } }));\n\n// Un Code nunca devuelve 0 items: el IF «¿Hay apartados que vencer?» va por false\nreturn salida.length ? salida : [{ json: { id: null, hoy, activos } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -192
+      ],
+      "id": "c0aa0f07-caf9-4275-b6e0-7c57e94c306b",
+      "name": "Elegir los fuera de plazo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "68dbaa3f-bbfb-40e2-8579-3c131a4e96a0",
+              "leftValue": "={{ !!$json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        -240,
+        -192
+      ],
+      "id": "85a5c85d-e39f-4953-b4f1-8d179e009d89",
+      "name": "¿Hay apartados que vencer?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://tienda:8000/api/apartados/{{ $json.id }}/vencer",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        32,
+        -224
+      ],
+      "id": "595ef88b-2496-452d-aebb-9994eb0c47e6",
+      "name": "Vencer apartado",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar lista» (06 · Recordatorios y vencimientos) · Run Once for All Items\n// Empareja cada apartado de «Elegir los fuera de plazo» con su respuesta de «Vencer apartado» y devuelve\n// { asunto, texto } para «Enviar lista a la tienda». Un 404 o un 422 van a la lista; otro código para el flujo.\n\nconst elegidos = $('Elegir los fuera de plazo').all().filter(i => i.json.id != null);\nconst respuestas = $input.all();\n\n// Las respuestas llegan en el mismo orden que los apartados (Batching de 1)\nif (respuestas.length !== elegidos.length) {\n  throw new Error(`Vencer apartado: se esperaban ${elegidos.length} respuestas y llegaron ${respuestas.length}`);\n}\n\n// Mensaje de la app: {\"detail\": \"...\"} o, si falla la validación, {\"detail\": [{msg: ...}]}\nfunction detalle(body) {\n  let b = body;\n  if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { return b; } }\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? JSON.stringify(b);\n}\n\nconst vencidos = [];\nconst fallidos = [];\nconst otros = [];\nelegidos.forEach((item, i) => {\n  const elegido = item.json;\n  const r = respuestas[i].json;\n  if (r.statusCode === 200) {\n    let b = r.body;\n    if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\n    // El apartado y el vale son los de la app; el importe del vale no se calcula\n    vencidos.push({ apartado: b?.apartado ?? elegido, vale: b?.vale ?? null });\n  } else if (r.statusCode === 404 || r.statusCode === 422) {\n    fallidos.push({ apartado: elegido, motivo: detalle(r.body) });\n  } else {\n    otros.push({ apartado: elegido, statusCode: r.statusCode, motivo: detalle(r.body) });\n  }\n});\n\nconst vale = v => (v ? v.codigo : '(sin vale)');\n\n// 401, 5xx…: para el flujo y lo avisa el 08. Con Never Error se intentan todos, así que el mensaje\n// lleva los que sí se vencieron: la siguiente ejecución ya no los verá (están vencido)\nif (otros.length) {\n  const [primero] = otros;\n  const resto = otros.length > 1 ? ` (y en ${otros.length - 1} más: ${otros.slice(1).map(o => o.apartado.id).join(', ')})` : '';\n  const ya = vencidos.length ? vencidos.map(v => `${v.apartado.id} (${vale(v.vale)})`).join(', ') : 'ninguno';\n  throw new Error(`Vencer apartado: la app respondió ${primero.statusCode} en el apartado ${primero.apartado.id}: ${primero.motivo}${resto}. Ya vencidos: ${ya}`);\n}\n\n// ---------- Texto de la lista ----------\n\nconst dia = iso => String(iso).split('-').reverse().join('/');\nconst e = n => `${Number(n).toFixed(2)} €`;\nconst zapato = a => `${a.producto}${a.talla ? `, talla ${a.talla}` : ''}`;\nconst seccion = (titulo, lineas) => `${titulo} (${lineas.length})\\n${lineas.length ? lineas.join('\\n') : '- Ninguno'}\\n`;\n\nconst { hoy, activos } = elegidos[0].json;\nconst n = vencidos.length;\n\nconst texto = [\n  `Vencimientos del ${dia(hoy)}: ${n} ${n === 1 ? 'apartado vencido' : 'apartados vencidos'} de ${activos} activos revisados.`,\n  '',\n  seccion('ZAPATOS QUE VUELVEN A LA VENTA', vencidos.map(({ apartado: a, vale: v }) =>\n    `- ${zapato(a)} · apartado ${a.id} · ${a.cliente} · plazo hasta el ${dia(a.fecha_limite)} · vale ${vale(v)}${v ? ` de ${e(v.importe)}` : ''}`)),\n  seccion('NO SE HAN PODIDO VENCER', fallidos.map(({ apartado: a, motivo }) =>\n    `- ${zapato(a)} · apartado ${a.id} · ${a.cliente}. La app respondió: «${motivo}»`)),\n  'Los vales los ha generado la app con lo abonado en cada apartado. Cada cliente recibe su vale por correo; si no tiene email, llega un aviso aparte para avisarle por teléfono.',\n].join('\\n');\n\nconst asunto = `Vencimientos del ${dia(hoy)}: ${n} ${n === 1 ? 'par vuelve' : 'pares vuelven'} a la venta`\n  + (fallidos.length ? ` · ${fallidos.length} con error` : '');\n\nreturn [{ json: { asunto, texto } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -224
+      ],
+      "id": "a0834914-f854-4184-979c-fd5c1f6a17b5",
+      "name": "Preparar lista"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "={{ $json.asunto }}",
+            "texto": "={{ $json.texto }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        464,
+        -224
+      ],
+      "id": "6e0c42c8-30de-4ab8-a670-a823dcf547dc",
+      "name": "Enviar lista a la tienda"
+    }
+  ],
+  "connections": {
+    "Cada mañana a las 9:00": {
+      "main": [
+        [
+          {
+            "node": "Leer apartados activos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Leer apartados activos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer apartados activos": {
+      "main": [
+        [
+          {
+            "node": "Elegir los fuera de plazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elegir los fuera de plazo": {
+      "main": [
+        [
+          {
+            "node": "¿Hay apartados que vencer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay apartados que vencer?": {
+      "main": [
+        [
+          {
+            "node": "Vencer apartado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vencer apartado": {
+      "main": [
+        [
+          {
+            "node": "Preparar lista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar lista": {
+      "main": [
+        [
+          {
+            "node": "Enviar lista a la tienda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": null,
+  "tags": [],
+  "active": false,
+  "id": "LEG1cBDsrLXn6wL2",
+  "versionId": "22577c36-b220-45d5-ab2c-23535cfaf3ce"
+}

@@ -137,8 +137,9 @@ Con 0 resultados: `{ "total": 0, "apartados": [] }`. **No es un error:** el fluj
 | `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Se queda con Send Email (opcional) |
 | `03 · Abonos a distancia` (Beste, PR #158) | Pasos 2 y 3 de su spec: `GET /api/apartados/{id}` y `GET /api/apartados?estado=activo&q=...` | `Buscar apartado`: con `id` (sin `estado`, para poder avisar si está liquidado o fuera de plazo) o con `texto` y `estado` `activo` | Lo decide Beste al construirlo o corregirlo |
 | `03` | Consulta o rechazo a Marisa (sección 5 de su spec) | `Enviar notificación` | Igual |
-| `06 · Recordatorios y vencimientos` (Beste, sin empezar) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` | Al construirlo |
-| `06` | Recordatorios al cliente (7 días y 1 día), aviso del vale al cliente (HU-07) y lista de zapatos que vuelven a la venta a la tienda | `Enviar notificación` | Al construirlo |
+| `06 · Recordatorios y vencimientos` (vencimientos: Esra, HU-07, [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md); recordatorios: Beste) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` (`Leer apartados activos`) | Al construirlo |
+| `06` | Recordatorios al cliente (7 días y 1 día) y lista de zapatos que vuelven a la venta a la tienda (`Enviar lista a la tienda`) | `Enviar notificación` | Al construirlo |
+| `01`, rama `apartado.vencido` (HU-07) | Vale al cliente (`Enviar vale al cliente`) y aviso a la tienda si no tiene email (`Avisar a la tienda: vencido sin email`) | `Enviar notificación` | Al construirla ([specs/01-eventos-tienda.md](01-eventos-tienda.md)) |
 
 - Los PR #159, #160 y #161 ya están fusionados en `dev`.
 - **Por qué el flujo 1 como ejemplo:** la prueba de HU-05 (`error-email-espacio.json`) pasa por `Enviar confirmación al cliente`. Con el cambio comprueba también que un error del sub-workflow lo avisa el `08` del flujo que llama, lo que quedó pendiente al construir #92.
