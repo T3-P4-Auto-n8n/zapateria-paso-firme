@@ -41,7 +41,7 @@ El verificador solo hace GET, no muestra la clave y guarda únicamente id/fecha/
 | #42 Spec | Escrita siguiendo la plantilla. |
 | #43 Construcción y ai-log | Export de 8 nodos, dos Code revisables, generador y bitácora. |
 | #44 Pruebas | Pruebas locales, GET reales y dos ejecuciones n8n aisladas con Mailpit superadas; falta ejecutar el flujo completo con Sheets. |
-| #45 Export/PR | JSON entregado y texto de PR preparado; no se ha abierto PR ni hecho commit/push. |
+| #45 Export/PR | JSON, código y evidencias en [PR #173](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/pull/173), borrador a dev desde feature/hu04-cierre-diario. |
 | #46 Evidencia | JSON de cálculos, snapshots GET, HTML, validación, ejecuciones n8n 26/27 y mensajes Mailpit reales; faltan evidencias del flujo completo con Sheets. |
 | #47 Histórico Google Sheets | Documento real creado, encabezados verificados, upsert configurado; falta OAuth y probar la escritura desde n8n. |
 | #48 Día vacío | Ejecución aislada n8n 27 superada; Mailpit recibió el correo de cero con el mensaje explícito. Falta verificar el caso en el flujo completo con Sheets. |

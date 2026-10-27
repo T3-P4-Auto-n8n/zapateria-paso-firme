@@ -1306,7 +1306,8 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Pruebas reales adicionales:** la credencial temporal resultó inválida; se creó API Tienda HU04 con la clave vigente por stdin, sin mostrarla ni guardar archivos con secretos. Se importaron 08 y 10 inactivos. El workflow aislado HU04SmokeTest01 (sin Sheets, expresamente indicado en asunto/cuerpo) superó las ejecuciones 26 y 27: 213.65 € y día vacío 0.00 €, con los dos correos recibidos en Mailpit.
 - **Problemas y pendientes reales:** falta Google Sheets OAuth. No se ejecutó el flujo completo ni se verificó escritura/upsert de Sheets, programación ni error de producción. La configuración y pruebas pendientes están documentadas; criterios de aceptación sin marcar. [Evidencias](evidencias/05-hu04-resultados.md).
 - **Prompt resumido:** «Empezar y terminar HU-04, cubrir todos los requisitos y minimizar preguntas». No se hicieron cambios en backend/frontend/compose/.env, ni en los archivos HU-03.
-- **Decisión:** implementación preparada para revisión; historia pendiente de configuración OAuth y ejecución real. No afirmar entrega de producción.
+- **Entrega:** [PR #173](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/pull/173), borrador a dev desde feature/hu04-cierre-diario, con código, spec y evidencia real de las pruebas aisladas.
+- **Decisión:** implementación preparada para revisión; historia pendiente de configuración OAuth y ejecución completa. No afirmar entrega de producción.
 
 ## 4. Decisiones abiertas
 
