@@ -1100,9 +1100,208 @@ HU-08 (issue #70): vamos a construir `07 · Informe mensual` a mano en n8n, sigu
 - **Decisión:** aceptado.
 - No hay prompt: el flujo lo construyó la pareja a mano.
 
-## 4. Decisiones abiertas
+### Spec de los sub-workflows · #92 (`specs/10-sub-workflows.md`)
 
-Ninguna por ahora.
+- **Autora:** Esra
+- **Tarea:** issue #92 (sub-issues #93, #94 y #95): spec de los sub-workflows `10 · Buscar apartado` y `10 · Enviar notificación`, y del cambio del `08` para usar el segundo. Solo documentación; los construye después la pareja.
+- **Resultado:**
+  - Spec nueva con la plantilla y una subsección por sub-workflow en cada sección.
+  - **`Buscar apartado`:**
+    - Execute Workflow Trigger con los campos `id`, `texto` y `estado`;
+    - `Comprobar la búsqueda` (Code);
+    - IF `¿Por número?`, que va a `GET /api/apartados/{id}` o a `GET /api/apartados?q=&estado=`, con Never Error y respuesta completa;
+    - `Preparar resultado` (Code), que devuelve siempre un item `{ total, apartados }` con los campos de la lista.
+  - **`Enviar notificación`:**
+    - campos `para`, `asunto`, `texto` y `html`;
+    - `Comprobar la notificación` (Code);
+    - IF `¿Lleva HTML?`, con dos Send Email (Both / Text) con `Mailpit`, From `tienda@pasofirme.example` y sin atribución;
+    - `Preparar respuesta`, que devuelve `{ enviado, para, asunto, messageId }`.
+  - **Tabla de uso (#95):**
+    - el `08` cambia en este PR;
+    - el `01` (flujos 1, 2 y 4), el `07` y el `09` cambian cuando se fusionen #159, #161 y #160;
+    - el `03` y el `06` son de Beste, con el nodo que usaría cada sub-workflow.
+    - #95 queda abierta (`Refs #95`).
+  - **Cambio del `08` nodo a nodo:** `Avisar a la tienda del error` pasa de Send Email a Execute Workflow, con el mismo nombre y el mismo correo. Se anota qué pasa si falla el sub-workflow.
+  - **Pruebas:** de cada sub-workflow suelto (pin data en el trigger) y del `08` llamándolo, con la misma prueba de HU-05.
+  - Siete decisiones nuevas en la sección 8 de `AGENTS.md` y los dos nombres en la sección 5.
+  - **Consultas a n8n-mcp:**
+    - Execute Workflow Trigger: versión 1.3, Input data mode «Define using fields below»;
+    - Execute Workflow: versión 1.4, Source Database, Workflow Inputs, Mode y Wait For Sub-Workflow Completion.
+  - **Comprobado en el backend:** `q` busca con `LIKE` en `cliente`, `producto` y `telefono`, o el `id` exacto, y un `estado` vacío no filtra.
+- **Problemas encontrados:**
+  - **Búsqueda de un número con `q`.** `q=12` encuentra el apartado 12 y también cualquier teléfono que contiene `12`. Por eso el número va en `id`, con `GET /api/apartados/{id}`, y un `404` se trata como 0 resultados.
+  - **Riesgo de bucle en el `08`.** Si `Enviar notificación` tuviera el `08` como Error workflow, un fallo suyo llamaría al `08`, que lo volvería a usar. Por eso los sub-workflows no llevan Error workflow, y sus errores los avisa el `08` del flujo que llama.
+  - **La prueba de HU-05 no es un `401`.** El prompt habla del «mismo `401` de HU-05», pero la prueba de HU-05 es el correo con `email` `" "` («No recipients defined»). La spec usa esa.
+  - **Las issues no tienen checklist.** #92–#95 solo tienen el título; los criterios se escribieron a partir de los títulos y de la línea del README.
+  - **Pendiente de comprobar al construir:**
+    - si n8n 2.4.5 exige publicar un sub-workflow para llamarlo;
+    - que el mensaje de error del sub-workflow llegue al `08` del flujo que llama.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables (Execute Workflow), por ejemplo "buscar apartado" o "enviar notificación"». Escribe la spec de los dos sub-workflows. Los construirá la pareja a mano en n8n después; ahora solo la spec. Estamos en la rama `feature/92-sub-workflows` (sale de `dev`).
+
+## Fuentes
+
+- README (nivel Medio, flujos 1, 2, 3 y 6), `AGENTS.md`, `docs/ontologia.md`, `docs/guia-de-la-app.md`, `specs/_plantilla.md`.
+- `backend/routes/` y `backend/models/`: qué filtros admite `GET /api/apartados` (búsqueda por texto, teléfono, id, estado) y qué devuelve.
+- Specs y workflows ya hechos, para ver dónde se repite hoy la búsqueda y el envío de correos: `specs/01-eventos-tienda.md`, `specs/03-abonos-distancia.md`, `specs/08-error-workflow.md`, `specs/09-migracion-excel.md`, `workflows/`.
+- n8n-mcp: nodo Execute Workflow Trigger («When Executed by Another Workflow») en n8n 2.4.5 community, modo de entrada con campos definidos; nodo Execute Workflow (el que llama), qué devuelve al flujo que llama y cómo se prueba un sub-workflow suelto.
+
+## Contenido
+
+1. `specs/10-sub-workflows.md` con la plantilla, una sección por sub-workflow:
+   - **Buscar apartado** (#93): entradas (por ejemplo, texto libre de cliente o teléfono, id, estado), qué llamada hace a la API y qué devuelve siempre con la misma forma (lista, número de resultados), también con 0 resultados. Quién lo usará: flujo 3 (Bizum, de Beste), flujo 6 y el asistente de Telegram.
+   - **Enviar notificación** (#94): entradas (para, asunto, texto; opcional html), envío con la credencial `Mailpit` desde `tienda@pasofirme.example`, sin atribución de n8n, y qué devuelve. Qué hace si falta `para` o `asunto`.
+   - Casos de error de cada uno (`401`, sin resultados, entrada vacía) y cómo llegan al `08 · Error Workflow`.
+   - Prueba: cómo se prueba cada sub-workflow suelto en n8n (datos de entrada y resultado esperado) y una prueba llamándolo desde otro flujo.
+   - **Uso** (#95): tabla de qué nodos actuales se sustituirán por una llamada al sub-workflow (flujos 1, 2, 4 en `01`, `07`, `08`, `09`, y el 6 que viene).
+     - **En este PR:** `08 · Error Workflow` pasa a enviar su aviso con `Enviar notificación` (está en `dev` y ningún PR abierto lo toca). Describe el cambio nodo a nodo y su prueba (el mismo `401` de HU-05 debe seguir llegando igual). Si `08` usa un sub-workflow, piensa qué pasa si el propio sub-workflow falla y anótalo.
+     - **Después:** `01` (flujos 1 y 2, PR #159), `07` (PR #161) y `09` (PR #160) se cambiarán cuando se fusionen esos PR, para no chocar con ellos.
+     - **Flujos de Beste:** el 3 (`03 · Abonos a distancia`, PR #158) y el 6 (`06 · Recordatorios y vencimientos`, sin empezar) los usará Beste al construirlos o corregirlos. Indica qué nodo de cada uno usaría `Buscar apartado` y cuál `Enviar notificación`.
+     - La issue #95 dice «usarlos desde los flujos 1, 2, 3, 6»: este PR la deja abierta (`Refs #95`); se cierra cuando estén los cuatro.
+   - Criterios de aceptación: los de la issue #92 y sus sub-issues (léelas con `gh issue view`).
+2. `AGENTS.md`:
+   - Sección 5: los dos sub-workflows con su nombre de workflow. Decide la numeración siguiendo la convención de la sección 5 (no son flujos del README) y anota la decisión en la sección 8.
+   - Sección 8: cualquier otra decisión que tomes (forma de la salida, qué hace con 0 resultados...).
+3. `docs/ai-log.md`: entrada «### Spec de los sub-workflows · #92 (`specs/10-sub-workflows.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo la spec: no toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- Usa solo campos de `docs/ontologia.md`; si falta algo, déjalo como pregunta.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
+### Código de los nodos Code · #92 (`specs/10-sub-workflows.md`)
+
+- **Autora:** Esra
+- **Tarea:** issue #92: código JavaScript de los 4 nodos Code de `10 · Buscar apartado` y `10 · Enviar notificación`, y los pasos del cambio del `08`.
+- **Reparto:** la pareja construye a mano en n8n los nodos y las conexiones, con los nombres de la spec; el agente escribe solo el código de los Code y la configuración de los demás nodos. El código y el `LEEME.md` quedan fuera del repo (`~/subflujos/`) y entran con el JSON de los workflows al exportarlos.
+- **Resultado:**
+  - `1-comprobar-la-busqueda.js` y `2-preparar-resultado.js` (`Buscar apartado`); `3-comprobar-la-notificacion.js` y `4-preparar-respuesta.js` (`Enviar notificación`).
+    - Los mensajes de error son los de la spec.
+    - Un campo vacío (`null`, `""` o ausente) se trata igual.
+    - No recalculan `abonado` ni `pendiente`.
+  - `LEEME.md`:
+    - qué recibe y devuelve cada Code;
+    - la configuración de los triggers (campos y tipos), los IF, los 2 `GET`, los 2 Send Email y las Settings (sin Error workflow);
+    - el cambio del `08` paso a paso, con el texto actual copiado de `workflows/08-error-workflow.json`;
+    - los JSON de pin data de la sección 7 y los dibujos de las conexiones.
+  - El agente consultó con n8n-mcp:
+    - Execute Workflow Trigger: Workflow Input Schema, Input data mode;
+    - Execute Workflow: Workflow Inputs; un campo quitado llega como `null`; Wait For Sub-Workflow Completion;
+    - HTTP Request: Include Response Headers and Status.
+  - En el backend comprobó:
+    - el `detail` del `401` («Falta la cabecera X-API-Key o no es válida») y del `404` («Apartado no encontrado»);
+    - que `q` y `estado` vacíos no filtran.
+- **Prueba en local (agente):** con `node`, `GET` reales a la API (la clave leída del `.env` sin imprimirla) y la salida del HTTP Request simulada como un item `{ statusCode, body }`.
+  - **`Buscar apartado`:**
+    - `id` 22 → 1 (vencido, salida sin `abonos` ni `vale`);
+    - `id` 22 + `activo` → 0;
+    - `id` 9999 → 0 (`404`);
+    - «Carmen Ruiz» → 1;
+    - `600000001` → igual que `600 000 001`;
+    - «Nadie Inventado» → 0;
+    - `estado` `activo` → 20, igual que `/api/apartados/resumen`;
+    - `id` `#7` con `texto` → manda el `id`.
+  - **Errores (Code 1 y 3):**
+    - sin campos, `estado` «pagado», `id` -3 y «doce» → error;
+    - clave mal → «Buscar apartado: la app respondió 401: Falta la cabecera X-API-Key o no es válida»;
+    - `para` vacío, sin `@` o `null`, `asunto` vacío y sin cuerpo → error con el mensaje de la spec.
+  - Coincide con la sección 7.
+- **Problemas encontrados:**
+  - **Teléfono repetido en la app.** El seed usa el formato `600 000 001`, como dice la spec. Pero `600000001` da 2 resultados: el apartado 1 y el 27, un apartado de prueba creado a mano con el mismo teléfono. La sección 7 no da un número fijo, así que sigue valiendo.
+  - **`q=12` en los datos actuales.** Solo da el apartado 12, porque su teléfono `600 000 012` también contiene `12`. El riesgo de la spec sigue siendo real con otros teléfonos (por ejemplo, los `612 345 ...` del Excel).
+  - **El ejemplo de salida de la spec** (Laura Ortega, `pendiente` 45) es ilustrativo: en la app el apartado 12 tiene `pendiente` 10. La forma es correcta y no se cambió.
+  - **Una sola petición por ejecución** (detectado en la revisión de la pareja, antes de construir).
+    - Los 4 Code leen solo `$input.first()` y `$('Comprobar la notificación').first()`.
+    - Si un flujo llamara con el Execute Workflow en **Run once with all items** y varios items (por ejemplo, el flujo 6 con un recordatorio por cliente), solo se enviaría el primer correo y los demás se perderían sin error.
+    - **Se resolvió con una regla, sin cambiar los Code:** cada llamada es una sola petición y el Execute Workflow que llama usa siempre **Mode: Run once for each item**. Se añadió:
+      - en la spec, a las secciones 3, 4.4 (el `08` pasa a Run once for each item), 6 (el caso y qué pasaría) y 7 (una prueba con un flujo de prueba no exportado: 2 items, 2 correos);
+      - a `AGENTS.md`, sección 8;
+      - al `LEEME.md`.
+  - **Pendiente de comprobar al construir:**
+    - que con Include Response Headers and Status una lista llegue en un item (el Code también acepta varios);
+    - cómo llega un campo sin rellenar del Execute Workflow;
+    - si hay que publicar el sub-workflow;
+    - que el error del sub-workflow llegue al `08`.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#92: vamos a construir a mano en n8n `10 · Buscar apartado`, `10 · Enviar notificación` y el cambio del `08 · Error Workflow`, siguiendo `specs/10-sub-workflows.md`. Tú escribes solo el JavaScript de los 4 nodos Code; la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/10-sub-workflows.md` (secciones 3, 4, 6 y 7), `specs/08-error-workflow.md`, `workflows/08-error-workflow.json` (texto actual del aviso), `AGENTS.md`.
+- `backend/routes/apartados.py` y `backend/models/apartado.py`: forma de la respuesta de `GET /api/apartados` y `GET /api/apartados/{id}`, y el `detail` de los errores.
+- n8n-mcp (n8n 2.4.5): Execute Workflow Trigger 1.3 con «Define using fields below» (cómo llegan los campos vacíos: `null`, `""` o ausentes), Execute Workflow 1.4 (Workflow Inputs, Wait For Sub-Workflow Completion), HTTP Request con Include Response Headers and Status + Never Error (forma de `body` cuando la API devuelve una lista: ¿un item con la lista o un item por elemento?), salida del Send Email (`messageId`), y Pin data en un trigger.
+- Como ejemplo de estilo: `~/hu08/` y `~/hu10-codigo/` (Code y `LEEME.md`).
+
+## Contenido
+
+1. En `~/subflujos/` (fuera del repo, no se sube):
+   - `1-comprobar-la-busqueda.js`, `2-preparar-resultado.js` (`10 · Buscar apartado`).
+   - `3-comprobar-la-notificacion.js`, `4-preparar-respuesta.js` (`10 · Enviar notificación`).
+   - Comentarios cortos en español, sin librerías externas, sin recalcular `abonado` ni `pendiente`. Mensajes de error exactamente como en la spec.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto); la configuración exacta de los demás nodos de los dos sub-workflows (trigger con sus campos y tipos, IF, los 2 `GET`, los 2 Send Email, Settings sin Error workflow); el cambio del `08` paso a paso (qué nodo se borra, el Execute Workflow con sus Workflow Inputs y el texto actual copiado del JSON); y los JSON de pin data de la sección 7 listos para pegar. Con un dibujo de las conexiones de cada uno.
+2. Comprueba la lógica en local con node: haz `GET` a la API (con la clave del `.env`, sin imprimirla) para los casos de `Buscar apartado` de la sección 7, simula la salida del HTTP Request con Never Error y ejecuta los Code 1 y 2. Prueba también los casos de error de los Code 1 y 3. Dime los resultados. Si la API no devuelve lo que dice la spec (por ejemplo, el formato del teléfono de los datos de ejemplo), dímelo.
+3. `specs/10-sub-workflows.md`: solo si algo de la sección 4 no coincide con lo que has visto en el backend o en n8n-mcp, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · #92 (`specs/10-sub-workflows.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store` ni `workflows/09-migracion-excel.json`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción de los sub-workflows · #92 (`workflows/10-*.json`, `workflows/08-error-workflow.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `10 · Buscar apartado`, `10 · Enviar notificación` y el cambio del `08 · Error Workflow` según `specs/10-sub-workflows.md`, y exportarlos.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 4 Code. Cada sub-workflow tiene 6 nodos con los nombres de la spec, sin Error workflow. Los 4 Code del JSON exportado son idénticos a `~/subflujos/*.js`.
+  - En el `08`, `Avisar a la tienda del error` pasa a ser un Execute Workflow a `10 · Enviar notificación`, con **Mode** Run once for each item (`"mode": "each"`) y Wait For Sub-Workflow Completion.
+  - Los tres JSON pasan `validate_workflow` de n8n-mcp sin errores ni avisos.
+  - **Pruebas** (datos de ejemplo, pin data en el trigger):
+    - **`Buscar apartado`:**
+      - `id` 22 da el apartado de Beatriz Medina (`vencido`, `abonado` 25, `pendiente` 14.9), sin `abonos` ni `vale`. Con `estado` `activo`, `total` 0.
+      - `id` 9999 da `total` 0, con el `404` en verde.
+      - «Carmen Ruiz» da el apartado 1, igual que `GET /api/apartados?q=Carmen Ruiz`, y también con `estado` `activo`.
+      - `600000001` da los apartados 1 y 27. En la API, sin espacios da 0 y con espacios da 2: lo resuelve la normalización del teléfono.
+      - «Nadie Inventado» da `{ total: 0, apartados: [] }`.
+      - `estado` `activo` da 20, igual que el `resumen`.
+      - `{}` y `estado` `pagado` paran con el error de la spec.
+    - **`Enviar notificación`:** llegan el correo HTML («Hola» en negrita) y el de texto. Sin `para`, error y no llega nada.
+    - **`08`** (`curl` de HU-05 con `error-email-espacio.json` a la Production URL): llega el aviso con el flujo, el paso `Enviar confirmación al cliente`, «No recipients defined» y el enlace a la ejecución 71, sin firma.
+    - **Varios items:** con Run once for each item, 2 sub-ejecuciones, 2 correos y dos `messageId` distintos. Con Run once with all items, 1 correo y ningún error, como dice la spec. Se volvió a Run once for each item.
+    - **`401`:** no se hizo; obligaba a crear una credencial falsa. El camino de error está en `Preparar resultado`.
+  - Lo pendiente de comprobar del código, después de construir:
+    - **Publicar:** los dos sub-workflows están publicados (`"active": true`).
+    - **Error del sub-workflow en el `08` del que llama:** sigue sin comprobarse. Ningún flujo con `08` llama todavía a un sub-workflow; se verá en la PR de #95.
+    - **Respuesta del HTTP Request y campos vacíos:** todas las pruebas dieron lo esperado. El código acepta las dos formas, así que no hizo falta mirar cuál llega.
+  - Esta vez no hizo falta `git restore` del `01` tras exportar: la rama ya tiene `dev` con #159, #160 y #161 fusionados.
+- **Problemas encontrados:**
+  - **Saltos de línea del `08`.** La primera vez el aviso llegó en una sola línea. Los campos de **Workflow Inputs** son de una línea, y al pegar el texto o pulsar Enter se pierden los saltos. Se resolvió escribiendo `texto` como expresión con `\n`. La spec (4.4) y el `LEEME.md` lo recogen.
+  - **Firma de n8n en `Enviar correo de texto`.** Faltaba desactivar **Append n8n Attribution** en ese nodo. Se desactivó y se repitió la prueba.
+  - **`callerPolicy` oculto.** «This workflow can be called by» no aparece en Settings en n8n 2.4.5 community. Los JSON exportados tienen `callerPolicy: workflowsFromSameOwner`, el valor por defecto que pedía la spec. La sección 1 de la spec lo recoge.
+- **Decisión:** aceptado. La fila del `08` en `AGENTS.md` (sección 8) pasa a «Tomada».
+- No hay prompt: los flujos los construyó la pareja a mano.
 
 ### Filtro de avisos bancarios HU-03 (#33)
 
@@ -1154,3 +1353,6 @@ Ninguna por ahora.
 - **Verificación:** suite HU-03 completa — 35/35 pruebas; incluye motivos, candidatos, 422, método Bizum/transferencia y limpieza de saltos de línea/pseudoencabezados. No se envió ningún correo en las pruebas.
 - **Pendiente:** review y validación en n8n/Mailpit. Mantener workflow inactivo y la PR borrador.
 - **Decisión:** mostrar hasta 20 candidatos y advertir si hay más; no poner datos variables en el asunto ni reenviar el correo bancario completo.
+
+## 4. Decisiones abiertas
+Ninguna por ahora.

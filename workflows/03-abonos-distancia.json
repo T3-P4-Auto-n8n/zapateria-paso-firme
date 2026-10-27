@@ -1,5 +1,5 @@
 {
-  "name": "03 · Abonos a distancia (extracción)",
+  "name": "03 · Abonos a distancia",
   "nodes": [
     {
       "name": "Formulario de desarrollo",
@@ -12,7 +12,7 @@
       ],
       "parameters": {
         "formTitle": "Probar entrada de correo bancario",
-        "formDescription": "HU-03 · Prueba de extracción. Solo datos ficticios. No registra abonos ni envía recibos.",
+        "formDescription": "HU-03 · Borrador de prueba inactivo; el correo solo se envía al buzón Mailpit local.",
         "formFields": {
           "values": [
             {
@@ -35,11 +35,11 @@
         },
         "responseMode": "onReceived",
         "options": {
-          "path": "hu03-extraccion",
+          "path": "hu03-aviso-revision",
           "appendAttribution": false
         }
       },
-      "webhookId": "a71949c9-4496-5e6e-a193-51538d1e3a98"
+      "webhookId": "94bc6e66-a1ce-5124-9016-81469c824182"
     },
     {
       "name": "Correo bancario IMAP",
@@ -77,7 +77,7 @@
       }
     },
     {
-      "name": "Configurar y probar la entrada",
+      "name": "Notas de aviso HU-03",
       "id": "3cac9bdf-8650-5416-8204-7ac243bc98ea",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -86,7 +86,7 @@
         -450
       ],
       "parameters": {
-        "content": "## HU-03 · Filtro (#33)\nExportación parcial e inactiva.\nFormulario: Test URL, referencia/asunto/cuerpo. IMAP deshabilitado hasta seleccionar credencial de pruebas.\nEl Switch separa extraer, ignorar y revisar. Las salidas terminan en nodos sin acciones: #34 añadirá IA y #38 el aviso de revisión.\nVer docs/hu03-filtro.md. No publicar sin revisión.",
+        "content": "## HU-03 · Aviso de revisión (#38)\nBorrador parcial e inactivo. Asignar Groq, API Tienda y Mailpit; seleccionar el 08 local en Settings. Solo las ramas de revisión envían un correo de texto a Mailpit; no se reenvía el mensaje bancario ni se registra un abono desde esta etapa. Probar solo con los correos ficticios.",
         "height": 370,
         "width": 540
       }
@@ -469,6 +469,326 @@
         "height": 230,
         "width": 470
       }
+    },
+    {
+      "name": "Buscar apartado",
+      "id": "657d9322-3a0a-5041-b9f6-1b2a98e3c936",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2550,
+        -150
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url_busqueda }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "name": "Resultados de búsqueda",
+      "id": "104e9b33-f4fa-5a0f-88f5-70872a4fe8dd",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        -150
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Decidir apartado (#36)",
+      "id": "74a630d0-2941-58c6-acb0-bf22ad8c430b",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3050,
+        -150
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// #36: comparar identidad, concepto y reglas de negocio; no registrar.\nconst e = $('Validar extracción').item.json;\nconst revisar = (motivo, candidatos = []) => ({json:{...e,decision:'revisar',motivo_decision:motivo,candidatos}});\nconst status = Number($json.statusCode);\nif (status === 401 || status >= 500) throw new Error('Error técnico en GET de apartados (HTTP ' + status + ')');\nif (status === 404 && e.apartado_id !== null) return revisar('El apartado indicado en el concepto no existe; no se buscará otro automáticamente');\nif (status !== 200) throw new Error('Error técnico en GET de apartados (HTTP ' + status + ')');\nif (typeof e.concepto !== 'string' || !e.concepto.trim()) return revisar('El aviso no incluye concepto suficiente para identificar el apartado');\nconst body = $json.body;\nconst candidatos = Array.isArray(body) ? body : (body && typeof body === 'object' && !Array.isArray(body) ? [body] : []);\nif (!candidatos.length) return revisar('La API no devolvió apartados candidatos');\nif (e.apartado_id !== null && candidatos.some(a => Number(a.id) !== Number(e.apartado_id)))\n  return revisar('La respuesta de API no coincide con el ID explícito del concepto', candidatos);\nconst norm = value => String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();\nconst nameTokens = value => norm(value).split(/\\s+/).filter(Boolean);\nconst payer = nameTokens(e.ordenante);\nconst matchesIdentity = a => {\n  const customer = nameTokens(a.cliente);\n  return customer.length > 0 && payer.length > 0 && customer.every(token => payer.some(p => p === token || (p.length === 1 && token.startsWith(p))));\n};\nconst ignored = new Set(['abono','abonos','pago','pagos','bizum','transferencia','transferencias','apartado','apartados','numero','num','n','de','del','la','las','el','los','por','para','favor','mi','liquidar','liquida','pedido']);\nconst stem = token => token.length > 5 && token.endsWith('es') ? token.slice(0,-2) : (token.length > 4 && token.endsWith('s') ? token.slice(0,-1) : token);\nconst concept = nameTokens(e.concepto).filter(t => !ignored.has(t)).map(stem);\nif (!concept.length) return revisar('El concepto no identifica ningún producto o referencia', candidatos);\nconst plausible = candidatos.filter(a => {\n  if (e.apartado_id !== null && Number(a.id) !== Number(e.apartado_id)) return false;\n  if (!matchesIdentity(a)) return false;\n  const product = nameTokens(a.producto).map(stem);\n  return concept.some(token => product.includes(token));\n});\nif (!plausible.length) return revisar('No hay un apartado que coincida claramente con ordenante y concepto', candidatos);\nif (plausible.length !== 1) return revisar('Hay varios apartados posibles; se requiere revisión manual', plausible);\nconst apartado = plausible[0];\nif (apartado.estado !== 'activo') return revisar('El apartado no está activo (' + String(apartado.estado ?? 'estado desconocido') + ')', plausible);\nconst limite = typeof apartado.fecha_limite === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(apartado.fecha_limite) ? apartado.fecha_limite : '';\nconst hoy = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date());\nif (!limite) return revisar('La fecha límite del apartado no es válida', plausible);\nif (hoy > limite) return revisar('El apartado está fuera de plazo desde ' + limite, plausible);\nconst importe = Number(e.importe), pendiente = Number(apartado.pendiente);\nif (!Number.isFinite(importe) || importe <= 0 || !Number.isFinite(pendiente) || pendiente < 0)\n  return revisar('El importe o el pendiente recibido de la API no es válido', plausible);\nif (Math.round(importe * 100) > Math.round(pendiente * 100))\n  return revisar('El importe supera lo pendiente (' + pendiente + ' €)', plausible);\nreturn {json:{...e,decision:'registrar',motivo_decision:'Coincidencia única; apartado activo, en plazo y con saldo suficiente',apartado,candidatos:plausible}};\n"
+      }
+    },
+    {
+      "name": "¿Se puede registrar? (#36)",
+      "id": "3bb2683a-edff-5aed-88c3-9c84b05919aa",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        3300,
+        -150
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "registrar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "registrar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "name": "Continuar con registro (#37)",
+      "id": "f3652c98-0d9f-5c02-878b-cabb31ba66ad",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3550,
+        -150
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Revisar pago (#38)",
+      "id": "47f14ce1-989b-5061-ae20-92f79ba3abf0",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3550,
+        50
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Preparar solicitud de abono (#37)",
+      "id": "a1ee857f-0168-5fcb-a708-b54f00c75595",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3800,
+        -150
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// #37: repetir las comprobaciones críticas antes de construir el POST.\nconst e = $json;\nconst revisar = motivo => ({json:{...e,ruta:'revisar',motivo_decision:motivo}});\nif (e.decision !== 'registrar') return revisar('La decisión previa no autorizó el registro');\nif (!e.apartado || !Number.isSafeInteger(Number(e.apartado.id)) || Number(e.apartado.id) <= 0)\n  return revisar('Falta un ID de apartado válido');\nif (e.apartado.estado !== 'activo') return revisar('El apartado ya no está activo');\nconst limite = typeof e.apartado.fecha_limite === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(e.apartado.fecha_limite) ? e.apartado.fecha_limite : '';\nconst hoy = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date());\nif (!limite || hoy > limite) return revisar('El apartado está fuera de plazo o carece de fecha límite válida');\nconst importe = Number(e.importe), pendiente = Number(e.apartado.pendiente);\nif (!Number.isFinite(importe) || importe <= 0 || !Number.isFinite(pendiente) || pendiente < 0 || Math.round(importe*100) > Math.round(pendiente*100))\n  return revisar('El importe ya no cabe en el pendiente actual');\nreturn {json:{...e,ruta:'enviar',apartado_id:Number(e.apartado.id),body:{importe,forma_pago:'bizum'}}};\n"
+      }
+    },
+    {
+      "name": "¿Solicitud de abono válida? (#37)",
+      "id": "9096431e-f2fd-5fb3-9c04-d4f8e3b0ff87",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        4050,
+        -150
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ruta }}",
+                    "rightValue": "enviar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "enviar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "name": "Registrar abono",
+      "id": "3bfa4bec-b107-5e97-b4a8-fc9b59e44b14",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        4300,
+        -150
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://tienda:8000/api/apartados/' + $json.apartado_id + '/abonos' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "API Tienda"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": false
+    },
+    {
+      "name": "Validar respuesta del abono (#37)",
+      "id": "a0daf34f-ec6f-519f-98a2-cd32e58d9738",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4550,
+        -150
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Un 422 es una regla de negocio; fallos técnicos deben alcanzar el Error Workflow 08.\nconst p = $('Preparar solicitud de abono (#37)').item.json;\nif ($json.error || !Number.isInteger(Number($json.statusCode)))\n  throw new Error('Error técnico de red al registrar el abono; no repetir automáticamente');\nconst status = Number($json.statusCode), body = $json.body;\nif (status === 201) {\n  if (!body || typeof body !== 'object' || Number(body.id) !== p.apartado_id)\n    throw new Error('Respuesta 201 inesperada al registrar el abono; conciliar antes de reintentar');\n  return {json:{...p,resultado_pago:'registrado',apartado_actualizado:body}};\n}\nif (status === 422) {\n  const detail = typeof body?.detail === 'string' ? body.detail : 'La API rechazó el abono por una regla de negocio';\n  return {json:{...p,ruta:'revisar',resultado_pago:'rechazado',motivo:detail}};\n}\nif (status === 404) return {json:{...p,ruta:'revisar',resultado_pago:'rechazado',motivo:'La API ya no encuentra el apartado; revisar antes de actuar'}};\nthrow new Error('Error técnico al registrar el abono (HTTP ' + status + '); no reintentar automáticamente');\n"
+      }
+    },
+    {
+      "name": "¿Registrado? (#37)",
+      "id": "dfe6337c-136e-51c9-b9a7-af18534021d8",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        4800,
+        -150
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.resultado_pago }}",
+                    "rightValue": "registrado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "registrado"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "name": "Fin tras éxito HU-02 (#37)",
+      "id": "1955f182-c894-559b-8438-890037d80dee",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5050,
+        -150
+      ],
+      "parameters": {}
+    },
+    {
+      "name": "Preparar aviso de revisión (#38)",
+      "id": "7140cf5c-066e-59b2-81a1-0a380ac355d0",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5300,
+        50
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// #38: avisar al equipo de la tienda con lo necesario para revisar; no reenviar el correo bancario.\nconst e = $json;\nconst safe = (value, limit = 300) => String(value ?? '').replace(/[\\x00-\\x1f\\x7f]+/g,' ').replace(/\\b(?:bcc|cc|to|from)\\s*:\\s*[^\\s]+/gi,'[contenido omitido]').replace(/\\s+/g,' ').trim().slice(0,limit);\nlet source = {};\ntry { source = $('Normalizar entrada de correo').item.json || {}; } catch { /* datos de entrada no disponibles */ }\nconst original = safe(source.asunto,1000) + ' ' + safe(source.cuerpo,20000);\nconst normalized = original.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\nconst medio = safe(e.medio) || (normalized.includes('bizum') ? 'Bizum' : (normalized.includes('transferencia') ? 'Transferencia' : 'No identificado'));\nconst motivo = safe(e.motivo || e.motivo_decision || 'El pago requiere revisión manual');\nconst ordenante = safe(e.ordenante || 'No identificado');\nconst concepto = safe(e.concepto || 'No indicado');\nconst referencia = safe(e.referencia || 'No disponible',300);\nconst importe = Number(e.importe);\nconst importeTexto = Number.isFinite(importe) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(importe) + ' €' : 'No identificado';\nconst candidates = Array.isArray(e.candidatos) ? e.candidatos : (e.apartado && typeof e.apartado === 'object' ? [e.apartado] : []);\nconst shown = candidates.slice(0,20);\nconst lines = shown.map(a => `- #${safe(a.id,20)} · ${safe(a.cliente || 'Cliente desconocido')} · ${safe(a.producto || 'Producto desconocido')}${a.talla ? ' · talla ' + safe(a.talla,30) : ''} · pendiente ${Number.isFinite(Number(a.pendiente)) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(a.pendiente)) + ' €' : 'desconocido'} · límite ${safe(a.fecha_limite || 'desconocido',30)} · estado ${safe(a.estado || 'desconocido',30)}`).join('\\n');\nconst candidatosTexto = lines || 'No hay candidatos disponibles.';\nconst adicionales = candidates.length > shown.length ? `\\nHay ${candidates.length - shown.length} candidatos más; revisar la ejecución.` : '';\nconst text = `Hola, equipo de la tienda:\\n\\nHa llegado un pago que no he registrado. Revísalo y, si procede, regístralo manualmente en la app.\\n\\nMotivo: ${motivo}\\nOrdenante: ${ordenante}\\nImporte: ${importeTexto}\\nMétodo indicado: ${medio}\\nConcepto: ${concepto}\\nReferencia: ${referencia}\\n\\nApartados candidatos:\\n${candidatosTexto}${adicionales}\\n\\nNo vuelvas a registrar el pago hasta confirmar que no se haya aplicado ya.`;\nreturn {json:{...e,asunto:'Pago recibido para revisar',text}};\n"
+      }
+    },
+    {
+      "name": "Avisar a la tienda para revisar el pago",
+      "id": "799d7ff3-6c46-5daa-86a7-2bdceec26bdc",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        5550,
+        50
+      ],
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "={{ $json.asunto }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": null,
+          "name": "Mailpit"
+        }
+      }
     }
   ],
   "connections": {
@@ -632,6 +952,192 @@
         [
           {
             "node": "Revisar extracción (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continuar con búsqueda (#35)": {
+      "main": [
+        [
+          {
+            "node": "Buscar apartado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar apartado": {
+      "main": [
+        [
+          {
+            "node": "Resultados de búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultados de búsqueda": {
+      "main": [
+        [
+          {
+            "node": "Decidir apartado (#36)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir apartado (#36)": {
+      "main": [
+        [
+          {
+            "node": "¿Se puede registrar? (#36)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Se puede registrar? (#36)": {
+      "main": [
+        [
+          {
+            "node": "Continuar con registro (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revisar pago (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continuar con registro (#37)": {
+      "main": [
+        [
+          {
+            "node": "Preparar solicitud de abono (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar solicitud de abono (#37)": {
+      "main": [
+        [
+          {
+            "node": "¿Solicitud de abono válida? (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Solicitud de abono válida? (#37)": {
+      "main": [
+        [
+          {
+            "node": "Registrar abono",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revisar pago (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar abono": {
+      "main": [
+        [
+          {
+            "node": "Validar respuesta del abono (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar respuesta del abono (#37)": {
+      "main": [
+        [
+          {
+            "node": "¿Registrado? (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Registrado? (#37)": {
+      "main": [
+        [
+          {
+            "node": "Fin tras éxito HU-02 (#37)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revisar pago (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisar entrada inválida": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso de revisión (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisar extracción (#38)": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso de revisión (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisar pago (#38)": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso de revisión (#38)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar aviso de revisión (#38)": {
+      "main": [
+        [
+          {
+            "node": "Avisar a la tienda para revisar el pago",
             "type": "main",
             "index": 0
           }

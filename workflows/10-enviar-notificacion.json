@@ -1,0 +1,226 @@
+{
+  "name": "10 · Enviar notificación",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "para"
+            },
+            {
+              "name": "asunto"
+            },
+            {
+              "name": "texto"
+            },
+            {
+              "name": "html"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        -32
+      ],
+      "id": "5f481088-6fff-4d4d-8718-13c5eb27772a",
+      "name": "Al enviar una notificación"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Comprobar la notificación» (10 · Enviar notificación) · Run Once for All Items\n// Recibe { para, asunto, texto, html } de «Al enviar una notificación» y devuelve\n// el mismo item limpio o para con error sin enviar nada.\n\nconst entrada = $input.first().json;\n\n// Un campo vacío puede llegar como null, \"\" o no llegar\nconst limpio = v => (v == null ? '' : String(v).trim());\nconst para = limpio(entrada.para);\nconst asunto = limpio(entrada.asunto);\nconst texto = limpio(entrada.texto);\nconst html = limpio(entrada.html);\n\nif (!para || !para.includes('@')) throw new Error('Enviar notificación: falta `para`');\nif (!asunto) throw new Error('Enviar notificación: falta `asunto`');\nif (!texto && !html) throw new Error('Enviar notificación: falta el cuerpo del correo');\n\nreturn [{ json: { para, asunto, texto, html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -32
+      ],
+      "id": "4eceeac5-302e-47f2-8090-e158f4be4f99",
+      "name": "Comprobar la notificación"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "f3ccb15f-1d8a-44fa-9929-fa8999530b3e",
+              "leftValue": "={{ !!$json.html }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        -64,
+        -32
+      ],
+      "id": "928900ab-86ea-41a4-baca-70b59bcd0721",
+      "name": "¿Lleva HTML?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "={{ $json.para }}",
+        "subject": "={{ $json.asunto }}",
+        "emailFormat": "both",
+        "text": "={{ $json.texto }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        -128
+      ],
+      "id": "f95faab9-0e7f-49ff-a3af-b72fb613b093",
+      "name": "Enviar correo en HTML",
+      "webhookId": "453fab43-10b6-4d0c-9582-96957077495c",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "={{ $json.para }}",
+        "subject": "={{ $json.asunto }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texto }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        64
+      ],
+      "id": "a2753af6-21c1-4ee0-a539-c920a55a67f8",
+      "name": "Enviar correo de texto",
+      "webhookId": "b38fbf14-d4eb-4ade-aa7d-948dd2173b17",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar respuesta» (10 · Enviar notificación) · Run Once for All Items\n// Recibe la salida de «Enviar correo en HTML» o «Enviar correo de texto» y devuelve\n// un item { enviado, para, asunto, messageId } al flujo que llama.\n\nconst { para, asunto } = $('Comprobar la notificación').first().json;\nconst envio = $input.first().json;\n\nreturn [{ json: { enviado: true, para, asunto, messageId: envio.messageId ?? null } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "c8546855-0b6c-41a8-9b16-eec8a5a7514b",
+      "name": "Preparar respuesta"
+    }
+  ],
+  "connections": {
+    "Al enviar una notificación": {
+      "main": [
+        [
+          {
+            "node": "Comprobar la notificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar la notificación": {
+      "main": [
+        [
+          {
+            "node": "¿Lleva HTML?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Lleva HTML?": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo en HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar correo de texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo de texto": {
+      "main": [
+        [
+          {
+            "node": "Preparar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo en HTML": {
+      "main": [
+        [
+          {
+            "node": "Preparar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": true,
+  "id": "SX8XHPikDL4KcF2w",
+  "versionId": "6f473b90-4fb8-482e-8242-2c25e81e39bc"
+}
