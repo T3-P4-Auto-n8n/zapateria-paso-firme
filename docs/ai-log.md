@@ -1295,6 +1295,78 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Decisión:** aceptado. La fila del `08` en `AGENTS.md` (sección 8) pasa a «Tomada».
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Spec del flujo 1 con `Enviar notificación` · #95 (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** #95 (parte de #92): spec y valores para pegar para que los 2 correos del flujo 1 (`Enviar confirmación al cliente` y `Avisar a la tienda: sin email`) se envíen con `10 · Enviar notificación`. Es el ejemplo de uso. Solo documentación; la pareja cambia los nodos a mano en n8n.
+- **Resultado:**
+  - **`~/subflujos/LEEME-95.md`** (fuera del repo):
+    - pasos para cambiar cada Send Email por un Execute Workflow con el mismo nombre y las mismas conexiones (Mode Run once for each item, Wait For Sub-Workflow Completion);
+    - los Workflow Inputs `para`, `asunto` y `texto` de cada nodo, cada uno en su bloque;
+    - las 3 pruebas con sus `curl`.
+  - **`texto` como una sola expresión de una línea con `\n`**, como el del `08`, con `toFixed(2)`, la fecha `dd/MM/yyyy` y `|| 'sin teléfono'` entre paréntesis.
+  - **Comprobado en local con node y Luxon:** con `apartado.creado.json` y `apartado.creado-sin-email.json`, las expresiones nuevas dan **exactamente** el mismo `para`, `asunto` y `texto` que las plantillas actuales de `workflows/01-eventos-tienda.json`.
+  - **`specs/01-eventos-tienda.md`:**
+    - nota de alcance;
+    - pasos 4 y 5 con los Execute Workflow y sus valores;
+    - sección 6: los casos de `email` `" "` y de importes que faltan;
+    - sección 7: las pruebas de #95.
+  - **`specs/08-error-workflow.md`, sección 7:** con el cambio, la prueba de HU-05 ya no falla en el Send Email («No recipients defined»). Falla en `Comprobar la notificación` del sub-workflow («Enviar notificación: falta `para`»). El `08` avisa con el paso `Enviar confirmación al cliente`; el texto exacto del error queda a comprobar.
+  - **`specs/10-sub-workflows.md`:**
+    - en la sección 4.3, el flujo 1 va «en la PR de #95 (ejemplo)» y los demás Send Email del `01`, el `07` y el `09` «se quedan con Send Email (opcional)», con el porqué;
+    - en la sección 8, el flujo 1 queda sin marcar hasta probarlo.
+- **Problemas encontrados:**
+  - **`error-email-espacio.json` no trae `precio`, `abonado` ni `pendiente`.** En local, la expresión nueva de `texto` lanza `TypeError` en el `.toFixed(2)`.
+    - Con el Send Email, n8n dejaba vacío ese trozo de la plantilla y seguía hasta «No recipients defined». Lo dicen la spec del `08` («las expresiones de n8n con campos que faltan dan texto vacío») y el resultado real de HU-05.
+    - Lo esperado ahora es que deje vacío todo el `texto` y que el sub-workflow pare por `para`, que comprueba primero.
+    - Si n8n hiciera fallar el Execute Workflow por la expresión, el `08` avisaría igual, pero el error no vendría del sub-workflow y lo pendiente de #92 no quedaría comprobado. Queda **a comprobar** en la prueba.
+  - **Diferencia con datos incompletos.** Un campo `null` sale como `null` en la expresión nueva y en blanco en la plantilla antigua. Si falta un importe, antes llegaba un correo con campos vacíos; ahora (a comprobar) el sub-workflow para con error y avisa el `08`. Con los payloads de prueba completos no hay diferencia.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#95 (parte de #92): como ejemplo de uso, el **flujo 1** del `01 · Eventos de la tienda` pasa a enviar sus 2 correos con el sub-workflow `10 · Enviar notificación`, en lugar de sus 2 nodos Send Email: `Enviar confirmación al cliente` y `Avisar a la tienda: sin email`. La pareja cambiará los nodos a mano en n8n; tú preparas la spec y los valores exactos para pegar. Estamos en la rama `feature/95-sub-workflows-en-01` (sale de `dev`, que ya tiene #159, #160, #161 y #162).
+
+**Alcance:** solo esos 2 nodos. Los flujos 2 y 4 del `01`, el `07` y el `09` se quedan con su Send Email; los flujos 3 y 6 son de Beste. #95 sigue abierta (`Refs #95`). Se elige el flujo 1 porque la prueba de HU-05 (`error-email-espacio.json`) pasa por `Enviar confirmación al cliente`: así se comprueba también que un error del sub-workflow lo avisa el `08` del flujo que llama (pendiente en `docs/ai-log.md`, #92).
+
+## Fuentes
+
+- `workflows/01-eventos-tienda.json` (los 2 Send Email del flujo 1).
+- `specs/01-eventos-tienda.md`, `specs/08-error-workflow.md`, `specs/10-sub-workflows.md` (secciones 3, 4.3 y 4.4), `workflows/10-enviar-notificacion.json`, `workflows/08-error-workflow.json` (cómo quedó su Execute Workflow), `AGENTS.md`, `docs/ai-log.md`.
+- `tests/payloads/` (los de `apartado.creado` con y sin email, y `error-email-espacio.json`).
+
+## Contenido
+
+1. `~/subflujos/LEEME-95.md` (fuera del repo), para la pareja:
+   - Pasos para cada uno de los 2 nodos: borrar el Send Email, añadir un **Execute Workflow** con **el mismo nombre** y las mismas conexiones, **Source** Database, **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once for each item, **Options → Wait For Sub-Workflow Completion** activado.
+   - Para cada nodo, los **Workflow Inputs** `para`, `asunto` y `texto` listos para pegar (`html` vacío). Los campos de Workflow Inputs son de **una sola línea**: `texto` tiene que ser **una sola expresión en una línea** con `\n` (como el `texto` del `08`). El correo tiene que quedar **igual** que el de ahora (mismas líneas, `toFixed(2)`, fecha `dd/MM/yyyy`, `|| 'sin teléfono'`).
+   - Cada valor en su propio bloque de código, para copiarlo de uno en uno.
+   - Las pruebas (abajo) con los `curl` exactos.
+2. **Comprueba los textos con node**: para cada nodo, evalúa la expresión nueva y la plantilla actual del JSON con el payload de prueba que le toca (simula `$json` y `DateTime` de Luxon si no está instalado, sin instalar nada en el repo) y confirma que dan **exactamente** el mismo texto. Dime el resultado.
+3. `specs/01-eventos-tienda.md`: los 2 nodos del flujo 1 pasan a ser Execute Workflow a `10 · Enviar notificación`; el resto igual. Nota de alcance de esta versión.
+4. `specs/08-error-workflow.md`, sección 7: con el cambio, el `email` `" "` ya no falla en el Send Email sino en `Comprobar la notificación` del sub-workflow («Enviar notificación: falta `para`»). Escribe qué se espera ahora (el `08` avisa con el paso `Enviar confirmación al cliente` del `01` y el mensaje que llegue del sub-workflow; si no sabes el texto exacto que pone n8n, déjalo como «a comprobar»).
+5. `specs/10-sub-workflows.md`: sección 4.3, el flujo 1 «en la PR de #95 (ejemplo)» y los demás nodos del `01`, el `07` y el `09` «se quedan con Send Email (opcional)», con el porqué. Sección 8: el criterio del flujo 1 sin marcar hasta probarlo.
+6. `docs/ai-log.md`: entrada «### Spec del flujo 1 con `Enviar notificación` · #95 (`specs/01-eventos-tienda.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Pruebas (ponlas en la spec del `01`, sección 7, y en `LEEME-95.md`)
+
+- Flujo 1 con email: llega la confirmación al cliente, igual que antes.
+- Flujo 1 sin email: llega el aviso a la tienda, igual que antes.
+- HU-05 con `error-email-espacio.json` a la Production URL: llega el aviso del `08`.
+- En cada correo: remitente `tienda@pasofirme.example`, sin firma de n8n, saltos de línea correctos.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

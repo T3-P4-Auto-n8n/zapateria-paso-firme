@@ -130,17 +130,23 @@ Con 0 resultados: `{ "total": 0, "apartados": [] }`. **No es un error:** el fluj
 | Workflow | Nodo actual | Se sustituye por | Cuándo |
 |---|---|---|---|
 | `08 · Error Workflow` | `Avisar a la tienda del error` | `Enviar notificación` | **En este PR** (4.4) |
-| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Pendiente, en una PR aparte |
-| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Pendiente, en una PR aparte |
+| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | **En la PR de #95 (ejemplo)**, ver [specs/01-eventos-tienda.md](01-eventos-tienda.md) |
+| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Se queda con Send Email (opcional) |
+| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Se queda con Send Email (opcional) |
+| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Se queda con Send Email (opcional) |
+| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Se queda con Send Email (opcional) |
 | `03 · Abonos a distancia` (Beste, PR #158) | Pasos 2 y 3 de su spec: `GET /api/apartados/{id}` y `GET /api/apartados?estado=activo&q=...` | `Buscar apartado`: con `id` (sin `estado`, para poder avisar si está liquidado o fuera de plazo) o con `texto` y `estado` `activo` | Lo decide Beste al construirlo o corregirlo |
 | `03` | Consulta o rechazo a Marisa (sección 5 de su spec) | `Enviar notificación` | Igual |
 | `06 · Recordatorios y vencimientos` (Beste, sin empezar) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` | Al construirlo |
 | `06` | Recordatorios al cliente (7 días y 1 día), aviso del vale al cliente (HU-07) y lista de zapatos que vuelven a la venta a la tienda | `Enviar notificación` | Al construirlo |
 
-- Los PR #159, #160 y #161 ya están fusionados en `dev`. El cambio de `01`, `07` y `09` no va en este PR para no mezclarlo con #92 y para repetir sus pruebas por separado.
+- Los PR #159, #160 y #161 ya están fusionados en `dev`.
+- **Por qué el flujo 1 como ejemplo:** la prueba de HU-05 (`error-email-espacio.json`) pasa por `Enviar confirmación al cliente`. Con el cambio comprueba también que un error del sub-workflow lo avisa el `08` del flujo que llama, lo que quedó pendiente al construir #92.
+- **Por qué los demás se quedan con Send Email (opcional):**
+  - ya funcionan y están probados;
+  - el correo sería el mismo;
+  - cambiarlos obliga a reescribir cada texto como expresión de una línea y a repetir todas sus pruebas.
+  - El uso del sub-workflow ya queda demostrado con el `08` y el flujo 1. Se pueden cambiar más adelante, uno por PR.
 - El `POST /api/apartados/{id}/vencer` del flujo 6 **no** pasa a un sub-workflow: solo se reutilizan la búsqueda y el envío.
 - Los flujos 1 y 2 no usan `Buscar apartado`: el webhook ya trae el apartado actualizado.
 - **#95** («usarlos desde los flujos 1, 2, 3, 6») queda **abierta**: este PR solo la referencia (`Refs #95`). Se cierra cuando los cuatro flujos usen los sub-workflows.
@@ -307,7 +313,7 @@ Las issues #92–#95 no traen checklist: solo el título. Los criterios salen de
 - [x] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
 - [x] El `08` envía su aviso con `Enviar notificación` y el correo llega igual que antes.
 - [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta, `Refs #95`):
-  - [ ] Flujo 1 (`01`, HU-01)
-  - [ ] Flujo 2 (`01`, HU-02)
+  - [ ] Flujo 1 (`01`, HU-01): en la PR de #95 (ejemplo); se marca al probarlo
+  - [ ] Flujo 2 (`01`, HU-02): se queda con Send Email (opcional, 4.3)
   - [ ] Flujo 3 (`03`, Beste)
   - [ ] Flujo 6 (`06`, Beste)

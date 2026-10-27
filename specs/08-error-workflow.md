@@ -65,6 +65,17 @@ curl -X POST http://localhost:5678/webhook/tienda \
   -H "Content-Type: application/json" -d @tests/payloads/error-email-espacio.json
 ```
 
+**Con la rama HU-01 del `01` usando `Enviar notificación` (#95).** `Enviar confirmación al cliente` pasa a ser un Execute Workflow a `10 · Enviar notificación` ([specs/01-eventos-tienda.md](01-eventos-tienda.md), paso 4). La misma prueba falla en otro sitio:
+
+| Entrada | Resultado esperado |
+|---|---|
+| `tests/payloads/error-email-espacio.json` a la Production URL (con el `01`, el `08` y `10 · Enviar notificación` publicados) | El IF `¿Tiene email?` sigue dejando pasar `" "`. Ya no falla un Send Email: en el sub-workflow, `Comprobar la notificación` quita los espacios y para con «Enviar notificación: falta `para`», sin enviar nada. Falla el Execute Workflow `Enviar confirmación al cliente` del `01`, y en Mailpit llega a `tienda@pasofirme.example` «Ha fallado el flujo «01 · Eventos de la tienda»» con el paso `Enviar confirmación al cliente`, el error que llega del sub-workflow y el enlace a la ejecución, sin claves ni firma |
+
+- **A comprobar:**
+  - **El texto exacto del error.** Lo esperado es «Enviar notificación: falta `para`», pero n8n puede ponerle algo delante o detrás al pasarlo del sub-workflow al nodo que lo llama.
+  - **De dónde sale el error.** El payload no trae `precio`, así que el `.toFixed(2)` del `texto` da error. Lo esperado es que n8n deje el `texto` vacío y no falle: es lo que pasaba con el Send Email, que llegaba a «No recipients defined». Si en cambio falla el Execute Workflow por la expresión, el `08` avisa igual, con el mismo paso, pero el error no viene del sub-workflow.
+- Esta prueba comprueba también lo que quedó pendiente en #92: que un error de un sub-workflow lo avisa el `08` del flujo que llama. En las ejecuciones se ven la del `01` (fallida), la de `10 · Enviar notificación` (fallida) y la del `08`.
+
 > Un evento con campos que faltan (por ejemplo, `abono.registrado` sin `importe`) **no** sirve para probar: las expresiones de n8n con campos que faltan dan texto vacío y el `01` no falla (envía un correo con campos vacíos).
 
 **Evidencias:**
