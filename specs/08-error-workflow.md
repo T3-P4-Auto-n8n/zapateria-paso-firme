@@ -71,10 +71,21 @@ curl -X POST http://localhost:5678/webhook/tienda \
 |---|---|
 | `tests/payloads/error-email-espacio.json` a la Production URL (con el `01`, el `08` y `10 · Enviar notificación` publicados) | El IF `¿Tiene email?` sigue dejando pasar `" "`. Ya no falla un Send Email: en el sub-workflow, `Comprobar la notificación` quita los espacios y para con «Enviar notificación: falta `para`», sin enviar nada. Falla el Execute Workflow `Enviar confirmación al cliente` del `01`, y en Mailpit llega a `tienda@pasofirme.example` «Ha fallado el flujo «01 · Eventos de la tienda»» con el paso `Enviar confirmación al cliente`, el error que llega del sub-workflow y el enlace a la ejecución, sin claves ni firma |
 
-- **A comprobar:**
-  - **El texto exacto del error.** Lo esperado es «Enviar notificación: falta `para`», pero n8n puede ponerle algo delante o detrás al pasarlo del sub-workflow al nodo que lo llama.
-  - **De dónde sale el error.** El payload no trae `precio`, así que el `.toFixed(2)` del `texto` da error. Lo esperado es que n8n deje el `texto` vacío y no falle: es lo que pasaba con el Send Email, que llegaba a «No recipients defined». Si en cambio falla el Execute Workflow por la expresión, el `08` avisa igual, con el mismo paso, pero el error no viene del sub-workflow.
-- Esta prueba comprueba también lo que quedó pendiente en #92: que un error de un sub-workflow lo avisa el `08` del flujo que llama. En las ejecuciones se ven la del `01` (fallida), la de `10 · Enviar notificación` (fallida) y la del `08`.
+**Resultado real** (#95):
+
+- **Ejecuciones:**
+  - `01` (100): error en `Enviar confirmación al cliente`, «Error executing workflow with item at index 0»;
+  - `10 · Enviar notificación` (101): error en `Comprobar la notificación`, «Enviar notificación: falta `para` [line 14]»;
+  - `08` (102): correcta.
+- **El aviso:** llega a `tienda@pasofirme.example` «Ha fallado el flujo «01 · Eventos de la tienda»», con Paso `Enviar confirmación al cliente`, **Error «Error executing workflow with item at index 0»** y el enlace a la ejecución 100.
+- **El mensaje es el genérico de n8n, no el del sub-workflow.** n8n no pasa el mensaje del sub-workflow al nodo que lo llama. El motivo real solo se ve en la ejecución del sub-workflow:
+  - abrir la ejecución del enlace del aviso y, desde el nodo `Enviar confirmación al cliente`, ir a la sub-ejecución;
+  - o buscar en las ejecuciones de `10 · Enviar notificación` la de la misma hora.
+- **El error sale del sub-workflow, no de la expresión del `01`.** Con este payload incompleto (sin `precio`), el sub-workflow recibió `para` como el texto literal de la expresión, sin resolver, y ningún `texto`. Paró en la comprobación de `para`. Detalle en [specs/01-eventos-tienda.md](01-eventos-tienda.md), sección 7.
+- **Queda comprobado lo pendiente de #92:** un error de un sub-workflow hace fallar el nodo que lo llama, y lo avisa el `08` del flujo que llama.
+- **Evidencias:**
+  - [docs/evidencias/01-95-error-sub-workflow-08.png](../docs/evidencias/01-95-error-sub-workflow-08.png) (aviso);
+  - [docs/evidencias/01-95-error-en-sub-workflow.png](../docs/evidencias/01-95-error-en-sub-workflow.png) (ejecución 101).
 
 > Un evento con campos que faltan (por ejemplo, `abono.registrado` sin `importe`) **no** sirve para probar: las expresiones de n8n con campos que faltan dan texto vacío y el `01` no falla (envía un correo con campos vacíos).
 

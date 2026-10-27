@@ -3,7 +3,7 @@
 > **Alcance de esta versión:** router (webhook + Switch), rama de HU-01 (`apartado.creado`), rama de HU-02 (`abono.registrado`) y rama de HU-09 (`venta.registrada`, flujo 4). Queda pendiente:
 > `apartado.vencido` → HU-07 (aviso de vencido, flujo 6).
 >
-> **En esta versión (#95):** los 2 correos de la rama HU-01 se envían con el sub-workflow `10 · Enviar notificación` ([specs/10-sub-workflows.md](10-sub-workflows.md)). Es el ejemplo de uso de #95. Los demás Send Email del `01` (HU-02 y HU-09) no cambian. Pendiente de construir y probar en n8n.
+> **En esta versión (#95):** los 2 correos de la rama HU-01 se envían con el sub-workflow `10 · Enviar notificación` ([specs/10-sub-workflows.md](10-sub-workflows.md)). Es el ejemplo de uso de #95. Los demás Send Email del `01` (HU-02 y HU-09) no cambian. Construido en n8n, exportado en `workflows/01-eventos-tienda.json` y probado (sección 7).
 
 ## 1. Cabecera
 
@@ -50,7 +50,7 @@ Recibir en un único webhook todos los avisos de la app, repartir cada uno a su 
 - **Ahora** son **Execute Workflow** (versión 1.4) con el mismo nombre y las mismas conexiones:
   - **Workflow:** `10 · Enviar notificación` (Source Database, From list).
   - **Mode:** Run once for each item (regla de [specs/10-sub-workflows.md](10-sub-workflows.md), sección 3).
-  - **Options → Wait For Sub-Workflow Completion:** activado.
+  - **Options → Wait For Sub-Workflow Completion:** activado. Es el valor por defecto, así que en el JSON exportado no aparece (`"options": {}`); en el `08` sí aparece porque se tocó la opción.
   - El remitente, la credencial y la firma los pone el sub-workflow.
 - **Workflow Inputs:** `para`, `asunto` y `texto`; `html` vacío. Los campos son de una sola línea, así que `texto` es **una sola expresión con `\n`**, como el `texto` del `08`.
 - El correo que llega es **el mismo** que antes, con el mismo asunto, las mismas líneas y el mismo formato. Se comprobó en local con los payloads de prueba (sección 7).
@@ -122,9 +122,9 @@ No llama a la API: todos los datos llegan en el aviso (y el umbral, en la Data t
 | No existe la Data table `Configuración`, o el nodo no la tiene elegida (por ejemplo, tras importar el JSON) | `Leer umbral de venta grande` da error; lo avisa el `08`. Hay que crear la tabla y volver a elegirla en el nodo |
 | `venta.registrada` con `importe` igual al umbral | No avisa: la comparación es estrictamente mayor |
 | Falla el envío del correo (Mailpit caído, credencial mal) | El nodo da error; lo recoge el Error Workflow, ver [specs/08-error-workflow.md](08-error-workflow.md). En la rama HU-01 falla el Send Email del sub-workflow y, con él, el Execute Workflow del `01` |
-| Pendiente de mejorar: un `email` con solo espacios (`" "`) pasa el IF `¿Tiene email?` | En HU-02 y HU-09, el envío falla con «No recipients defined». En HU-01, el sub-workflow para con «Enviar notificación: falta `para`» y falla `Enviar confirmación al cliente`. En los dos casos lo avisa el `08` |
-| `apartado.creado` sin `precio`, `abonado` o `pendiente` (rama HU-01) | El `.toFixed(2)` da error de JavaScript dentro de la expresión de `texto`. Lo esperado (**a comprobar**) es que n8n deje vacío todo el `texto`: el sub-workflow para con «falta el cuerpo del correo» (o «falta `para`» si el email tampoco vale) y lo avisa el `08`. Antes se enviaba un correo con esos campos vacíos |
-| Pendiente de mejorar: un evento con datos incompletos (por ejemplo, sin `importe`) | No falla: envía un correo con campos vacíos (y «Invalid DateTime» en la fecha) |
+| Pendiente de mejorar: un `email` con solo espacios (`" "`) pasa el IF `¿Tiene email?` | En HU-02 y HU-09, el envío falla con «No recipients defined». En HU-01, el sub-workflow para con «Enviar notificación: falta `para`» y `Enviar confirmación al cliente` falla con el mensaje genérico de n8n «Error executing workflow with item at index 0». En los dos casos lo avisa el `08`; en HU-01 el motivo real solo se ve en la ejecución del sub-workflow (sección 7) |
+| `apartado.creado` sin `precio`, `abonado` o `pendiente` (rama HU-01) | El `.toFixed(2)` da error de JavaScript dentro de la expresión de `texto`. Visto con `error-email-espacio.json`: n8n **no pasa** el campo `texto` al sub-workflow y `para` llega como el texto literal de la expresión (`{{ $json.body.datos.email }}`), sin resolver; no sabemos por qué. El sub-workflow para con «falta `para`» y el `08` avisa con «Error executing workflow with item at index 0». No llega ningún correo con campos vacíos, como pasaba antes. Con un email válido y sin importes no se ha probado |
+| Pendiente de mejorar: un evento con datos incompletos (por ejemplo, sin `importe`) en HU-02 o HU-09 | No falla: envía un correo con campos vacíos (y «Invalid DateTime» en la fecha) |
 | El flujo no está publicado | La Production URL responde 404 y el aviso se pierde; la app no reintenta |
 | n8n está apagado | El aviso se pierde; la tienda sigue funcionando |
 
@@ -159,15 +159,33 @@ curl -X POST http://localhost:5678/webhook-test/tienda \
 |---|---|
 | `apartado.creado.json` (Test URL) | Llega la confirmación a `carmen@example.com` **igual que antes**: «Tu apartado en Paso Firme: Botín piel marrón», con talla 38, precio 89.90 €, abonado 10.00 €, pendiente 79.90 € y fecha límite 18/01/2027. En las ejecuciones se ven la del `01` y la de `10 · Enviar notificación` |
 | `apartado.creado-sin-email.json` (Test URL) | Llega a la tienda el aviso **igual que antes**: «Apartado 26 sin email: no se envió la confirmación», con Andrés Ruiz, 612 345 002 y Zapatilla running azul (talla 42) |
-| HU-05: `error-email-espacio.json` a la **Production URL** | Llega a la tienda el aviso del `08` «Ha fallado el flujo «01 · Eventos de la tienda»», con el paso `Enviar confirmación al cliente` y el error que llega del sub-workflow. Lo esperado es «Enviar notificación: falta `para`»; **a comprobar** el texto exacto que pone n8n. No llega nada al cliente. Ver [specs/08-error-workflow.md](08-error-workflow.md), sección 7 |
+| HU-05: `error-email-espacio.json` a la **Production URL** | Llega a la tienda el aviso del `08` «Ha fallado el flujo «01 · Eventos de la tienda»», con el paso `Enviar confirmación al cliente`, el error y el enlace a la ejecución del `01`. No llega nada al cliente. Ver [specs/08-error-workflow.md](08-error-workflow.md), sección 7 |
 | Los tres correos | Remitente `tienda@pasofirme.example`, sin la firma de n8n y con los saltos de línea correctos (líneas en blanco donde las había) |
 
 Comprobado en local con node, sin n8n: con `apartado.creado.json` y `apartado.creado-sin-email.json`, las expresiones nuevas dan **exactamente** el mismo `para`, `asunto` y `texto` que las plantillas de los Send Email de `workflows/01-eventos-tienda.json`.
 
-**Evidencias previstas:**
-- `docs/evidencias/01-95-confirmacion-con-sub-workflow.png`
-- `docs/evidencias/01-95-sin-email-con-sub-workflow.png`
-- `docs/evidencias/01-95-error-sub-workflow-08.png`
+**Resultado real** (#95):
+
+| Prueba | Resultado |
+|---|---|
+| Con email (`apartado.creado.json`, Test URL) | Llega a `carmen@example.com` «Tu apartado en Paso Firme: Botín piel marrón», desde `tienda@pasofirme.example` y sin firma. El texto es **idéntico** al de antes: las mismas líneas y líneas en blanco, 89.90 / 10.00 / 79.90 y 18/01/2027 |
+| Sin email (`apartado.creado-sin-email.json`, Test URL) | Llega a `tienda@pasofirme.example` «Apartado 26 sin email: no se envió la confirmación» con Andrés Ruiz, 612 345 002 y Zapatilla running azul (talla 42). Idéntico al de antes |
+| HU-05 (`error-email-espacio.json`, Production URL) | 3 ejecuciones. **`01`** (100): error en `Enviar confirmación al cliente`, «Error executing workflow with item at index 0». **`10 · Enviar notificación`** (101): error en `Comprobar la notificación`, «Enviar notificación: falta `para` [line 14]». **`08`** (102): correcta; llega a la tienda «Ha fallado el flujo «01 · Eventos de la tienda»» con el paso `Enviar confirmación al cliente`, el error «Error executing workflow with item at index 0» y el enlace a la ejecución 100 |
+
+- **El mensaje del aviso es el genérico de n8n.** n8n no pasa el mensaje del sub-workflow al nodo que lo llama. El aviso del `08` dice el flujo y el paso, pero el motivo real («falta `para`») solo está en la ejecución del sub-workflow. Para verlo:
+  - abrir la ejecución del enlace del aviso y, desde el nodo `Enviar confirmación al cliente`, ir a la sub-ejecución;
+  - o buscar en las ejecuciones de `10 · Enviar notificación` la de la misma hora.
+- **Qué recibió el sub-workflow** con este payload incompleto (ejecución 101): `{ "para": "{{ $json.body.datos.email }}", "asunto": "Tu apartado en Paso Firme: ", "html": null }`.
+  - **Sin `texto`:** la expresión con `.toFixed(2)` de un `precio` que no existe no se pudo calcular y n8n no pasó el campo.
+  - **`para` sin resolver:** llegó el texto literal de la expresión. No sabemos por qué; la configuración del nodo es correcta y en la prueba con email `para` sí se resolvió.
+  - `Comprobar la notificación` paró en la primera comprobación (`para` sin `@`).
+- **Queda comprobado lo pendiente de #92:** un error dentro de un sub-workflow hace fallar el nodo que lo llama, y lo avisa el `08` del flujo que llama.
+
+**Evidencias:**
+- Confirmación al cliente enviada con el sub-workflow: [docs/evidencias/01-95-confirmacion-con-sub-workflow.png](../docs/evidencias/01-95-confirmacion-con-sub-workflow.png)
+- Aviso a la tienda sin email enviado con el sub-workflow: [docs/evidencias/01-95-sin-email-con-sub-workflow.png](../docs/evidencias/01-95-sin-email-con-sub-workflow.png)
+- Aviso del `08` por el error en el sub-workflow: [docs/evidencias/01-95-error-sub-workflow-08.png](../docs/evidencias/01-95-error-sub-workflow-08.png)
+- Ejecución del sub-workflow con «falta `para`» (101): [docs/evidencias/01-95-error-en-sub-workflow.png](../docs/evidencias/01-95-error-en-sub-workflow.png)
 
 **De extremo a extremo** (cuando `scripts/datos_demo.py` esté en `dev`): con el flujo publicado, `python3 scripts/datos_demo.py` crea un apartado con email y otro sin él, abona 20 € al primero y liquida el segundo. Resultado esperado en Mailpit: la confirmación al cliente del primero, el aviso a la tienda del segundo y el recibo del abono parcial del primero, con los importes que muestra el script. El abono que liquida el segundo no envía nada, porque ese cliente no tiene email.
 

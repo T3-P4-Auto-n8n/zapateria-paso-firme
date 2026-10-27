@@ -190,8 +190,14 @@ El `08` está en `dev` y ningún PR abierto lo toca.
 
 **Cómo llega un error al `08`:** los sub-workflows no tienen Error workflow. Si un sub-workflow para con error, falla el nodo **Execute Workflow** del flujo que llama, y con él la ejecución del que llama. Su `08` avisa con:
 - el flujo que llama;
-- el paso, que es el nombre del nodo Execute Workflow (por ejemplo, `Avisar a la tienda: venta grande`);
-- el mensaje del sub-workflow.
+- el paso, que es el nombre del nodo Execute Workflow (por ejemplo, `Enviar confirmación al cliente`);
+- el mensaje **genérico de n8n** «Error executing workflow with item at index 0», no el del sub-workflow. n8n no lo pasa al nodo que llama.
+
+**El motivo real** («Enviar notificación: falta `para`», «Buscar apartado: la app respondió 401: ...») solo está en la ejecución del sub-workflow. Para verlo:
+- abrir la ejecución del enlace del aviso y, desde el nodo Execute Workflow, ir a la sub-ejecución;
+- o buscar en las ejecuciones del sub-workflow la de la misma hora.
+
+Se comprobó en #95 con la prueba de HU-05 ([specs/01-eventos-tienda.md](01-eventos-tienda.md), sección 7).
 
 Como siempre, solo en ejecuciones de producción.
 
@@ -313,7 +319,7 @@ Las issues #92–#95 no traen checklist: solo el título. Los criterios salen de
 - [x] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
 - [x] El `08` envía su aviso con `Enviar notificación` y el correo llega igual que antes.
 - [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta, `Refs #95`):
-  - [ ] Flujo 1 (`01`, HU-01): en la PR de #95 (ejemplo); se marca al probarlo
+  - [x] Flujo 1 (`01`, HU-01): en la PR de #95 (ejemplo), probado
   - [ ] Flujo 2 (`01`, HU-02): se queda con Send Email (opcional, 4.3)
   - [ ] Flujo 3 (`03`, Beste)
   - [ ] Flujo 6 (`06`, Beste)

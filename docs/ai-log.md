@@ -1285,7 +1285,7 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
     - **`401`:** no se hizo; obligaba a crear una credencial falsa. El camino de error está en `Preparar resultado`.
   - Lo pendiente de comprobar del código, después de construir:
     - **Publicar:** los dos sub-workflows están publicados (`"active": true`).
-    - **Error del sub-workflow en el `08` del que llama:** sigue sin comprobarse. Ningún flujo con `08` llama todavía a un sub-workflow; se verá en la PR de #95.
+    - **Error del sub-workflow en el `08` del que llama:** comprobado en #95 (ver «Construcción del flujo 1 con `Enviar notificación` · #95»).
     - **Respuesta del HTTP Request y campos vacíos:** todas las pruebas dieron lo esperado. El código acepta las dos formas, así que no hizo falta mirar cuál llega.
   - Esta vez no hizo falta `git restore` del `01` tras exportar: la rama ya tiene `dev` con #159, #160 y #161 fusionados.
 - **Problemas encontrados:**
@@ -1366,6 +1366,32 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 ```
 
 </details>
+
+### Construcción del flujo 1 con `Enviar notificación` · #95 (`workflows/01-eventos-tienda.json`)
+
+- **Autora:** Esra
+- **Tarea:** cambiar en n8n los 2 nodos de la rama HU-01 del `01` (`Enviar confirmación al cliente` y `Avisar a la tienda: sin email`) por Execute Workflow a `10 · Enviar notificación`, según `specs/01-eventos-tienda.md`, probarlo y exportarlo.
+- **Resultado:**
+  - La pareja cambió los 2 Send Email por Execute Workflow con el mismo nombre y las mismas conexiones, y pegó los valores de `~/subflujos/LEEME-95.md`.
+  - El JSON exportado solo cambia en esos 2 nodos (conexiones y settings iguales). Lleva Mode `each`, y los dos `texto` son idénticos a las expresiones comprobadas en local.
+  - Wait For Sub-Workflow Completion queda en su valor por defecto (activado), por eso no aparece en `options`.
+  - `validate_workflow` de n8n-mcp: válido, 14 nodos, sin errores ni avisos.
+  - **Pruebas:**
+    - **Con email** (`apartado.creado.json`, Test URL): llega a `carmen@example.com` «Tu apartado en Paso Firme: Botín piel marrón», desde `tienda@pasofirme.example`, sin firma y con el texto idéntico al de antes.
+    - **Sin email** (`apartado.creado-sin-email.json`, Test URL): llega a la tienda «Apartado 26 sin email: no se envió la confirmación», idéntico al de antes.
+    - **HU-05** (`error-email-espacio.json`, Production URL): 3 ejecuciones:
+      - el `01` (100) en error en `Enviar confirmación al cliente`;
+      - `10 · Enviar notificación` (101) en error en `Comprobar la notificación`, «falta `para`»;
+      - el `08` (102) correcto: avisa con el paso `Enviar confirmación al cliente` y el enlace a la 100.
+  - Queda comprobado lo pendiente de #92: un error dentro de un sub-workflow hace fallar el nodo que lo llama, y lo avisa el `08` del flujo que llama.
+- **Lo observado:**
+  - **Mensaje genérico.** n8n no pasa el mensaje del sub-workflow al nodo que lo llama. El Execute Workflow falla con «Error executing workflow with item at index 0», y es lo que dice el aviso del `08`. El motivo real solo se ve en la sub-ejecución. Las specs `01` (sección 7), `08` (sección 7) y `10` (sección 6) explican cómo encontrarla.
+  - **Payload incompleto.** Con `error-email-espacio.json` (sin `precio`), el sub-workflow recibió `{ "para": "{{ $json.body.datos.email }}", "asunto": "Tu apartado en Paso Firme: ", "html": null }`.
+    - **Sin `texto`:** el `.toFixed(2)` no se pudo calcular y n8n no pasó el campo.
+    - **`para` sin resolver:** llegó como el texto literal de la expresión. No sabemos por qué: la configuración es correcta y con el payload completo se resolvió.
+    - El error salió del sub-workflow, no de la expresión del `01`. Ya no se envía un correo con campos vacíos, como pasaba con el Send Email.
+- **Decisión:** aceptado. #95 sigue abierta (`Refs #95`): faltan los flujos 3 y 6 (Beste); el flujo 2 se queda con Send Email (opcional).
+- No hay prompt: los nodos los cambió la pareja a mano.
 
 ## 4. Decisiones abiertas
 
