@@ -1411,12 +1411,9 @@ HU-13 (#110, nivel Avanzado), variante **Datáfono**: «cada noche se importa el
   - **Celdas vacías.** Según n8n-mcp, en Extract From File la opción **Include Empty Cells** viene desactivada, y una celda vacía no llega como `""`: esa columna no aparece en el item. Se añadió a la spec (paso 3) activarla, y el Code comprueba las columnas con la unión de todas las filas, así que funciona de las dos formas.
   - **BOM.** Extract From File tiene la opción **Exclude Byte Order Mark (BOM)**, desactivada por defecto. Se añadió a la spec activarla; el Code también quita el BOM.
   - **Una fila por operación.** El código supone que cada operación sale una vez con su estado final. Si un datáfono pusiera la anulación en otra fila con el mismo nº de operación, se importaría la `APROBADA` y la anulación saldría como no importada.
-  - **Pendiente de comprobar al construir:**
-    - qué devuelve Read/Write Files from Disk si el fichero no existe;
-    - que la carpeta `/home/node/.n8n-files/` se pueda leer sin cambiar variables;
-    - que `$binary.datafono` funcione en el IF.
+  - **Comprobado al construir:** sin fichero, Read/Write Files from Disk no se pone en rojo y llega al IF un item vacío; la carpeta `/home/node/.n8n-files/` se lee sin cambiar variables; `$binary.datafono` funciona en el IF (ver «Construcción del flujo · HU-13»).
   - **Versión de n8n.** El prompt sigue diciendo n8n 2.4.5; el contenedor da 2.44.5 (ver «Spec del datáfono · HU-13»).
-- **Decisión:** pendiente de revisión por la pareja.
+- **Decisión:** aceptado. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
 
 <details><summary>Prompt</summary>
 
@@ -1456,6 +1453,37 @@ HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `
 ```
 
 </details>
+
+### Construcción del flujo · HU-13 (`workflows/11-datafono.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `11 · Datáfono` según `specs/11-datafono.md`, y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 3 Code. El flujo tiene 13 nodos con los nombres de la spec, Error workflow `08` y zona horaria `Europe/Madrid`. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
+  - El JSON pasa `validate_workflow` de n8n-mcp sin errores. Da un aviso: `Leer ventas de esos días` tiene Execute Once, que es lo que pide la spec.
+  - El flujo está publicado (`"active": true`).
+  - **Pruebas** (copia de la base de datos en `~/tienda-antes-hu13.db`, restaurada al terminar):
+    - **Prueba 1** (formulario, Test URL): «Datáfono del 21/10/2026: 4 ventas creadas».
+      - Creadas, por 208.75 €: 004513 → 258, 004515 → 259, 004516 → 261 y 004517 → 260. Los `id` 260 y 261 salieron en otro orden que las operaciones, pero el informe los empareja bien (comprobado en la app).
+      - 2 ya registradas (253 y 254), 4 no importadas, 0 rechazadas y 0 sin cobro.
+      - Llega «Venta grande: 129.90 €» del `01` con `Datáfono op. 004517`.
+      - En la app, 8 ventas el 21/10/2026, 6 con tarjeta.
+    - **Prueba 2** (mismo CSV): 0 creadas, 4 ya importadas, 2 ya registradas y 4 no importadas. Sin aviso de venta grande.
+    - **Prueba 3** (línea 4 con mes 13): 0 creadas; 004513 como «fila no válida (fecha)»; 3 ya importadas, 2 ya registradas y 5 no importadas.
+    - **Prueba 4** (sin `estado`): `Revisar los cobros` en rojo con «Datáfono: faltan columnas en el CSV: estado». Sin correo: por la Test URL no salta el `08`.
+    - **Prueba 5** (disparador programado, CSV en `/home/node/.n8n-files/datafono/datafono-2026-10-27.csv`): el informe de la prueba 2 con «(ejecución programada)». La carpeta se lee sin cambiar variables.
+    - **Sin fichero del día:** `Leer el CSV del día` no se pone en rojo y devuelve un item vacío; el IF va por false y llega «Datáfono: no ha llegado el CSV del 27/10/2026».
+  - Evidencias: los 7 `docs/evidencias/11-hu13-*.png`, enlazados en la sección 7 de la spec.
+- **Problemas encontrados:**
+  - **Conexión mal.** `Registrar ventas` estaba conectado a `Enviar informe del datáfono` en vez de a `Preparar informe`. Se corrigió antes de probar.
+  - **El formulario de prueba solo vale una vez.** Para cada prueba hay que volver a pulsar **Execute workflow** y usar la pestaña nueva.
+  - **Dos disparadores.** «Execute step» del Schedule Trigger solo ejecuta ese nodo; para probar la rama programada hay que elegir el disparador en el desplegable de **Execute workflow**.
+  - **`docker compose exec n8n rm`** pide confirmación (`y`).
+  - **Export del `01`.** El export vuelve a reescribir el `01` con el cambio de #95 (PR #170, sin fusionar); se descartó con `git restore`.
+  - **Días del Schedule Trigger.** En el primer export, **Trigger on Weekdays** tenía solo el lunes y el sábado (`"triggerAtDay": [1, 6]`), no de lunes a sábado. Las pruebas no lo podían detectar, porque la rama programada se lanzó a mano. Se corrigió en n8n y se volvió a exportar: ahora es `[1, 2, 3, 4, 5, 6]` (spec, sección 3.2).
+  - **On Error en `Leer el CSV del día`.** El JSON exportado tiene On Error → Continue (regular output) además de Always Output Data. La spec (paso 1) recoge la configuración exportada.
+- **Decisión:** aceptado. Con los días del Schedule Trigger corregidos, todos los criterios de la sección 8 de la spec están cumplidos.
+- No hay prompt: el flujo lo construyó la pareja a mano.
 
 ## 4. Decisiones abiertas
 

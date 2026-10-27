@@ -1,6 +1,6 @@
 # Flujo 11 · Datáfono
 
-> **Alcance de esta versión:** spec de la variante *Datáfono* de HU-13: el CSV de cobros con tarjeta se importa cada noche como ventas, sin duplicar. La variante *Apartados desde casa* queda fuera. Todavía no está construido. CSV de ejemplo: [data/datafono_ejemplo.csv](../data/datafono_ejemplo.csv).
+> **Alcance de esta versión:** spec de la variante *Datáfono* de HU-13: el CSV de cobros con tarjeta se importa cada noche como ventas, sin duplicar. La variante *Apartados desde casa* queda fuera. Flujo construido en n8n, publicado, exportado en `workflows/11-datafono.json` (13 nodos) y probado (sección 7). CSV de ejemplo: [data/datafono_ejemplo.csv](../data/datafono_ejemplo.csv).
 
 ## 1. Cabecera
 
@@ -38,7 +38,7 @@ La app no tiene datáfono: el CSV lo exporta el banco o el proveedor del termina
 
 - **Carpeta.** Desde n8n 2.0, Read/Write Files from Disk solo puede leer, por defecto, dentro de `~/.n8n-files` (variable `N8N_RESTRICT_FILE_ACCESS_TO`). En el contenedor es `/home/node/.n8n-files`.
   - La carpeta de datos de n8n (`/home/node/.n8n`) está bloqueada por defecto.
-  - n8n-mcp solo dice que el nodo puede leer «paths under `/home/node/`». **A comprobar al construir:** que lea `/home/node/.n8n-files/datafono/` sin cambiar variables.
+  - **Comprobado al construir:** el nodo lee `/home/node/.n8n-files/datafono/` sin cambiar variables (prueba 5).
 - **La carpeta no existe todavía** y no está en un volumen. Se crea y se llena así, desde la raíz del repo:
 
   ```bash
@@ -56,6 +56,7 @@ La app no tiene datáfono: el CSV lo exporta el banco o el proveedor del termina
 - **`Cada noche a las 22:00`** (Schedule Trigger):
   - **Trigger Interval** Weeks, **Weeks Between Triggers** `1`, **Trigger on Weekdays** de lunes a sábado, **Trigger at Hour** 10pm y **Trigger at Minute** `0`.
   - Equivale a la expresión cron `0 22 * * 1-6`. Los domingos la tienda cierra, como en los datos de ejemplo.
+  - En el JSON exportado: `"triggerAtDay": [1, 2, 3, 4, 5, 6]`. El primer export solo tenía el lunes y el sábado (`[1, 6]`); se corrigió y se volvió a exportar.
   - Solo funciona con el flujo publicado (lo publica la pareja).
   - **Por qué a las 22:00:** el cierre diario (flujo 5, HU-04) también es «cada noche» y suma las ventas `tarjeta` del día. El datáfono tiene que ir **antes**, para que el cierre ya incluya lo importado. Ver la pregunta de la sección 9.
 - **`Subir el CSV del datáfono`** (Form Trigger 2.6), para las pruebas y para repetir un día:
@@ -104,8 +105,9 @@ Subir el CSV del datáfono ─────────────────�
    - **File(s) Selector** (Expression): `/home/node/.n8n-files/datafono/datafono-{{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd') }}.csv`
    - **Options → Put Output File in Field:** `datafono`. Es el mismo nombre que el campo binario del formulario, para que los dos lleguen igual al nodo siguiente.
    - **Settings → Always Output Data:** activado, para que el IF se ejecute aunque no haya fichero.
-   - **A comprobar:** si, cuando el fichero no existe, el nodo devuelve 0 items o da error. Si da error, se activa **On Error → Continue** en el nodo y el IF decide igual.
-2. IF `¿Ha llegado el CSV?`: `{{ !!$binary.datafono }}` · Boolean · is true.
+   - **Settings → On Error:** Continue (regular output), como está en el JSON exportado.
+   - **Comprobado:** sin el fichero del día, el nodo no se pone en rojo y llega al IF un item sin binario, que va por false (prueba 5).
+2. IF `¿Ha llegado el CSV?`: `{{ !!$binary.datafono }}` · Boolean · is true. Comprobado: con el fichero va por true y sin él por false (prueba 5).
    - **false →** `Avisar de que falta el CSV` (Execute Workflow a `10 · Enviar notificación`, regla de [specs/10-sub-workflows.md](10-sub-workflows.md), sección 3: **Mode** Run once for each item). Workflow Inputs:
      - `para`: `tienda@pasofirme.example`;
      - `asunto`: `Datáfono: no ha llegado el CSV del {{ $now.setZone('Europe/Madrid').toFormat('dd/MM/yyyy') }}`;
@@ -280,36 +282,57 @@ Una copia del CSV con la línea 4 cambiada a `21/13/2026;12:05;004513;**** 5520;
 
 **Prueba 5 · disparador programado** (sin esperar a las 22:00)
 1. Copiar el CSV a la carpeta con el nombre de hoy (`docker compose cp`, sección 3.1).
-2. En el editor, **Execute workflow** desde `Cada noche a las 22:00`.
+2. En el editor, elegir `Cada noche a las 22:00` en el desplegable de **Execute workflow**. El botón «Execute step» del Schedule Trigger solo ejecuta ese nodo.
 3. Resultado: el mismo informe que la prueba 2 (0 creadas), con origen «programado».
-4. Borrar el fichero (`docker compose exec n8n rm /home/node/.n8n-files/datafono/datafono-<hoy>.csv`) y repetir: llega «Datáfono: no ha llegado el CSV del <hoy>».
+4. Borrar el fichero (`docker compose exec n8n rm /home/node/.n8n-files/datafono/datafono-<hoy>.csv`, que pide confirmación con `y`) y repetir: llega «Datáfono: no ha llegado el CSV del <hoy>».
 
 **Cómo comprobarlo en la app:**
 - **Swagger** (`GET /api/ventas?desde=2026-10-21&hasta=2026-10-21`, solo lectura): después de la prueba 1 hay 8 ventas ese día, 6 de ellas con `tarjeta`; después de la prueba 2, las mismas 8.
 - **Mailpit:** el informe y el aviso de venta grande.
 
-> **Las pruebas cambian los datos de la app:** las 4 ventas creadas suman 208.75 € a las ventas con tarjeta del 21/10/2026, y lo verán el cierre de ese día y el informe mensual de octubre. Los valores esperados de [specs/07-informe-mensual.md](07-informe-mensual.md) (octubre: 2552.75 €) se calcularon antes. Se recuperan recargando el seed.
+**Cómo se preparó la prueba real:**
 
-**Evidencias previstas:**
-- Informe de la primera ejecución en Mailpit: `docs/evidencias/11-hu13-informe-primera.png`
-- Informe de la segunda ejecución, 0 creadas: `docs/evidencias/11-hu13-informe-segunda.png`
-- Ventas del 21/10/2026 en la app (Swagger o la página de ventas): `docs/evidencias/11-hu13-ventas-en-la-app.png`
-- Aviso de venta grande de la operación 004517: `docs/evidencias/11-hu13-aviso-venta-grande.png`
-- Ejecución programada con el fichero de la carpeta: `docs/evidencias/11-hu13-programado.png`
+1. Copia de la base de datos de la app (`~/tienda-antes-hu13.db`), fuera del repo.
+2. Pruebas 1 a 4 por la Test URL del formulario. Cada prueba necesita volver a pulsar **Execute workflow** y usar la pestaña nueva: el formulario de prueba solo vale una vez.
+3. Prueba 5 y la de «sin fichero», desde el desplegable de **Execute workflow**.
+4. Al terminar, se restauró la copia de la base de datos. Las 4 ventas `Datáfono op. …` ya no están en la app, así que los valores de [specs/07-informe-mensual.md](07-informe-mensual.md) (octubre: 2552.75 €) siguen valiendo.
+
+**Resultado real** (coincide con el esperado):
+
+- **Prueba 1:**
+  - Asunto: «Datáfono del 21/10/2026: 4 ventas creadas».
+  - Creadas, por 208.75 €: 004513 → venta 258, 004515 → 259, 004516 → 261 y 004517 → 260. Los `id` 260 y 261 salieron en otro orden que las operaciones, pero el informe empareja bien cada operación con su venta (comprobado en la app).
+  - 2 ya registradas en la tienda (004511 = 253 y 004512 = 254) y 4 no importadas (`DENEGADA`, `ANULADA`, `DEVOLUCION` y `fila no válida (importe)`). 0 rechazadas y 0 sin cobro.
+  - Llega «Venta grande: 129.90 €» del `01`, con `Datáfono op. 004517` (venta 260).
+  - En la app, 8 ventas el 21/10/2026, 6 con `tarjeta`.
+- **Prueba 2** (mismo CSV): «0 ventas creadas». 4 ya importadas (258–261), 2 ya registradas y 4 no importadas. No llega ningún aviso de venta grande y siguen 8 ventas.
+- **Prueba 3** (línea 4 con `21/13/2026`): 0 creadas. `004513` sale como «fila no válida (fecha)»; 3 ya importadas, 2 ya registradas y 5 no importadas.
+- **Prueba 4** (sin la columna `estado`): `Revisar los cobros` en rojo con «Datáfono: faltan columnas en el CSV: estado». No llega ningún correo: por la Test URL no salta el `08`.
+- **Prueba 5** (CSV copiado a `/home/node/.n8n-files/datafono/datafono-2026-10-27.csv`): el mismo informe que la prueba 2, con «(ejecución programada)». Read/Write Files from Disk lee esa carpeta sin cambiar variables.
+- **Sin fichero del día:** `Leer el CSV del día` no se pone en rojo: devuelve un item vacío, `¿Ha llegado el CSV?` va por false y llega «Datáfono: no ha llegado el CSV del 27/10/2026».
+
+**Evidencias:**
+- Informe de la primera ejecución en Mailpit: [docs/evidencias/11-hu13-informe-primera.png](../docs/evidencias/11-hu13-informe-primera.png)
+- Aviso de venta grande de la operación 004517: [docs/evidencias/11-hu13-aviso-venta-grande.png](../docs/evidencias/11-hu13-aviso-venta-grande.png)
+- Ventas del 21/10/2026 en la app después de la prueba 1: [docs/evidencias/11-hu13-ventas-en-la-app.png](../docs/evidencias/11-hu13-ventas-en-la-app.png)
+- Informe de la segunda ejecución, 0 creadas: [docs/evidencias/11-hu13-informe-segunda.png](../docs/evidencias/11-hu13-informe-segunda.png)
+- Informe de la ejecución programada: [docs/evidencias/11-hu13-programado.png](../docs/evidencias/11-hu13-programado.png)
+- Canvas con la rama programada en verde: [docs/evidencias/11-hu13-programado-canvas.png](../docs/evidencias/11-hu13-programado-canvas.png)
+- Aviso de que no ha llegado el CSV: [docs/evidencias/11-hu13-sin-csv.png](../docs/evidencias/11-hu13-sin-csv.png)
 
 ## 8. Criterios de aceptación
 
 **HU-13 · Entrada automática de datos**, variante *Datáfono* (README e issue #110; el README pide al menos una variante):
 
-- [ ] *Datáfono:* cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas.
+- [x] *Datáfono:* cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas.
 
 Desglose para comprobarlo (del README, nivel Avanzado: «cada noche n8n importa el CSV de cobros con tarjeta y los registra como ventas, sin duplicar las que ya estén»):
 
-- [ ] Hay un Schedule Trigger nocturno que lee el CSV sin intervención (prueba 5).
-- [ ] Cada cobro aprobado que no está en la app se registra como venta `tarjeta` con la fecha del cobro (prueba 1).
-- [ ] Un cobro ya apuntado en el mostrador no se duplica (prueba 1, operaciones 004511 y 004512).
-- [ ] Ejecutarlo otra vez con el mismo CSV no crea nada (prueba 2).
-- [ ] Las filas no válidas, denegadas, anuladas o devueltas no se importan y aparecen en el informe (pruebas 1 y 3).
+- [x] Hay un Schedule Trigger nocturno, de lunes a sábado a las 22:00 y con el flujo publicado, que lee el CSV sin intervención (prueba 5).
+- [x] Cada cobro aprobado que no está en la app se registra como venta `tarjeta` con la fecha del cobro (prueba 1).
+- [x] Un cobro ya apuntado en el mostrador no se duplica (prueba 1, operaciones 004511 y 004512).
+- [x] Ejecutarlo otra vez con el mismo CSV no crea nada (prueba 2).
+- [x] Las filas no válidas, denegadas, anuladas o devueltas no se importan y aparecen en el informe (pruebas 1 y 3).
 
 La variante *Apartados desde casa* no se hace.
 
