@@ -1295,6 +1295,88 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Decisión:** aceptado. La fila del `08` en `AGENTS.md` (sección 8) pasa a «Tomada».
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Spec del datáfono · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** HU-13 (#110), variante *Datáfono*: spec de un flujo que importa cada noche el CSV de cobros con tarjeta como ventas sin duplicar, y un CSV de ejemplo. Solo documentación; el flujo lo construye después la pareja.
+- **Resultado:**
+  - **`data/datafono_ejemplo.csv`:**
+    - 10 cobros del 21/10/2026, con separador `;`, decimales con coma y la tarjeta enmascarada, sin nombres;
+    - 2 cobros coinciden con ventas `tarjeta` reales del seed (253 y 254);
+    - 4 no están en la app: uno coincide en importe con una venta `efectivo`, y otro es un segundo 18,95 del mismo día;
+    - 1 es una venta grande;
+    - hay una `DENEGADA`, una `ANULADA`, una `DEVOLUCION` y una fila sin importe.
+  - **Numeración:** `11 · Datáfono`, porque no es uno de los flujos 1–8 del README y el `09` y el `10` están ocupados. `scripts/flujos.py` lo exportaría como `11-datafono.json`. Añadido a `AGENTS.md` (sección 5).
+  - **Origen del CSV:** se compararon cuatro opciones (carpeta de n8n, formulario, correo con adjunto, carpeta del repo montada). Se elige un Schedule Trigger de lunes a sábado a las 22:00, más Read/Write Files from Disk en `/home/node/.n8n-files/datafono/`, la carpeta que n8n 2.x permite por defecto. El CSV se copia ahí con `docker compose cp`. Un Form Trigger sirve para las pruebas, como en el `09`.
+  - **Regla de duplicados:** la app no guarda el nº de operación.
+    - Una venta con `concepto` `Datáfono op. <operacion>` de la misma `fecha` reconoce lo ya importado.
+    - El resto se cuenta por `fecha` + `importe` contra las ventas `tarjeta` apuntadas a mano.
+    - Se comprobó en local con un script de Python sobre el CSV y las ventas reales del 21/10/2026, leídas de la base de datos en solo lectura (`mode=ro`), sin llamar a la API. La 1.ª ejecución crea 4 ventas (208.75 €), con 2 ya registradas y 4 no importadas. La 2.ª, simulada con esas 4 ventas añadidas, no crea nada.
+  - **HU-09:** las ventas creadas disparan `venta.registrada`. La de 129,90 € genera el aviso de venta grande, y se da por esperado.
+  - **Informe** a la tienda con `Enviar notificación` (Mode Run once for each item). Lleva aviso propio si una noche no llega el fichero.
+  - Cuatro decisiones nuevas en `AGENTS.md`, sección 8.
+  - **Consultas a n8n-mcp:**
+    - Read/Write Files from Disk 1.1: File(s) Selector, Put Output File in Field;
+    - Extract From File: opción Delimiter;
+    - Schedule Trigger: intervalo cron.
+- **Problemas encontrados:**
+  - **Las issues no son de esta variante.** #110 y sus sub-issues #112–#114 describen *Apartados desde casa*. Se proponen títulos nuevos (fuera del repo, para que la pareja decida).
+  - **Acceso a ficheros sin confirmar.** n8n-mcp no documenta `N8N_RESTRICT_FILE_ACCESS_TO`: solo avisa de que el nodo lee bajo `/home/node/`. Que `~/.n8n-files` sea la carpeta permitida por defecto en n8n 2.x queda **a comprobar al construir**. También queda por comprobar qué hace el nodo si el fichero del día no existe.
+  - **La carpeta no es persistente.** `/home/node/.n8n-files` no está en un volumen, y montarla obliga a cambiar `docker-compose.yml`. Queda como pregunta en la spec; no se ha cambiado.
+  - **Versión de n8n.** `n8n --version` en el contenedor da **2.44.5**, no la 2.4.5 que dicen los documentos. La imagen de `docker-compose.yml` no fija versión, así que cambia al actualizarla.
+  - **Las pruebas cambian los datos.** Las 4 ventas creadas en el 21/10/2026 cambian el cierre de ese día y el informe de octubre de HU-08. Está anotado en la spec.
+  - **Orden con el cierre diario.** El flujo 5 todavía no tiene spec. El datáfono tiene que ir antes que el cierre; queda como pregunta.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (#110, nivel Avanzado), variante **Datáfono**: «cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas». El README pide al menos una de las dos variantes; hacemos solo esta (la de «apartados desde casa» queda fuera). Escribe la spec y un CSV de ejemplo. La pareja construirá el flujo a mano en n8n después; ahora solo la spec. Estamos en la rama `feature/hu-13-datafono` (sale de `dev`).
+
+## Fuentes
+
+- README (HU-13 y lo que diga del datáfono), `AGENTS.md`, `docs/ontologia.md` (Venta), `docs/guia-de-la-app.md`, `specs/_plantilla.md`.
+- `backend/routes/ventas.py`, `backend/models/venta.py` y el servicio de ventas: qué acepta `POST /api/ventas` (incluida `fecha`), qué devuelve `GET /api/ventas` (filtros por fecha, paginación) y qué webhook envía al registrar.
+- Cómo se hizo algo parecido: `specs/09-migracion-excel.md` y `workflows/09-migracion-excel.json` (CSV con Form Trigger + Extract From File, carga idempotente, informe a la tienda) y `specs/07-informe-mensual.md` (Schedule Trigger + Form Trigger de prueba).
+- `specs/01-eventos-tienda.md` (rama HU-09: cada venta registrada por API dispara `venta.registrada` y, si supera el umbral, un aviso de venta grande).
+- `specs/10-sub-workflows.md` (`Enviar notificación`, regla Run once for each item).
+- n8n-mcp (n8n 2.4.5 community): Schedule Trigger, Form Trigger con archivo, Extract From File, **Read/Write Files from Disk** (qué rutas puede leer n8n 2.x por defecto, `N8N_RESTRICT_FILE_ACCESS_TO`, `~/.n8n-files`).
+- Issues: `gh issue view 110` y sus sub-issues #111–#115 (están pensadas para la otra variante).
+
+## Contenido
+
+1. **CSV de ejemplo** `data/datafono_ejemplo.csv`: el formato típico de un extracto de datáfono (por ejemplo `fecha`, `hora`, `importe`, `operacion`, `tarjeta` enmascarada `**** 1234`, `estado`). Sin nombres de personas. 6–10 filas pensadas para las pruebas:
+   - cobros que **no** están en la app (se crean);
+   - cobros que **ya** están en la app como venta `tarjeta` del mismo día e importe (no se duplican); usa ventas reales de los datos de ejemplo (`GET /api/ventas` en Swagger no: no llames a la API; léelas del seed en `backend/`);
+   - una fila no válida o anulada/devuelta (qué se hace con ella);
+   - dos cobros iguales el mismo día (cómo se cuentan).
+   Pon fechas que existan en el seed para que la comprobación de duplicados tenga algo que encontrar.
+2. `specs/NN-datafono.md` con la plantilla (`NN` según la numeración que decidas abajo). Decide y explica (y llévalo a `AGENTS.md`, sección 8):
+   - **Numeración:** el README numera los flujos 1–8; mira si el datáfono es un flujo del README o no, y sigue la convención de `AGENTS.md`, sección 5 (el `09` es la migración y el `10` los sub-workflows). Propón nombre del workflow y del archivo.
+   - **De dónde sale el CSV «cada noche»:** compara las opciones sin tocar `docker-compose.yml` si se puede (por ejemplo, Schedule Trigger + Read Files from Disk en una carpeta que n8n 2.x ya permite, con el CSV copiado ahí con `docker cp`; o Form Trigger para subirlo a mano) y elige. Si alguna opción obliga a cambiar `docker-compose.yml`, dilo como pregunta para la pareja, no lo cambies. Para probar, un Form Trigger con el CSV (como el `09`).
+   - **Cómo se detecta un duplicado:** la app no guarda el número de operación. Define la regla (por ejemplo, misma `fecha`, mismo `importe` y `forma_pago` `tarjeta`, contando cuántas hay de cada en la app y en el CSV) y qué `concepto` lleva la venta creada (que permita reconocerla después, por ejemplo con el número de operación). Que una segunda ejecución con el mismo CSV no cree nada.
+   - **Qué venta se crea:** `POST /api/ventas` con `fecha` del cobro, `forma_pago` `tarjeta`, `importe` y `concepto`.
+   - **Efecto en HU-09:** cada venta creada dispara `venta.registrada`; las que superen el umbral generarán un aviso de venta grande. Di si es lo esperado o no y qué se hace.
+   - **Informe a la tienda** al terminar (creadas, ya existían, no válidas), con `Enviar notificación` (Execute Workflow, Run once for each item).
+   - Casos de error (CSV vacío o con columnas que faltan, `401`, `422`) y cómo llegan al `08`.
+   - Prueba: primera ejecución (qué se crea, con cifras), segunda ejecución con el mismo CSV (0 creadas), CSV con una fila mal; cómo comprobarlo en la app.
+   - Criterios de aceptación: los de README/#110 para el datáfono.
+   - Evidencias previstas con nombres de archivo.
+3. Propuesta (solo texto en tu respuesta, no lo hagas) de nuevos títulos para las sub-issues #112, #113 y #114, que hoy describen la otra variante.
+4. `docs/ai-log.md`: entrada «### Spec del datáfono · HU-13 (`specs/NN-datafono.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo la spec y el CSV: no toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- Usa solo campos de `docs/ontologia.md` para la Venta; las columnas del CSV son del datáfono, no de la app.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
