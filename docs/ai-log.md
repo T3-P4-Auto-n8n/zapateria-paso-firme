@@ -1583,6 +1583,77 @@ HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `
 - **Decisión:** aceptado. Con los días del Schedule Trigger corregidos, todos los criterios de la sección 8 de la spec están cumplidos.
 - No hay prompt: el flujo lo construyó la pareja a mano.
 
+### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)
+
+- **Autora:** Esra
+- **Tarea:** documentar cómo instalar todo desde cero (#142), completar la tabla «Workflow → credenciales» con todos los workflows (#143) y revisar los secretos de todos los JSON (#140). Solo documentación, en la rama `docs/entregables-instalacion`; los workflows se leyeron de `dev` y de las ramas de los PR con `git show`.
+- **Resultado:**
+  - **`docs/instalacion.md`** (nuevo), en 11 pasos:
+    - requisitos y `.env`, `docker compose up -d` y URLs;
+    - las 3 credenciales (`Mailpit`, `API Tienda`, `Groq`) y `Google Sheets` para el `05`;
+    - la Data table `Configuración` y la carpeta del datáfono;
+    - el orden de importación con `flujos.py importar` y por qué (ids de los Execute Workflow y del Error workflow), y qué revisar en cada workflow;
+    - qué publicar y por qué;
+    - una prueba de humo por workflow, enlazada a la sección 7 de su spec;
+    - la copia y restauración de la base de datos y cómo recargar los datos de ejemplo sin perder n8n;
+    - los problemas frecuentes.
+  - **README:** una línea con el enlace al principio de «Cómo empezar»; el enunciado no cambia.
+  - **`docs/credenciales.md`:**
+    - la credencial `Google Sheets` y el nodo IMAP del `03` (deshabilitado, sin credencial);
+    - la tabla «Workflow → credenciales» con los 10 workflows y estas columnas: credenciales en sus nodos, las que usa a través de los `10`, Data tables y archivos, variables del `.env` y Error workflow.
+  - **`docs/revision-secretos.md`** (nuevo): los comandos (`git grep` sobre 11 ramas: `dev`, #172, #173, la rama de HU-03 y los 7 PR parciales de HU-03) y el resultado.
+    - No hay ningún secreto: ni claves, ni cabeceras con valor, ni URLs con credenciales, ni `shared`/`pinData`. El único email es `tienda@pasofirme.example`.
+    - Hay un punto a revisar, sin arreglar: el `documentId` de un Google Sheets real en `workflows/05-cierre-diario.json`, línea 175 (PR #173).
+- **Problemas encontrados:**
+  - **#171 ya está fusionado.** El prompt lo daba como abierto; el `11` ya está en `dev`.
+  - **La rama de HU-03 no tiene PR.** `feature/39-hu03-prueba-correos` tiene el `03` integrado. Los PR abiertos #158–#169 tienen exports parciales (`03-abonos-distancia-entrada.json`…), que su propia guía dice que no se importen. Se revisaron igual en #140.
+  - **Una cuarta credencial.** El prompt hablaba de 3 credenciales, pero el `05` (#173) necesita `Google Sheets` (OAuth2). Se documenta como opcional, solo para el `05`.
+  - **El `03` y el `05` no traen `id`** y sus credenciales tienen `id` `null`: n8n les da un id nuevo y hay que elegir las credenciales a mano. No afecta a nadie, porque ningún workflow los llama.
+  - **El problema del worktree no estaba documentado** en el repo. Se explica a partir de cómo Docker Compose nombra el proyecto (`docker compose ls` da `paso-firme`): desde otra carpeta, otro proyecto sin `.env`. La solución propuesta (`COMPOSE_PROJECT_NAME=paso-firme`) no se ha probado.
+  - **Recargar los datos de ejemplo sin perder n8n** (`rm /data/tienda.db` y reiniciar) sale de `backend/main.py` (el seed se carga si la base de datos está vacía) y no se ha probado, para no tocar la base de datos.
+  - **Conflicto previsible con #173.** Su rama también añade a `docs/credenciales.md` la fila de `Google Sheets` y la del `05`; al fusionar, habrá que quedarse con una.
+- **Decisión:** pendiente de revisión de la pareja. Que Beste revise el punto del `documentId` y las filas del `03` y el `05`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Entregables finales #142, #143 y #140 (los tres en esta rama `docs/entregables-instalacion`, que sale de `dev`). Solo documentación y una revisión de solo lectura.
+
+Ten en cuenta que hay PR abiertos que añaden workflows y todavía no están en `dev`: #171 (`11 · Datáfono`), #172 (`06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`), #173 de Beste (`05 · Cierre diario`, rama `feature/hu04-cierre-diario`) y la rama de HU-03 de Beste (`03 · Abonos a distancia`, rama `feature/39-hu03-prueba-correos`). #170 (flujo 1 con `Enviar notificación`) ya está en `dev`. Léelos con `git show origin/<rama>:<ruta>` o `gh pr diff <n>` y documenta el estado final, con todos los workflows.
+
+## Fuentes
+
+- README (Entregables, Requisitos técnicos, Cómo empezar), `AGENTS.md` (secciones 3, 5, 7 y 8), `docs/credenciales.md`, `docs/guia-de-la-app.md`, `.env.example`, `docker-compose.yml`, `scripts/flujos.py`, `scripts/datos_demo.py`.
+- `workflows/*.json` de `dev` y de las ramas de los PR abiertos (credenciales por nodo, Data tables, Error workflow, sub-workflows que llama cada uno, disparadores).
+- Las specs de cada flujo (sección 1: credenciales; sección 7: pruebas).
+
+## Contenido
+
+1. **#142 · `docs/instalacion.md`** (y un enlace corto desde el README, en «Cómo empezar» o justo antes, sin cambiar el enunciado): cómo poner en marcha todo desde cero en otro ordenador, paso a paso y en orden:
+   - requisitos y `.env` (desde `.env.example`, sin valores reales); `docker compose up -d`; URLs;
+   - crear las 3 credenciales en n8n (nombres exactos);
+   - crear las Data tables (`Configuración` con su fila) y la carpeta del datáfono (`docker compose exec n8n mkdir -p ...`);
+   - **importar en este orden** con `python3 scripts/flujos.py importar ...`: primero los sub-workflows `10`, luego el `08`, luego el `01` y el resto; por qué el orden (los Execute Workflow y el Error workflow apuntan por id; `flujos.py importar` conserva el id). Qué hay que revisar después de importar en cada workflow (credencial en cada nodo, tabla en el nodo de Data table, Error workflow);
+   - qué publicar y qué no (y por qué: el `01` y los `10` sí; los que tienen Schedule, según la decisión de cada spec);
+   - una prueba rápida de humo por flujo (un `curl` o un formulario y qué debe llegar a Mailpit), enlazando a la sección 7 de su spec;
+   - copia y restauración de la base de datos para las pruebas que cambian datos; cómo volver a cargar los datos de ejemplo;
+   - problemas frecuentes que nos han pasado (Test URL vs Production URL, formulario de prueba de un solo uso, Execute step vs Execute workflow con varios disparadores, `docker compose` desde un worktree, Workflow Inputs de una línea, `git restore` del `01` al exportar desde otra rama).
+2. **#143 · `docs/credenciales.md`:** completa la tabla «Workflow → credenciales» con **todos** los workflows (01, 03, 05, 06, 07, 08, 09, 10 ×2, 11), incluidas las credenciales que usan a través de los sub-workflows, las Data tables y las variables del `.env`. Sin valores.
+3. **#140 · Revisión de secretos** en todos los `workflows/*.json` (de `dev` y de las ramas de los PR abiertos): busca claves, tokens, contraseñas, cabeceras `X-API-Key` con valor, `apiKey`, URLs con credenciales, emails reales (todo lo que no sea `@example.com` / `@pasofirme.example` / `@bancoejemplo.example`), nombres y emails del propietario (`shared`, `pinData`), e ids de credencial que delaten algo. Pon el resultado (comandos usados y qué se encontró) en `docs/revision-secretos.md`. Si encuentras algo, **no lo arregles**: dímelo con archivo y línea.
+4. `docs/ai-log.md`: entrada «### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación: no toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Ningún secreto en ningún fichero ni en la salida (si encuentras uno, nombra el archivo y la línea, no el valor).
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
