@@ -1763,6 +1763,77 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Reintentos en los HTTP Request · #56
+
+- **Autora:** Esra
+- **Tarea:** documentar la decisión de #56 (HU-05) para el commit `feat:`, en la rama `feature/56-reintentos`. **Reparto:** la pareja activó a mano en n8n **Retry On Fail** (Max Tries 3, Wait Between Tries 2000 ms) en los 11 HTTP Request `GET` de los workflows 07, 09, 10 y 11, y los exportó. El agente documentó y comprobó.
+- **Resultado:**
+  - **Comprobación con un script** sobre todos los `workflows/*.json`: tienen `retryOnFail: true` y `waitBetweenTries: 2000` exactamente esos 11 nodos, y solo ellos:
+    - los 4 `Leer …` del `07`;
+    - los 3 `Leer … de la app` y `Comprobar pendientes` del `09`;
+    - los 2 `GET` de `10 · Buscar apartado`;
+    - `Leer ventas de esos días` del `11`.
+  - Ningún `POST` tiene reintentos. El diff de los 4 JSON solo añade esas 2 claves en los 11 nodos y cambia el `versionId`.
+  - **`validate_workflow`:** los 4 válidos, 0 errores.
+    - `10`: 0 avisos.
+    - `07`, `09` y `11`: solo los avisos de **Execute Once**, que es lo que piden sus specs.
+    - Para no enviar 80 KB, el `09` y el `11` se validaron con el cuerpo de sus Code sustituido por `return $input.all();`, y el `07` con `Preparar informe` simplificado. Los Code no cambian en esta rama.
+  - **`AGENTS.md`**, sección 8: la decisión.
+  - **`specs/08-error-workflow.md`:**
+    - sección «Reintentos» con la tabla de nodos con y sin reintento, y cómo encaja con el `08` (primero los 3 intentos, después un solo aviso);
+    - el criterio de #56, marcado.
+  - **Specs `07`, `09`, `10` y `11`:**
+    - una línea «Settings → Retry On Fail: 3 intentos, 2000 ms» en la configuración de esos nodos;
+    - los casos de error de «la app no responde» y del `401`, corregidos: ahora dicen que primero se reintenta.
+    - Ninguna spec decía nada contrario.
+- **Problemas encontrados:**
+  - **Never Error en `10 · Buscar apartado`.** Sus dos `GET` tienen Never Error: un `401` o un `5xx` no hacen fallar el nodo y no se reintentan. Solo se reintentan los errores sin respuesta (app parada, tiempo agotado). El `401` «inofensivo» del prompt vale para el `07`, el `09` y el `11`, no para el `10`. Se documentó así; no hace falta cambiar el flujo.
+  - **`maxTries` no se pudo comprobar en n8n-mcp.** n8n-mcp no documenta los ajustes del nodo (Retry On Fail, Max Tries, Wait Between Tries):
+    - en `get_node` del HTTP Request no salen, ni en las propiedades ni en la documentación;
+    - `validate_workflow` no dice el valor por defecto (solo avisa si `maxTries` es alto: probado con 20).
+    - Que `3` es el valor por defecto sale de la interfaz de n8n: el JSON exportado sí guarda `waitBetweenTries: 2000`, que no es el valor por defecto, y no guarda `maxTries`.
+  - **Cuándo reintenta n8n:** solo cuando el nodo falla; con Never Error u On Error → Continue, no. Tampoco está en n8n-mcp. Coincide con lo que ya decía la spec del `10` («Never Error no cubre los errores de red»).
+  - **Sin prueba en n8n.** Los reintentos no se han provocado (por ejemplo, con `docker compose stop tienda` durante una ejecución). Las pruebas del `401` de las specs siguen valiendo; el aviso del `08` llega unos 4 s más tarde.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#56 (HU-05) · Reintentos (Retry On Fail) en los nodos HTTP Request. La pareja ya ha activado **Retry On Fail** a mano en n8n (Max Tries 3, Wait Between Tries 2000 ms) **solo en los HTTP Request de lectura (`GET`)** y lo ha exportado. Documenta la decisión para el commit `feat:`. Rama `feature/56-reintentos`.
+
+Nodos cambiados (11):
+- `07 · Informe mensual`: `Leer ventas del mes`, `Leer abonos desde el día 1`, `Leer apartados`, `Leer vales`.
+- `09 · Migración del Excel`: `Leer apartados de la app`, `Leer abonos de la app`, `Leer ventas de la app`, `Comprobar pendientes`.
+- `10 · Buscar apartado`: `Leer apartado por número`, `Buscar apartados por texto`.
+- `11 · Datáfono`: `Leer ventas de esos días`.
+
+Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apartados`, `Registrar abonos`, `Registrar ventas` del `09`; `Registrar ventas` del `11`). `05` (PR #173) y `03` (HU-03) son de Beste y no se tocan en esta rama.
+
+## Fuentes
+
+- `workflows/07-informe-mensual.json`, `workflows/09-migracion-excel.json`, `workflows/10-buscar-apartado.json`, `workflows/11-datafono.json` (léelos, no los modifiques). Comprueba con un script que esos 11 nodos, y solo esos, tienen `retryOnFail: true` y `waitBetweenTries: 2000` (`maxTries` no aparece en el JSON porque 3 es el valor por defecto y n8n no lo exporta; compruébalo en la documentación del nodo), y valida los 4 con `validate_workflow` de n8n-mcp.
+- `specs/03-abonos-distancia.md` (líneas 37 y 57: «no reintentar un POST a ciegas»), `specs/08-error-workflow.md`, `specs/07-...`, `specs/09-...`, `specs/10-sub-workflows.md`, `specs/11-datafono.md`, `AGENTS.md`, `docs/instalacion.md` si ya está en `dev`.
+- Documentación de n8n (n8n-mcp) sobre Retry On Fail: cuándo reintenta (solo si el nodo falla; con **Never Error** o **On Error → Continue** el nodo no falla y no reintenta).
+
+## Contenido
+
+1. `AGENTS.md`, sección 8: una fila «Retry On Fail (3 intentos, 2 s) solo en los HTTP Request `GET`; nunca en los `POST`». Motivo: un `GET` repetido no cambia nada; un `POST` que llegó a la app pero cuya respuesta se perdió crearía un abono, una venta o un apartado duplicado. Si los 3 intentos fallan, el nodo falla y avisa el `08`. Un `401` también se reintenta (inofensivo: 2 × 2 s).
+2. `specs/08-error-workflow.md`: sección corta «Reintentos» con la tabla de nodos (con y sin reintento y por qué), y cómo encaja con el `08` (primero reintentos, después el aviso). Criterio de #56 marcado.
+3. En la spec de cada workflow cambiado (`07`, `09`, `10`, `11`), una línea en la configuración de esos nodos: «Settings → Retry On Fail: 3 intentos, 2000 ms». Si la spec dice algo contrario, corrígelo.
+4. Una nota para Beste (en tu respuesta, no en un archivo): qué nodos de lectura del `05` y del `03` deberían llevar lo mismo (`Leer ventas del día`, `Leer abonos del día`, `Buscar apartado`) y cuáles no.
+5. `docs/ai-log.md`: entrada «### Reintentos en los HTTP Request · #56» con el formato habitual (la pareja configuró los nodos; el agente documentó y comprobó) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y el resultado de la comprobación y de `validate_workflow`.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

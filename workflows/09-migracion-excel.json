@@ -107,6 +107,8 @@
       "name": "Leer apartados de la app",
       "executeOnce": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -144,6 +146,8 @@
       "name": "Leer abonos de la app",
       "executeOnce": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -181,6 +185,8 @@
       "name": "Leer ventas de la app",
       "executeOnce": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -463,6 +469,8 @@
       "name": "Comprobar pendientes",
       "executeOnce": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -762,5 +770,5 @@
   "tags": [],
   "active": false,
   "id": "15mfvy5WXhWg3IFb",
-  "versionId": "728cfaee-0726-4570-8001-28fb79dccd36"
+  "versionId": "c5f2e392-a238-4685-8a14-038751bc0ad2"
 }
