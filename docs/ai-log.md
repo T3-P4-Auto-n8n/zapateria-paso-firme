@@ -1393,6 +1393,196 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Decisión:** aceptado. #95 sigue abierta (`Refs #95`): faltan los flujos 3 y 6 (Beste); el flujo 2 se queda con Send Email (opcional).
 - No hay prompt: los nodos los cambió la pareja a mano.
 
+### Spec del datáfono · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** HU-13 (#110), variante *Datáfono*: spec de un flujo que importa cada noche el CSV de cobros con tarjeta como ventas sin duplicar, y un CSV de ejemplo. Solo documentación; el flujo lo construye después la pareja.
+- **Resultado:**
+  - **`data/datafono_ejemplo.csv`:**
+    - 10 cobros del 21/10/2026, con separador `;`, decimales con coma y la tarjeta enmascarada, sin nombres;
+    - 2 cobros coinciden con ventas `tarjeta` reales del seed (253 y 254);
+    - 4 no están en la app: uno coincide en importe con una venta `efectivo`, y otro es un segundo 18,95 del mismo día;
+    - 1 es una venta grande;
+    - hay una `DENEGADA`, una `ANULADA`, una `DEVOLUCION` y una fila sin importe.
+  - **Numeración:** `11 · Datáfono`, porque no es uno de los flujos 1–8 del README y el `09` y el `10` están ocupados. `scripts/flujos.py` lo exportaría como `11-datafono.json`. Añadido a `AGENTS.md` (sección 5).
+  - **Origen del CSV:** se compararon cuatro opciones (carpeta de n8n, formulario, correo con adjunto, carpeta del repo montada). Se elige un Schedule Trigger de lunes a sábado a las 22:00, más Read/Write Files from Disk en `/home/node/.n8n-files/datafono/`, la carpeta que n8n 2.x permite por defecto. El CSV se copia ahí con `docker compose cp`. Un Form Trigger sirve para las pruebas, como en el `09`.
+  - **Regla de duplicados:** la app no guarda el nº de operación.
+    - Una venta con `concepto` `Datáfono op. <operacion>` de la misma `fecha` reconoce lo ya importado.
+    - El resto se cuenta por `fecha` + `importe` contra las ventas `tarjeta` apuntadas a mano.
+    - Se comprobó en local con un script de Python sobre el CSV y las ventas reales del 21/10/2026, leídas de la base de datos en solo lectura (`mode=ro`), sin llamar a la API. La 1.ª ejecución crea 4 ventas (208.75 €), con 2 ya registradas y 4 no importadas. La 2.ª, simulada con esas 4 ventas añadidas, no crea nada.
+  - **HU-09:** las ventas creadas disparan `venta.registrada`. La de 129,90 € genera el aviso de venta grande, y se da por esperado.
+  - **Informe** a la tienda con `Enviar notificación` (Mode Run once for each item). Lleva aviso propio si una noche no llega el fichero.
+  - Cuatro decisiones nuevas en `AGENTS.md`, sección 8.
+  - **Consultas a n8n-mcp:**
+    - Read/Write Files from Disk 1.1: File(s) Selector, Put Output File in Field;
+    - Extract From File: opción Delimiter;
+    - Schedule Trigger: intervalo cron.
+- **Problemas encontrados:**
+  - **Las issues no son de esta variante.** #110 y sus sub-issues #112–#114 describen *Apartados desde casa*. Se proponen títulos nuevos (fuera del repo, para que la pareja decida).
+  - **Acceso a ficheros sin confirmar.** n8n-mcp no documenta `N8N_RESTRICT_FILE_ACCESS_TO`: solo avisa de que el nodo lee bajo `/home/node/`. Que `~/.n8n-files` sea la carpeta permitida por defecto en n8n 2.x queda **a comprobar al construir**. También queda por comprobar qué hace el nodo si el fichero del día no existe.
+  - **La carpeta no es persistente.** `/home/node/.n8n-files` no está en un volumen, y montarla obliga a cambiar `docker-compose.yml`. Queda como pregunta en la spec; no se ha cambiado.
+  - **Versión de n8n.** `n8n --version` en el contenedor da **2.44.5**, no la 2.4.5 que dicen los documentos. La imagen de `docker-compose.yml` no fija versión, así que cambia al actualizarla.
+  - **Las pruebas cambian los datos.** Las 4 ventas creadas en el 21/10/2026 cambian el cierre de ese día y el informe de octubre de HU-08. Está anotado en la spec.
+  - **Orden con el cierre diario.** El flujo 5 todavía no tiene spec. El datáfono tiene que ir antes que el cierre; queda como pregunta.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (#110, nivel Avanzado), variante **Datáfono**: «cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas». El README pide al menos una de las dos variantes; hacemos solo esta (la de «apartados desde casa» queda fuera). Escribe la spec y un CSV de ejemplo. La pareja construirá el flujo a mano en n8n después; ahora solo la spec. Estamos en la rama `feature/hu-13-datafono` (sale de `dev`).
+
+## Fuentes
+
+- README (HU-13 y lo que diga del datáfono), `AGENTS.md`, `docs/ontologia.md` (Venta), `docs/guia-de-la-app.md`, `specs/_plantilla.md`.
+- `backend/routes/ventas.py`, `backend/models/venta.py` y el servicio de ventas: qué acepta `POST /api/ventas` (incluida `fecha`), qué devuelve `GET /api/ventas` (filtros por fecha, paginación) y qué webhook envía al registrar.
+- Cómo se hizo algo parecido: `specs/09-migracion-excel.md` y `workflows/09-migracion-excel.json` (CSV con Form Trigger + Extract From File, carga idempotente, informe a la tienda) y `specs/07-informe-mensual.md` (Schedule Trigger + Form Trigger de prueba).
+- `specs/01-eventos-tienda.md` (rama HU-09: cada venta registrada por API dispara `venta.registrada` y, si supera el umbral, un aviso de venta grande).
+- `specs/10-sub-workflows.md` (`Enviar notificación`, regla Run once for each item).
+- n8n-mcp (n8n 2.4.5 community): Schedule Trigger, Form Trigger con archivo, Extract From File, **Read/Write Files from Disk** (qué rutas puede leer n8n 2.x por defecto, `N8N_RESTRICT_FILE_ACCESS_TO`, `~/.n8n-files`).
+- Issues: `gh issue view 110` y sus sub-issues #111–#115 (están pensadas para la otra variante).
+
+## Contenido
+
+1. **CSV de ejemplo** `data/datafono_ejemplo.csv`: el formato típico de un extracto de datáfono (por ejemplo `fecha`, `hora`, `importe`, `operacion`, `tarjeta` enmascarada `**** 1234`, `estado`). Sin nombres de personas. 6–10 filas pensadas para las pruebas:
+   - cobros que **no** están en la app (se crean);
+   - cobros que **ya** están en la app como venta `tarjeta` del mismo día e importe (no se duplican); usa ventas reales de los datos de ejemplo (`GET /api/ventas` en Swagger no: no llames a la API; léelas del seed en `backend/`);
+   - una fila no válida o anulada/devuelta (qué se hace con ella);
+   - dos cobros iguales el mismo día (cómo se cuentan).
+   Pon fechas que existan en el seed para que la comprobación de duplicados tenga algo que encontrar.
+2. `specs/NN-datafono.md` con la plantilla (`NN` según la numeración que decidas abajo). Decide y explica (y llévalo a `AGENTS.md`, sección 8):
+   - **Numeración:** el README numera los flujos 1–8; mira si el datáfono es un flujo del README o no, y sigue la convención de `AGENTS.md`, sección 5 (el `09` es la migración y el `10` los sub-workflows). Propón nombre del workflow y del archivo.
+   - **De dónde sale el CSV «cada noche»:** compara las opciones sin tocar `docker-compose.yml` si se puede (por ejemplo, Schedule Trigger + Read Files from Disk en una carpeta que n8n 2.x ya permite, con el CSV copiado ahí con `docker cp`; o Form Trigger para subirlo a mano) y elige. Si alguna opción obliga a cambiar `docker-compose.yml`, dilo como pregunta para la pareja, no lo cambies. Para probar, un Form Trigger con el CSV (como el `09`).
+   - **Cómo se detecta un duplicado:** la app no guarda el número de operación. Define la regla (por ejemplo, misma `fecha`, mismo `importe` y `forma_pago` `tarjeta`, contando cuántas hay de cada en la app y en el CSV) y qué `concepto` lleva la venta creada (que permita reconocerla después, por ejemplo con el número de operación). Que una segunda ejecución con el mismo CSV no cree nada.
+   - **Qué venta se crea:** `POST /api/ventas` con `fecha` del cobro, `forma_pago` `tarjeta`, `importe` y `concepto`.
+   - **Efecto en HU-09:** cada venta creada dispara `venta.registrada`; las que superen el umbral generarán un aviso de venta grande. Di si es lo esperado o no y qué se hace.
+   - **Informe a la tienda** al terminar (creadas, ya existían, no válidas), con `Enviar notificación` (Execute Workflow, Run once for each item).
+   - Casos de error (CSV vacío o con columnas que faltan, `401`, `422`) y cómo llegan al `08`.
+   - Prueba: primera ejecución (qué se crea, con cifras), segunda ejecución con el mismo CSV (0 creadas), CSV con una fila mal; cómo comprobarlo en la app.
+   - Criterios de aceptación: los de README/#110 para el datáfono.
+   - Evidencias previstas con nombres de archivo.
+3. Propuesta (solo texto en tu respuesta, no lo hagas) de nuevos títulos para las sub-issues #112, #113 y #114, que hoy describen la otra variante.
+4. `docs/ai-log.md`: entrada «### Spec del datáfono · HU-13 (`specs/NN-datafono.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo la spec y el CSV: no toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- Usa solo campos de `docs/ontologia.md` para la Venta; las columnas del CSV son del datáfono, no de la app.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
+### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** escribir el JavaScript de los 3 nodos Code de `11 · Datáfono` (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`) y un `LEEME.md` con la configuración de los demás nodos. **Reparto:** la pareja construye los nodos en n8n y pega el código; el agente solo escribe el código.
+- **Resultado:**
+  - **`~/hu13/`** (fuera del repo): `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js` y `LEEME.md`.
+    - El `LEEME.md` lleva qué recibe y qué devuelve cada Code, la configuración de los demás nodos y el esquema de conexiones.
+    - Los Workflow Inputs de los 2 Execute Workflow van listos para pegar, en una línea.
+    - Incluye los comandos `docker compose` para la carpeta y cómo hacer cada prueba.
+  - Mismos patrones que HU-10:
+    - `{ cuerpo: null }` cuando no hay nada que crear;
+    - `isExecuted` con `try/catch` para leer `Registrar ventas`;
+    - respuestas del `POST` con Never Error, emparejadas por orden;
+    - `detail` de la app en los `422`.
+  - `Revisar los cobros` sabe qué disparador se ejecutó con `$('Subir el CSV del datáfono').isExecuted`.
+  - **Prueba en local con node:**
+    - `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` real, con la clave del `.env` sin imprimirla;
+    - el CSV leído como lo daría Extract From File (texto, con y sin Include Empty Cells);
+    - los `POST` simulados.
+    - **Prueba 1:** 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas (ventas 253 y 254) y 4 no importadas. Asunto «Datáfono del 21/10/2026: 4 ventas creadas».
+    - **Prueba 2** (la app ya tiene las 4 ventas `Datáfono op. …`): 0 creadas, 4 ya importadas.
+    - **Prueba 3** (mes 13 en la línea 4): `fila no válida (fecha)`, 0 creadas. En una base limpia serían 3 (163.75 €).
+    - **Prueba 4** (sin `estado`): error «Datáfono: faltan columnas en el CSV: estado».
+    - **Otros casos:**
+      - un `422` va a «Rechazadas por la app» y el flujo sigue;
+      - un `401` en el `POST` para con el código y el `detail`;
+      - un CSV con solo la cabecera da «0 ventas creadas»;
+      - el BOM se quita;
+      - con separador `,`, falla con las 4 columnas que faltan;
+      - una venta `tarjeta` sin cobro sale en su sección del informe.
+- **Problemas encontrados:**
+  - **Celdas vacías.** Según n8n-mcp, en Extract From File la opción **Include Empty Cells** viene desactivada, y una celda vacía no llega como `""`: esa columna no aparece en el item. Se añadió a la spec (paso 3) activarla, y el Code comprueba las columnas con la unión de todas las filas, así que funciona de las dos formas.
+  - **BOM.** Extract From File tiene la opción **Exclude Byte Order Mark (BOM)**, desactivada por defecto. Se añadió a la spec activarla; el Code también quita el BOM.
+  - **Una fila por operación.** El código supone que cada operación sale una vez con su estado final. Si un datáfono pusiera la anulación en otra fila con el mismo nº de operación, se importaría la `APROBADA` y la anulación saldría como no importada.
+  - **Comprobado al construir:** sin fichero, Read/Write Files from Disk no se pone en rojo y llega al IF un item vacío; la carpeta `/home/node/.n8n-files/` se lee sin cambiar variables; `$binary.datafono` funciona en el IF (ver «Construcción del flujo · HU-13»).
+  - **Versión de n8n.** El prompt sigue diciendo n8n 2.4.5; el contenedor da 2.44.5 (ver «Spec del datáfono · HU-13»).
+- **Decisión:** aceptado. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `specs/11-datafono.md`. Tú escribes solo el JavaScript de los 3 nodos Code (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`); la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/11-datafono.md` (secciones 3, 4, 5, 6 y 7), `data/datafono_ejemplo.csv`, `AGENTS.md`.
+- Ejemplo de estilo y patrones ya probados: `workflows/09-migracion-excel.json` y `~/hu10-codigo/` (Code, `LEEME.md`, `isExecuted`, salida del HTTP Request con Never Error, `{ cuerpo: null }`), `~/hu08/`, `~/subflujos/LEEME.md` y `~/subflujos/LEEME-95.md` (Execute Workflow a `10 · Enviar notificación`, Workflow Inputs de una línea).
+- `backend/routes/ventas.py`, `backend/schemas/venta.py`, `backend/models/venta.py`: forma de `GET /api/ventas` y de la respuesta de `POST /api/ventas`, y el `detail` de los `422`.
+- n8n-mcp (n8n 2.4.5): Extract From File (CSV con `;`: ¿los valores llegan como texto? ¿qué pasa con el BOM y las columnas vacías?), Read/Write Files from Disk (qué devuelve si el fichero no existe), Form Trigger con archivo (nombre del campo binario), Schedule Trigger, y cómo saber en un Code qué disparador se ejecutó (`$('Subir el CSV del datáfono').isExecuted`).
+
+## Contenido
+
+1. En `~/hu13/` (fuera del repo, no se sube):
+   - `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js`.
+   - Comentarios cortos en español, sin librerías externas. Mensajes de error exactamente como en la spec.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto); la configuración exacta de los demás nodos (los 2 disparadores, Read Files from Disk, los IF, Extract From File, el `GET`, el `POST`, los 2 Execute Workflow a `10 · Enviar notificación` con sus Workflow Inputs de una línea listos para pegar, Settings con Error workflow `08` y zona horaria); un dibujo de las conexiones; los comandos `docker compose` para crear la carpeta y copiar el CSV; y cómo hacer cada prueba de la sección 7.
+2. Comprueba la lógica en local con node: lee `data/datafono_ejemplo.csv` como lo daría Extract From File, haz `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` (con la clave del `.env`, sin imprimirla), simula las respuestas del `POST` (201 con id inventado, y un 422) y ejecuta los 3 Code. Comprueba:
+   - prueba 1: 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas, 4 no importadas;
+   - prueba 2: simula que la app ya tiene esas 4 ventas `Datáfono op. ...` → 0 creadas;
+   - prueba 3 (fecha mal) y prueba 4 (sin columna `estado`);
+   - el texto del informe completo de la prueba 1.
+   Dime los resultados. Si algo de la spec no cuadra con la API o con n8n-mcp, dímelo.
+3. `specs/11-datafono.md`: solo si algo de la sección 4 no coincide con lo que has visto, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del flujo · HU-13 (`workflows/11-datafono.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `11 · Datáfono` según `specs/11-datafono.md`, y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 3 Code. El flujo tiene 13 nodos con los nombres de la spec, Error workflow `08` y zona horaria `Europe/Madrid`. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
+  - El JSON pasa `validate_workflow` de n8n-mcp sin errores. Da un aviso: `Leer ventas de esos días` tiene Execute Once, que es lo que pide la spec.
+  - El flujo está publicado (`"active": true`).
+  - **Pruebas** (copia de la base de datos en `~/tienda-antes-hu13.db`, restaurada al terminar):
+    - **Prueba 1** (formulario, Test URL): «Datáfono del 21/10/2026: 4 ventas creadas».
+      - Creadas, por 208.75 €: 004513 → 258, 004515 → 259, 004516 → 261 y 004517 → 260. Los `id` 260 y 261 salieron en otro orden que las operaciones, pero el informe los empareja bien (comprobado en la app).
+      - 2 ya registradas (253 y 254), 4 no importadas, 0 rechazadas y 0 sin cobro.
+      - Llega «Venta grande: 129.90 €» del `01` con `Datáfono op. 004517`.
+      - En la app, 8 ventas el 21/10/2026, 6 con tarjeta.
+    - **Prueba 2** (mismo CSV): 0 creadas, 4 ya importadas, 2 ya registradas y 4 no importadas. Sin aviso de venta grande.
+    - **Prueba 3** (línea 4 con mes 13): 0 creadas; 004513 como «fila no válida (fecha)»; 3 ya importadas, 2 ya registradas y 5 no importadas.
+    - **Prueba 4** (sin `estado`): `Revisar los cobros` en rojo con «Datáfono: faltan columnas en el CSV: estado». Sin correo: por la Test URL no salta el `08`.
+    - **Prueba 5** (disparador programado, CSV en `/home/node/.n8n-files/datafono/datafono-2026-10-27.csv`): el informe de la prueba 2 con «(ejecución programada)». La carpeta se lee sin cambiar variables.
+    - **Sin fichero del día:** `Leer el CSV del día` no se pone en rojo y devuelve un item vacío; el IF va por false y llega «Datáfono: no ha llegado el CSV del 27/10/2026».
+  - Evidencias: los 7 `docs/evidencias/11-hu13-*.png`, enlazados en la sección 7 de la spec.
+- **Problemas encontrados:**
+  - **Conexión mal.** `Registrar ventas` estaba conectado a `Enviar informe del datáfono` en vez de a `Preparar informe`. Se corrigió antes de probar.
+  - **El formulario de prueba solo vale una vez.** Para cada prueba hay que volver a pulsar **Execute workflow** y usar la pestaña nueva.
+  - **Dos disparadores.** «Execute step» del Schedule Trigger solo ejecuta ese nodo; para probar la rama programada hay que elegir el disparador en el desplegable de **Execute workflow**.
+  - **`docker compose exec n8n rm`** pide confirmación (`y`).
+  - **Export del `01`.** El export vuelve a reescribir el `01` con el cambio de #95 (PR #170, sin fusionar); se descartó con `git restore`.
+  - **Días del Schedule Trigger.** En el primer export, **Trigger on Weekdays** tenía solo el lunes y el sábado (`"triggerAtDay": [1, 6]`), no de lunes a sábado. Las pruebas no lo podían detectar, porque la rama programada se lanzó a mano. Se corrigió en n8n y se volvió a exportar: ahora es `[1, 2, 3, 4, 5, 6]` (spec, sección 3.2).
+  - **On Error en `Leer el CSV del día`.** El JSON exportado tiene On Error → Continue (regular output) además de Always Output Data. La spec (paso 1) recoge la configuración exportada.
+- **Decisión:** aceptado. Con los días del Schedule Trigger corregidos, todos los criterios de la sección 8 de la spec están cumplidos.
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
 ### Spec de vencimientos · HU-07 (`specs/06-recordatorios-vencimientos.md`, `specs/01-eventos-tienda.md`)
 
 - **Autora:** Esra
