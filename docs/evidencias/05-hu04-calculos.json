@@ -1,0 +1,77 @@
+[
+  {
+    "caso": "mixto",
+    "fecha": "2026-10-26",
+    "asunto": "Cierre de 2026-10-26: 69.00 € recaudados",
+    "fila": {
+      "fecha": "2026-10-26",
+      "ventas_efectivo": 10.1,
+      "ventas_tarjeta": 20.2,
+      "ventas_bizum": 30.3,
+      "ventas_total": 60.6,
+      "ventas_operaciones": 3,
+      "abonos_efectivo": 5,
+      "abonos_tarjeta": 2.25,
+      "abonos_bizum": 1.15,
+      "abonos_total": 8.4,
+      "abonos_operaciones": 3,
+      "total_efectivo": 15.1,
+      "total_tarjeta": 22.45,
+      "total_bizum": 31.45,
+      "total": 69,
+      "operaciones": 6,
+      "sin_movimientos": false
+    },
+    "ejecucion": "Node.js del Code exportado; no es ejecución n8n"
+  },
+  {
+    "caso": "api",
+    "fecha": "2026-10-26",
+    "asunto": "Cierre de 2026-10-26: 213.65 € recaudados",
+    "fila": {
+      "fecha": "2026-10-26",
+      "ventas_efectivo": 14.9,
+      "ventas_tarjeta": 98.85,
+      "ventas_bizum": 79.9,
+      "ventas_total": 193.65,
+      "ventas_operaciones": 4,
+      "abonos_efectivo": 0,
+      "abonos_tarjeta": 20,
+      "abonos_bizum": 0,
+      "abonos_total": 20,
+      "abonos_operaciones": 1,
+      "total_efectivo": 14.9,
+      "total_tarjeta": 118.85,
+      "total_bizum": 79.9,
+      "total": 213.65,
+      "operaciones": 5,
+      "sin_movimientos": false
+    },
+    "ejecucion": "Node.js del Code exportado; no es ejecución n8n"
+  },
+  {
+    "caso": "sin-movimientos",
+    "fecha": "1900-01-01",
+    "asunto": "Cierre de 1900-01-01: 0.00 € recaudados",
+    "fila": {
+      "fecha": "1900-01-01",
+      "ventas_efectivo": 0,
+      "ventas_tarjeta": 0,
+      "ventas_bizum": 0,
+      "ventas_total": 0,
+      "ventas_operaciones": 0,
+      "abonos_efectivo": 0,
+      "abonos_tarjeta": 0,
+      "abonos_bizum": 0,
+      "abonos_total": 0,
+      "abonos_operaciones": 0,
+      "total_efectivo": 0,
+      "total_tarjeta": 0,
+      "total_bizum": 0,
+      "total": 0,
+      "operaciones": 0,
+      "sin_movimientos": true
+    },
+    "ejecucion": "Node.js del Code exportado; no es ejecución n8n"
+  }
+]

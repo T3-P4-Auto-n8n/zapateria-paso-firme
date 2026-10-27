@@ -1295,6 +1295,19 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Decisión:** aceptado. La fila del `08` en `AGENTS.md` (sección 8) pasa a «Tomada».
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Construcción del cierre diario · HU-04 (`workflows/05-cierre-diario.json`)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** terminar HU-04 (#41–#48): spec, cierre por método, día vacío e histórico en Sheets, con comprobaciones reales y sin inventar ejecuciones.
+- **Herramientas:** Git worktree desde dev (preserva HU-03 sin guardar), Python estándar, Node.js, n8n-mcp 2.96.1 y plugin Google Drive.
+- **Resultado:** spec, export inactivo de 8 nodos, dos Code revisables, generador determinista, verificador GET, guía de configuración y evidencias locales. Documento Sheets creado con pestaña Cierres y 17 encabezados, sin cierres ficticios.
+- **Verificación:** importación local inactiva confirmada por CLI (HU04CierreDiario1), sin ejecutar/publicar ni modificar HU-03. 8 pruebas Node superadas; Code exportado contrastado con GET reales y Decimal: ventas 193.65 €, abonos 20.00 €, total 213.65 € para 26/10/2026; día 01/01/1900 vacío, todo cero y mensaje explícito. validate_workflow: 0 errores y 2 avisos intencionales de Execute Once en los GET.
+- **Decisiones:** 00:05 Europe/Madrid cierra ayer completo; suma en céntimos; incluye abonos iniciales; upsert por fecha antes del envío; no reintentos automáticos. Un reenvío manual puede repetir el correo. Los datos inválidos paran el cierre en vez de ocultar cobros.
+- **Pruebas reales adicionales:** la credencial temporal resultó inválida; se creó API Tienda HU04 con la clave vigente por stdin, sin mostrarla ni guardar archivos con secretos. Se importaron 08 y 10 inactivos. El workflow aislado HU04SmokeTest01 (sin Sheets, expresamente indicado en asunto/cuerpo) superó las ejecuciones 26 y 27: 213.65 € y día vacío 0.00 €, con los dos correos recibidos en Mailpit.
+- **Problemas y pendientes reales:** falta Google Sheets OAuth. No se ejecutó el flujo completo ni se verificó escritura/upsert de Sheets, programación ni error de producción. La configuración y pruebas pendientes están documentadas; criterios de aceptación sin marcar. [Evidencias](evidencias/05-hu04-resultados.md).
+- **Prompt resumido:** «Empezar y terminar HU-04, cubrir todos los requisitos y minimizar preguntas». No se hicieron cambios en backend/frontend/compose/.env, ni en los archivos HU-03.
+- **Decisión:** implementación preparada para revisión; historia pendiente de configuración OAuth y ejecución real. No afirmar entrega de producción.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

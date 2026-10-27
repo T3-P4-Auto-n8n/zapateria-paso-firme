@@ -1,0 +1,493 @@
+{
+  "name": "05 · Cierre diario",
+  "nodes": [
+    {
+      "name": "Cada noche a las 00:05",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "id": "ff3bfd1a-bd5a-5119-b9d3-c9fe62c81896",
+      "position": [
+        0,
+        -120
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "5 0 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Elegir día",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "id": "2c58aa1a-8d82-5856-a681-771309033306",
+      "position": [
+        0,
+        120
+      ],
+      "parameters": {
+        "formTitle": "Cierre diario",
+        "formDescription": "Elige la fecha del cierre (día completo). Guardará el histórico y enviará un correo de prueba a Mailpit.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "fecha",
+              "fieldType": "date",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "path": "hu04-cierre-diario",
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "1964dd15-2237-5087-8e1a-f3628f5ba0e1"
+    },
+    {
+      "name": "Calcular día",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "eddbd6ad-9289-509f-bbb1-107069cacd90",
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Code: Run Once for All Items. La programación cierra ayer, según Madrid.\nconst input = $input.first().json;\nlet fecha;\nif (Object.hasOwn(input, 'fecha')) {\n  fecha = input.fecha;\n} else {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',\n  }).formatToParts(new Date($now.toISO()));\n  const value = type => parts.find(part => part.type === type).value;\n  const yesterday = new Date(`${value('year')}-${value('month')}-${value('day')}T00:00:00Z`);\n  yesterday.setUTCDate(yesterday.getUTCDate() - 1);\n  fecha = yesterday.toISOString().slice(0, 10);\n}\nif (typeof fecha !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(fecha) ||\n    !Number.isFinite(Date.parse(fecha + 'T00:00:00Z')) ||\n    new Date(fecha + 'T00:00:00Z').toISOString().slice(0, 10) !== fecha) {\n  throw new Error('Fecha inválida: usa AAAA-MM-DD con un día existente');\n}\nreturn [{json: {fecha, desde: fecha, hasta: fecha}}];\n"
+      }
+    },
+    {
+      "name": "Leer ventas del día",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "093dbdb3-3096-5ea7-be78-009006e2cc5b",
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Calcular día').first().json.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $('Calcular día').first().json.hasta }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "name": "Leer abonos del día",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "4c581118-3292-571f-9763-e7ac1b93d325",
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://tienda:8000/api/abonos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Calcular día').first().json.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $('Calcular día').first().json.hasta }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "name": "Preparar cierre",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "1b545f44-729b-52d7-8ca6-4b19f224f8bb",
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Code: Run Once for All Items. Solo agrega cobros; no recalcula saldos.\nconst fecha = $('Calcular día').first().json.fecha;\nif (typeof fecha !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(fecha)) throw new Error('Fecha de cierre inválida');\nconst medios = ['efectivo', 'tarjeta', 'bizum'];\nfunction sumar(nombre) {\n  const result = {efectivo: 0, tarjeta: 0, bizum: 0, total: 0, operaciones: 0};\n  const ids = new Set();\n  for (const item of $(nombre).all()) {\n    const row = item.json;\n    if (row && !Array.isArray(row) && Object.keys(row).length === 0) continue;\n    if (!row || !Number.isInteger(row.id) || row.id <= 0 ||\n        typeof row.importe !== 'number' || !Number.isFinite(row.importe) || row.importe <= 0 ||\n        !medios.includes(row.forma_pago)) throw new Error(`${nombre}: cobro inválido (id, importe o forma de pago)`);\n    if (ids.has(row.id)) throw new Error(`${nombre}: id duplicado ${row.id}`);\n    ids.add(row.id);\n    if (row.fecha !== fecha) throw new Error(`${nombre}: fecha distinta del cierre`);\n    const cents = Math.round(row.importe * 100);\n    if (!Number.isSafeInteger(cents) || Math.abs(cents / 100 - row.importe) > 1e-9) throw new Error(`${nombre}: importe inválido`);\n    result[row.forma_pago] += cents;\n    result.total += cents;\n    if (!Number.isSafeInteger(result.total)) throw new Error(`${nombre}: importe inválido, desbordamiento`);\n    result.operaciones++;\n  }\n  return result;\n}\nconst ventas = sumar('Leer ventas del día');\nconst abonos = sumar('Leer abonos del día');\nconst total = {operaciones: ventas.operaciones + abonos.operaciones};\nfor (const key of [...medios, 'total']) {\n  total[key] = ventas[key] + abonos[key];\n  if (!Number.isSafeInteger(total[key])) throw new Error('Total inválido, desbordamiento');\n}\nconst fila = {fecha};\nfor (const [prefix, values] of [['ventas', ventas], ['abonos', abonos]]) {\n  for (const key of [...medios, 'total']) fila[`${prefix}_${key}`] = values[key] / 100;\n  fila[`${prefix}_operaciones`] = values.operaciones;\n}\nfor (const key of medios) fila[`total_${key}`] = total[key] / 100;\nfila.total = total.total / 100;\nfila.operaciones = total.operaciones;\nfila.sin_movimientos = total.operaciones === 0;\nconst amount = cents => (cents / 100).toFixed(2);\nconst cell = 'border:1px solid #d5dce2;padding:9px;text-align:right;white-space:nowrap';\nconst tableRows = [['Ventas directas', ventas], ['Abonos', abonos], ['Total', total]].map(([label, values]) =>\n  `<tr><th style=\"${cell};text-align:left\" scope=\"row\">${label}</th>${[...medios, 'total'].map(key => `<td style=\"${cell}\">${amount(values[key])} €</td>`).join('')}<td style=\"${cell}\">${values.operaciones}</td></tr>`).join('');\nconst asunto = `Cierre de ${fecha}: ${amount(total.total)} € recaudados`;\nconst html = `<!doctype html><html lang=\"es\"><body style=\"font-family:Arial,sans-serif;color:#203344;margin:24px\"><h1 style=\"font-size:22px\">Cierre diario · ${fecha}</h1><p>Hola, equipo de la tienda:</p>${fila.sin_movimientos ? `<p><strong>No hubo movimientos el ${fecha}.</strong></p>` : '<p>Estos son los cobros registrados en la app para el día completo.</p>'}<div style=\"overflow-x:auto\"><table style=\"border-collapse:collapse;font-size:14px\"><caption style=\"text-align:left;margin-bottom:10px\">Importes en euros. Incluye los abonos iniciales.</caption><thead><tr>${['Concepto','Efectivo','Tarjeta','Bizum','Total','Nº'].map(label => `<th scope=\"col\" style=\"${cell};background:#e8f0f6\">${label}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table></div><p>Ventas directas y abonos se cuentan por separado. Histórico guardado con la fecha del cierre.</p></body></html>`;\nreturn [{json: {...fila, fila, asunto, html}}];\n"
+      }
+    },
+    {
+      "name": "Guardar cierre en Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "id": "896db24c-4dc2-5260-949f-d874910cdd0a",
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1p4W_chB_73vzmRUOhIY0sZCJM_S1LjM-V9opyAjcj4c"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Cierres"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha": "={{ $json.fila.fecha }}",
+            "ventas_efectivo": "={{ $json.fila.ventas_efectivo }}",
+            "ventas_tarjeta": "={{ $json.fila.ventas_tarjeta }}",
+            "ventas_bizum": "={{ $json.fila.ventas_bizum }}",
+            "ventas_total": "={{ $json.fila.ventas_total }}",
+            "ventas_operaciones": "={{ $json.fila.ventas_operaciones }}",
+            "abonos_efectivo": "={{ $json.fila.abonos_efectivo }}",
+            "abonos_tarjeta": "={{ $json.fila.abonos_tarjeta }}",
+            "abonos_bizum": "={{ $json.fila.abonos_bizum }}",
+            "abonos_total": "={{ $json.fila.abonos_total }}",
+            "abonos_operaciones": "={{ $json.fila.abonos_operaciones }}",
+            "total_efectivo": "={{ $json.fila.total_efectivo }}",
+            "total_tarjeta": "={{ $json.fila.total_tarjeta }}",
+            "total_bizum": "={{ $json.fila.total_bizum }}",
+            "total": "={{ $json.fila.total }}",
+            "operaciones": "={{ $json.fila.operaciones }}",
+            "sin_movimientos": "={{ $json.fila.sin_movimientos }}"
+          },
+          "matchingColumns": [
+            "fecha"
+          ],
+          "schema": [
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventas_efectivo",
+              "displayName": "ventas_efectivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventas_tarjeta",
+              "displayName": "ventas_tarjeta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventas_bizum",
+              "displayName": "ventas_bizum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventas_total",
+              "displayName": "ventas_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventas_operaciones",
+              "displayName": "ventas_operaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abonos_efectivo",
+              "displayName": "abonos_efectivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abonos_tarjeta",
+              "displayName": "abonos_tarjeta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abonos_bizum",
+              "displayName": "abonos_bizum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abonos_total",
+              "displayName": "abonos_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abonos_operaciones",
+              "displayName": "abonos_operaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_efectivo",
+              "displayName": "total_efectivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_tarjeta",
+              "displayName": "total_tarjeta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_bizum",
+              "displayName": "total_bizum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operaciones",
+              "displayName": "operaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sin_movimientos",
+              "displayName": "sin_movimientos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": null,
+          "name": "Google Sheets"
+        }
+      },
+      "retryOnFail": false
+    },
+    {
+      "name": "Enviar cierre diario",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "id": "82b4c232-3186-5f57-8d45-b29772225a38",
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "emailFormat": "html",
+        "subject": "={{ $('Preparar cierre').first().json.asunto }}",
+        "html": "={{ $('Preparar cierre').first().json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": null,
+          "name": "Mailpit"
+        }
+      },
+      "retryOnFail": false
+    }
+  ],
+  "connections": {
+    "Cada noche a las 00:05": {
+      "main": [
+        [
+          {
+            "node": "Calcular día",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elegir día": {
+      "main": [
+        [
+          {
+            "node": "Calcular día",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular día": {
+      "main": [
+        [
+          {
+            "node": "Leer ventas del día",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer ventas del día": {
+      "main": [
+        [
+          {
+            "node": "Leer abonos del día",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer abonos del día": {
+      "main": [
+        [
+          {
+            "node": "Preparar cierre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar cierre": {
+      "main": [
+        [
+          {
+            "node": "Guardar cierre en Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar cierre en Sheets": {
+      "main": [
+        [
+          {
+            "node": "Enviar cierre diario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "saveManualExecutions": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "active": false,
+  "tags": []
+}

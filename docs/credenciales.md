@@ -9,6 +9,7 @@ Qué credenciales y variables necesita cada workflow. **Aquí nunca se escriben 
 | `Mailpit` | SMTP | Host `mailpit`, puerto `1025`, sin usuario ni contraseña, SSL/TLS desactivado | Enviar correos de prueba en local (se ven en http://localhost:8025) |
 | `API Tienda` | Header Auth | Name `X-API-Key`, Value = `API_KEY` del `.env` | Llamar a la API de la app (`http://tienda:8000/api/...`) |
 | `Groq` | Groq API | API Key de Groq | Modelo de IA en los nodos de IA |
+| `Google Sheets` | Google Sheets OAuth2 API | Conexión OAuth de la pareja con acceso de edición al documento del histórico; nunca guardar tokens en el repo | Histórico de `05 · Cierre diario` |
 
 ## Workflow → credenciales
 
@@ -16,7 +17,7 @@ Qué credenciales y variables necesita cada workflow. **Aquí nunca se escriben 
 |---|---|---|
 | `01 · Eventos de la tienda` | `Mailpit` | Usa la Data table `Configuración` (rama HU-09), ver [Data tables de n8n](#data-tables-de-n8n) |
 | `03 · Abonos a distancia` | por completar | |
-| `05 · Cierre diario` | por completar | |
+| `05 · Cierre diario` | `API Tienda`, `Google Sheets`, `Mailpit` | Histórico: pestaña `Cierres`, upsert por `fecha`; Error workflow 08. Ver [HU-04](hu04-cierre-diario.md) |
 | `06 · Recordatorios y vencimientos` | por completar | |
 | `07 · Informe mensual` | por completar | |
 | `08 · Error Workflow` | por completar | |

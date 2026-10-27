@@ -1,0 +1,44 @@
+{
+  "result": {
+    "_meta": {
+      "n8n-mcp/toolName": "validate_workflow"
+    },
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"valid\": true,\n  \"summary\": {\n    \"totalNodes\": 8,\n    \"enabledNodes\": 8,\n    \"triggerNodes\": 2,\n    \"validConnections\": 7,\n    \"invalidConnections\": 0,\n    \"expressionsValidated\": 23,\n    \"errorCount\": 0,\n    \"warningCount\": 2\n  },\n  \"errors\": [],\n  \"warnings\": [\n    {\n      \"node\": \"Leer ventas del día\",\n      \"message\": \"executeOnce is enabled. This node will execute only once regardless of input items.\"\n    },\n    {\n      \"node\": \"Leer abonos del día\",\n      \"message\": \"executeOnce is enabled. This node will execute only once regardless of input items.\"\n    }\n  ],\n  \"suggestions\": [\n    \"Most nodes lack error handling. Use \\\"onError\\\" property for modern error handling: \\\"continueRegularOutput\\\" (continue on error), \\\"continueErrorOutput\\\" (use error output), or \\\"stopWorkflow\\\" (stop execution).\",\n    \"Add error handling using the error output of nodes or an Error Trigger node\",\n    \"Consider using a Code node for complex data transformations instead of multiple expressions\"\n  ]\n}"
+      }
+    ],
+    "structuredContent": {
+      "valid": true,
+      "summary": {
+        "totalNodes": 8,
+        "enabledNodes": 8,
+        "triggerNodes": 2,
+        "validConnections": 7,
+        "invalidConnections": 0,
+        "expressionsValidated": 23,
+        "errorCount": 0,
+        "warningCount": 2
+      },
+      "errors": [],
+      "warnings": [
+        {
+          "node": "Leer ventas del día",
+          "message": "executeOnce is enabled. This node will execute only once regardless of input items."
+        },
+        {
+          "node": "Leer abonos del día",
+          "message": "executeOnce is enabled. This node will execute only once regardless of input items."
+        }
+      ],
+      "suggestions": [
+        "Most nodes lack error handling. Use \"onError\" property for modern error handling: \"continueRegularOutput\" (continue on error), \"continueErrorOutput\" (use error output), or \"stopWorkflow\" (stop execution).",
+        "Add error handling using the error output of nodes or an Error Trigger node",
+        "Consider using a Code node for complex data transformations instead of multiple expressions"
+      ]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
