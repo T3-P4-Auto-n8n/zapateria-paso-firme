@@ -113,7 +113,11 @@ Subir el CSV del datáfono ─────────────────�
      - El flujo termina ahí, sin error: un día sin fichero no es un fallo de n8n, y la tienda lo sabe por este aviso.
 3. `Leer cobros del CSV` (Extract From File 1.2, **Extract From CSV**), al que llegan las dos ramas:
    - **Input Binary Field** `datafono`;
-   - **Options:** **Header Row** activado y **Delimiter** `;`;
+   - **Options:**
+     - **Header Row** activado y **Delimiter** `;`;
+     - **Include Empty Cells** activado. Viene desactivado, y entonces una celda vacía (por ejemplo, el `importe` de la operación `004520`) no llega como `""`: esa columna desaparece del item. El Code acepta las dos formas, pero así cada fila trae todas sus columnas;
+     - **Exclude Byte Order Mark (BOM)** activado, por si el datáfono guarda el CSV con BOM. El Code también lo quita.
+   - Los valores llegan como **texto** (`"18,95"`, `"004516"`): el Code los convierte.
    - **Settings → Always Output Data:** activado. Un CSV con solo la cabecera da 0 items y, sin esta opción, el flujo se pararía sin informe.
 
 **Revisión de las filas** (`Revisar los cobros`, Code, Run Once for All Items)

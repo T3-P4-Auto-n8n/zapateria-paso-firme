@@ -1377,6 +1377,86 @@ HU-13 (#110, nivel Avanzado), variante **Datáfono**: «cada noche se importa el
 
 </details>
 
+### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** escribir el JavaScript de los 3 nodos Code de `11 · Datáfono` (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`) y un `LEEME.md` con la configuración de los demás nodos. **Reparto:** la pareja construye los nodos en n8n y pega el código; el agente solo escribe el código.
+- **Resultado:**
+  - **`~/hu13/`** (fuera del repo): `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js` y `LEEME.md`.
+    - El `LEEME.md` lleva qué recibe y qué devuelve cada Code, la configuración de los demás nodos y el esquema de conexiones.
+    - Los Workflow Inputs de los 2 Execute Workflow van listos para pegar, en una línea.
+    - Incluye los comandos `docker compose` para la carpeta y cómo hacer cada prueba.
+  - Mismos patrones que HU-10:
+    - `{ cuerpo: null }` cuando no hay nada que crear;
+    - `isExecuted` con `try/catch` para leer `Registrar ventas`;
+    - respuestas del `POST` con Never Error, emparejadas por orden;
+    - `detail` de la app en los `422`.
+  - `Revisar los cobros` sabe qué disparador se ejecutó con `$('Subir el CSV del datáfono').isExecuted`.
+  - **Prueba en local con node:**
+    - `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` real, con la clave del `.env` sin imprimirla;
+    - el CSV leído como lo daría Extract From File (texto, con y sin Include Empty Cells);
+    - los `POST` simulados.
+    - **Prueba 1:** 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas (ventas 253 y 254) y 4 no importadas. Asunto «Datáfono del 21/10/2026: 4 ventas creadas».
+    - **Prueba 2** (la app ya tiene las 4 ventas `Datáfono op. …`): 0 creadas, 4 ya importadas.
+    - **Prueba 3** (mes 13 en la línea 4): `fila no válida (fecha)`, 0 creadas. En una base limpia serían 3 (163.75 €).
+    - **Prueba 4** (sin `estado`): error «Datáfono: faltan columnas en el CSV: estado».
+    - **Otros casos:**
+      - un `422` va a «Rechazadas por la app» y el flujo sigue;
+      - un `401` en el `POST` para con el código y el `detail`;
+      - un CSV con solo la cabecera da «0 ventas creadas»;
+      - el BOM se quita;
+      - con separador `,`, falla con las 4 columnas que faltan;
+      - una venta `tarjeta` sin cobro sale en su sección del informe.
+- **Problemas encontrados:**
+  - **Celdas vacías.** Según n8n-mcp, en Extract From File la opción **Include Empty Cells** viene desactivada, y una celda vacía no llega como `""`: esa columna no aparece en el item. Se añadió a la spec (paso 3) activarla, y el Code comprueba las columnas con la unión de todas las filas, así que funciona de las dos formas.
+  - **BOM.** Extract From File tiene la opción **Exclude Byte Order Mark (BOM)**, desactivada por defecto. Se añadió a la spec activarla; el Code también quita el BOM.
+  - **Una fila por operación.** El código supone que cada operación sale una vez con su estado final. Si un datáfono pusiera la anulación en otra fila con el mismo nº de operación, se importaría la `APROBADA` y la anulación saldría como no importada.
+  - **Pendiente de comprobar al construir:**
+    - qué devuelve Read/Write Files from Disk si el fichero no existe;
+    - que la carpeta `/home/node/.n8n-files/` se pueda leer sin cambiar variables;
+    - que `$binary.datafono` funcione en el IF.
+  - **Versión de n8n.** El prompt sigue diciendo n8n 2.4.5; el contenedor da 2.44.5 (ver «Spec del datáfono · HU-13»).
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `specs/11-datafono.md`. Tú escribes solo el JavaScript de los 3 nodos Code (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`); la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/11-datafono.md` (secciones 3, 4, 5, 6 y 7), `data/datafono_ejemplo.csv`, `AGENTS.md`.
+- Ejemplo de estilo y patrones ya probados: `workflows/09-migracion-excel.json` y `~/hu10-codigo/` (Code, `LEEME.md`, `isExecuted`, salida del HTTP Request con Never Error, `{ cuerpo: null }`), `~/hu08/`, `~/subflujos/LEEME.md` y `~/subflujos/LEEME-95.md` (Execute Workflow a `10 · Enviar notificación`, Workflow Inputs de una línea).
+- `backend/routes/ventas.py`, `backend/schemas/venta.py`, `backend/models/venta.py`: forma de `GET /api/ventas` y de la respuesta de `POST /api/ventas`, y el `detail` de los `422`.
+- n8n-mcp (n8n 2.4.5): Extract From File (CSV con `;`: ¿los valores llegan como texto? ¿qué pasa con el BOM y las columnas vacías?), Read/Write Files from Disk (qué devuelve si el fichero no existe), Form Trigger con archivo (nombre del campo binario), Schedule Trigger, y cómo saber en un Code qué disparador se ejecutó (`$('Subir el CSV del datáfono').isExecuted`).
+
+## Contenido
+
+1. En `~/hu13/` (fuera del repo, no se sube):
+   - `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js`.
+   - Comentarios cortos en español, sin librerías externas. Mensajes de error exactamente como en la spec.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto); la configuración exacta de los demás nodos (los 2 disparadores, Read Files from Disk, los IF, Extract From File, el `GET`, el `POST`, los 2 Execute Workflow a `10 · Enviar notificación` con sus Workflow Inputs de una línea listos para pegar, Settings con Error workflow `08` y zona horaria); un dibujo de las conexiones; los comandos `docker compose` para crear la carpeta y copiar el CSV; y cómo hacer cada prueba de la sección 7.
+2. Comprueba la lógica en local con node: lee `data/datafono_ejemplo.csv` como lo daría Extract From File, haz `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` (con la clave del `.env`, sin imprimirla), simula las respuestas del `POST` (201 con id inventado, y un 422) y ejecuta los 3 Code. Comprueba:
+   - prueba 1: 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas, 4 no importadas;
+   - prueba 2: simula que la app ya tiene esas 4 ventas `Datáfono op. ...` → 0 creadas;
+   - prueba 3 (fecha mal) y prueba 4 (sin columna `estado`);
+   - el texto del informe completo de la prueba 1.
+   Dime los resultados. Si algo de la spec no cuadra con la API o con n8n-mcp, dímelo.
+3. `specs/11-datafono.md`: solo si algo de la sección 4 no coincide con lo que has visto, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
