@@ -1,10 +1,12 @@
 # Flujo 06 · Recordatorios y vencimientos
 
-> **Alcance de esta versión:** spec de la **rama de vencimientos** (HU-07, criterios 1 y 3): cada mañana se vencen por API los apartados fuera de plazo y la tienda recibe la lista de zapatos que vuelven a la venta. El criterio 2 (el vale al cliente) va en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)). La **rama de recordatorios** (HU-06) la añadirá Beste en este mismo workflow (sección 4.2, pendiente). Todavía no está construido.
+> **Alcance de esta versión:** spec de la **rama de vencimientos** (HU-07, criterios 1 y 3): cada mañana se vencen por API los apartados fuera de plazo y la tienda recibe la lista de zapatos que vuelven a la venta. El criterio 2 (el vale al cliente) va en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)). La rama de vencimientos está **construida** en n8n, exportada en `workflows/06-recordatorios-y-vencimientos.json` (8 nodos) y probada a mano (sección 7). **Sin publicar** a propósito: publicado, vencería de verdad a las 9:00 los apartados fuera de plazo, entre ellos el 16, que la prueba de HU-03 (correo `06_bizum_paula`) necesita `activo` y fuera de plazo. Se publicará cuando terminen las pruebas de HU-03. La **rama de recordatorios** (HU-06) la añadirá Beste en este mismo workflow (sección 4.2, pendiente).
 
 ## 1. Cabecera
 
-- **Flujo:** `06 · Recordatorios y vencimientos` (`workflows/06-recordatorios-vencimientos.json`), flujo 6 del README.
+- **Flujo:** `06 · Recordatorios y vencimientos` (`workflows/06-recordatorios-y-vencimientos.json`), flujo 6 del README.
+  - El nombre del archivo lo pone `scripts/flujos.py`: quita «de», «la» y «del», pero no «y».
+  - La spec se queda como `specs/06-recordatorios-vencimientos.md`. `AGENTS.md` (sección 5) solo pide el mismo `NN`, y el nombre ya está enlazado desde las specs del `01` y del `10`, `AGENTS.md` y los prompts literales de `docs/ai-log.md`.
 - **HU:** HU-07 · Apartados vencidos con su vale (#64; sub-issues #65–#69). HU-06 · Recordatorios de vencimiento, pendiente (Beste).
 - **Nivel:** Medio.
 - **Responsable:** Esra (vencimientos) · Beste (recordatorios).
@@ -26,7 +28,8 @@ Que los apartados que se han pasado de plazo se cierren solos cada mañana, la a
 - **`Cada mañana a las 9:00`** (Schedule Trigger):
   - **Trigger Interval** Days, **Days Between Triggers** `1`, **Trigger at Hour** 9am y **Trigger at Minute** `0`. Todos los días, también el domingo.
   - Equivale a la expresión cron `0 9 * * *`.
-  - Solo funciona con el flujo publicado (lo publica la pareja).
+  - Solo funciona con el flujo publicado (lo publica la pareja). **Todavía sin publicar**, por la prueba de HU-03 (nota de alcance).
+  - En el JSON exportado queda como `{"triggerAtHour": 9}`: Days, `1` y el minuto `0` son los valores por defecto y n8n no los guarda.
   - **Por qué todos los días:** el disparador será el mismo para los recordatorios de HU-06, y un aviso de «vence en 1 día» no puede saltarse el domingo. Para los vencimientos da igual: el que vence en domingo se vence ese día y la tienda ve la lista el lunes.
   - **Por qué a las 9:00, por la mañana:**
     - El README dice «cada mañana», y así la dependienta tiene la lista al abrir.
@@ -62,7 +65,7 @@ Probar a mano ──────────┴─ Leer apartados activos ─ El
 
 **Lectura**
 
-1. `Leer apartados activos` (Execute Workflow a `10 · Buscar apartado`):
+1. `Leer apartados activos` (Execute Workflow a `10 · Buscar apartado`; en n8n el nodo se llama «Execute Sub-workflow»):
    - **Mode** Run once for each item, la regla de [specs/10-sub-workflows.md](10-sub-workflows.md), sección 3. El disparador da un solo item, así que hay una sola llamada.
    - **Options → Wait For Sub-Workflow Completion:** activado (el valor por defecto).
    - **Workflow Inputs:** `estado` = `activo`; `id` y `texto` vacíos.
@@ -197,6 +200,8 @@ Antes de la prueba: `GET /api/apartados/resumen` da 20 activos, 9 liquidados y 1
 
 2. Publicados: el `01` con la rama `apartado.vencido` (parte B), el `08`, `10 · Buscar apartado` y `10 · Enviar notificación`. El `06` no hace falta publicarlo para las pruebas manuales.
 
+**Cómo se hizo la prueba real:** con la copia en `~/tienda-antes-hu07.db`, el `06` sin publicar y el `01` publicado. Primero las 2 pruebas de la rama del `01` por la Test URL ([specs/01-eventos-tienda.md](01-eventos-tienda.md), sección 7), después las pruebas 1 y 2. Al terminar se restauró la copia.
+
 **Prueba 1 · primera ejecución** (`Probar a mano`, las dos partes juntas)
 
 - `Leer apartados activos`: `total` 20.
@@ -205,7 +210,7 @@ Antes de la prueba: `GET /api/apartados/resumen` da 20 activos, 9 liquidados y 1
 - **Lista a la tienda:** «Vencimientos del 27/10/2026: 4 pares vuelven a la venta», con «4 apartados vencidos de 20 activos revisados», los 4 pares de la tabla y 0 que no se han podido vencer.
 - **Correos a los clientes** (del `01`, uno por webhook): a `paula16@example.com`, `sergio15@example.com`, `marta14@example.com` y `pablo13@example.com`, cada uno con su código y su importe. Ninguno va a la tienda por falta de email.
 - En Mailpit, 5 correos. En las ejecuciones: la del `06` (con sus sub-ejecuciones) y 4 del `01`, cada una con su sub-ejecución de `Enviar notificación`.
-- **En la app:** `resumen` da 16 activos, 9 liquidados y 5 vencidos. `GET /api/vales` da 5 vales: `VALE-00022` y los 4 nuevos, con la `fecha` de hoy y el `importe` de la tabla.
+- **En la app:** `resumen` da 16 activos, 9 liquidados y 5 vencidos. `GET /api/vales` da 5 vales: `VALE-00022` y los 4 nuevos, con la `fecha` de hoy y el `importe` de la tabla. La app no tiene página de vales: cada vale se ve en la página de su apartado.
 
 **Prueba 2 · segunda ejecución**
 
@@ -225,7 +230,7 @@ Resultado esperado:
 
 No cambia nada en la app. Al terminar, quitar el pin data.
 
-**Prueba 4 · disparador programado** (opcional, después de restaurar): al publicar el `06`, se ejecuta solo a las 9:00 del día siguiente. Ojo: vencerá **de verdad** los apartados fuera de plazo de ese día (los 4 de la tabla y, desde el 29/10, también el 11 y el 12). Si no se quiere, se despublica después de las pruebas manuales.
+**Prueba 4 · disparador programado** (opcional): al publicar el `06`, se ejecuta solo a las 9:00 del día siguiente. Ojo: vencerá **de verdad** los apartados fuera de plazo de ese día (los 4 de la tabla y, desde el 29/10, también el 11 y el 12).
 
 **Al terminar:** restaurar la copia y reiniciar la app.
 
@@ -240,20 +245,36 @@ La app no vuelve a cargar el seed al reiniciar, porque la base de datos no está
 
 **Comprobado en local con node** (sin n8n ni `POST`): el filtro y la lista, con el `GET` real de los activos y las respuestas de `/vencer` construidas según `backend/models/apartado.py`. Salen los 4 apartados de la tabla, en ese orden, y la lista de la sección 5. Con un `422` simulado en el 14, la lista da 3 vencidos y 1 con error. Con los activos que quedan después, `Elegir los fuera de plazo` da `{ id: null }`. Con el código de los 2 Code (HU-07, `~/hu07/`) se repitieron las pruebas 1, 2 y 3 (el `9999` sale primero, por su `fecha_limite`) y los casos de `500` y `401` del paso 8, con los mensajes de arriba.
 
-**Evidencias previstas:**
-- Lista a la tienda en Mailpit: `docs/evidencias/06-hu07-lista-tienda.png`
-- Correo con el vale a un cliente: `docs/evidencias/06-hu07-vale-cliente.png`
-- Los 5 vales en la app (`GET /api/vales` o la página de vales): `docs/evidencias/06-hu07-vales-en-la-app.png`
-- Segunda ejecución, por la rama false: `docs/evidencias/06-hu07-segunda-ejecucion.png`
-- Prueba 3, lista con los dos errores: `docs/evidencias/06-hu07-errores.png`
+**Resultado real** (coincide con el esperado):
+
+- **Prueba 1:**
+  - `Leer apartados activos`: `total` 20. `Elegir los fuera de plazo`: 4 items (16, 15, 14 y 13). `Vencer apartado`: 4 respuestas `200`.
+  - En Mailpit, 5 correos:
+    - la lista «Vencimientos del 27/10/2026: 4 pares vuelven a la venta», con «4 apartados vencidos de 20 activos revisados», los 4 pares con su vale y 0 con error;
+    - los 4 vales del `01`, a `paula16`, `sergio15`, `marta14` y `pablo13` (5.00, 60.00, 45.00 y 30.00 €).
+  - En la app: `resumen` 16 activos / 9 liquidados / 5 vencidos; `GET /api/vales` da `VALE-00022` y los 4 nuevos, con fecha 27/10/2026.
+  - La página del apartado 15 muestra «Vale de compra VALE-00015 por 60,00 €»: es la suma de sus abonos (10 + 20 + 20 + 10). El importe lo pone la app; n8n no lo calcula.
+- **Prueba 2:** `Elegir los fuera de plazo` da `{ id: null }`, el IF va por false y no hay ningún `POST` ni correo.
+- **Prueba 3: no se hizo** en n8n. Los caminos de `422`, `404`, `500` y `401` están comprobados en local con node, con el mismo código («Código de los nodos Code · HU-07», `docs/ai-log.md`).
+- **Prueba 4: no se hizo.** El `06` no se ha publicado (nota de alcance).
+
+**Evidencias:**
+- Lista a la tienda en Mailpit: [docs/evidencias/06-hu07-lista-tienda.png](../docs/evidencias/06-hu07-lista-tienda.png)
+- Vale de Sergio Delgado (prueba 1): [docs/evidencias/06-hu07-vale-cliente.png](../docs/evidencias/06-hu07-vale-cliente.png)
+- Pestaña Vencidos de la app (22, 16, 15, 14 y 13): [docs/evidencias/06-hu07-vencidos-en-la-app.png](../docs/evidencias/06-hu07-vencidos-en-la-app.png)
+- Apartado 15 con su vale: [docs/evidencias/06-hu07-vale-en-la-app.png](../docs/evidencias/06-hu07-vale-en-la-app.png)
+- Aviso a la tienda de un vencido sin email (`01`): [docs/evidencias/06-hu07-sin-email.png](../docs/evidencias/06-hu07-sin-email.png)
+- Segunda ejecución, por la rama false: [docs/evidencias/06-hu07-segunda-ejecucion.png](../docs/evidencias/06-hu07-segunda-ejecucion.png)
 
 ## 8. Criterios de aceptación
 
 **HU-07 · Apartados vencidos con su vale** (flujo 6):
 
-- [ ] Los apartados fuera de plazo se vencen por API y la app genera el vale (pruebas 1 y 2).
-- [ ] El cliente recibe un mensaje con el código y el importe de su vale. Se cumple en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)); aquí se comprueba de extremo a extremo en la prueba 1.
-- [ ] Marisa recibe la lista de zapatos que vuelven a la venta (prueba 1).
+- [x] Los apartados fuera de plazo se vencen por API y la app genera el vale (pruebas 1 y 2).
+- [x] El cliente recibe un mensaje con el código y el importe de su vale. Se cumple en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)), y se comprobó de extremo a extremo en la prueba 1.
+- [x] Marisa recibe la lista de zapatos que vuelven a la venta (prueba 1).
+
+Las pruebas se lanzaron a mano: el disparador de cada mañana no se ha probado, porque el `06` está sin publicar.
 
 **HU-06 · Recordatorios de vencimiento:** pendiente (Beste, sección 4.2).
 

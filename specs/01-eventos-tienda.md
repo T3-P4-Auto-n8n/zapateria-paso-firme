@@ -2,7 +2,7 @@
 
 > **Alcance de esta versión:** router (webhook + Switch), rama de HU-01 (`apartado.creado`), rama de HU-02 (`abono.registrado`) y rama de HU-09 (`venta.registrada`, flujo 4), construidas y probadas.
 >
-> **HU-07 (spec, sin construir):** la rama `apartado.vencido` envía al cliente el código y el importe de su vale con `10 · Enviar notificación`, o avisa a la tienda si no tiene email. Es el criterio 2 de HU-07; los criterios 1 y 3 (vencer y la lista a la tienda) están en [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md).
+> **HU-07:** la rama `apartado.vencido` envía al cliente el código y el importe de su vale con `10 · Enviar notificación`, o avisa a la tienda si no tiene email. Es el criterio 2 de HU-07; los criterios 1 y 3 (vencer y la lista a la tienda) están en [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md). Construida en n8n, exportada en `workflows/01-eventos-tienda.json` (3 nodos nuevos: 17 en total) y probada con los payloads y de extremo a extremo con el `06` (sección 7).
 >
 > **En esta versión (#95):** los 2 correos de la rama HU-01 se envían con el sub-workflow `10 · Enviar notificación` ([specs/10-sub-workflows.md](10-sub-workflows.md)). Es el ejemplo de uso de #95. Los demás Send Email del `01` (HU-02 y HU-09) no cambian. Construido en n8n, exportado en `workflows/01-eventos-tienda.json` y probado (sección 7).
 
@@ -112,7 +112,7 @@ El aviso llega cuando el `06` vence un apartado (`POST /api/apartados/{id}/vence
 - El aviso lleva el teléfono, que la lista del `06` no incluye.
 - Son pocos correos: un aviso por cada apartado vencido sin email.
 
-**Cómo se configuran los 2 nodos**, igual que los de HU-01 (#95):
+**Cómo se configuran los 2 nodos**, igual que los de HU-01 (#95). En n8n el Execute Workflow aparece como «Execute Sub-workflow»:
 - **Execute Workflow** (versión 1.4), **Workflow** `10 · Enviar notificación` (Source Database, From list).
 - **Mode:** Run once for each item (regla de [specs/10-sub-workflows.md](10-sub-workflows.md), sección 3).
 - **Options → Wait For Sub-Workflow Completion:** activado (el valor por defecto).
@@ -217,6 +217,18 @@ En el payload de prueba el apartado 16 tiene talla 39 y fecha límite 18/10/2026
 
 Comprobado en local con node y Luxon, sin n8n: las expresiones de los 2 nodos dan los textos de arriba con los dos payloads y con los 4 avisos que enviará la app en la prueba de extremo a extremo (construidos con el `GET` real de los apartados y el vale que genera `backend/models/apartado.py`).
 
+**Resultado real** (HU-07; la base de datos se copió antes y se restauró después, ver [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md), sección 7). Los Workflow Inputs de los 2 nodos del JSON exportado son idénticos a los de arriba.
+
+| Prueba | Resultado |
+|---|---|
+| `apartado.vencido.json` (Test URL) | Llega a `paula16@example.com` «Tu apartado n.º 16 ha vencido: tu vale de 5.00 €», con el texto de la spec: `VALE-00016`, 5.00 € y que no se cambia por efectivo |
+| `apartado.vencido-sin-email.json` (Test URL) | Llega a `tienda@pasofirme.example` «Apartado 16 vencido sin email: no se envió el vale», con el teléfono 612 345 016, el producto con su talla y el vale |
+| De extremo a extremo (prueba 1 del `06`, con el `01` publicado) | Llegan los 4 vales a `paula16`, `sergio15`, `marta14` y `pablo13` (5.00, 60.00, 45.00 y 30.00 €). Ningún aviso a la tienda: los 4 tienen email |
+
+**Evidencias** (HU-07):
+- Vale de Sergio Delgado, de la prueba de extremo a extremo: [docs/evidencias/06-hu07-vale-cliente.png](../docs/evidencias/06-hu07-vale-cliente.png)
+- Aviso a la tienda de un vencido sin email: [docs/evidencias/06-hu07-sin-email.png](../docs/evidencias/06-hu07-sin-email.png)
+
 **Rama HU-01 con `Enviar notificación` (#95).** Tras el cambio se repiten estas pruebas. Los `curl` están en `~/subflujos/LEEME-95.md`.
 
 | Prueba | Resultado esperado |
@@ -292,4 +304,4 @@ Del nivel Esencial del README (el router no tiene HU propia):
 
 **HU-07 · Apartados vencidos con su vale** (criterio 2; los criterios 1 y 3, en [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md))
 
-- [ ] El cliente recibe un mensaje con el código y el importe de su vale.
+- [x] El cliente recibe un mensaje con el código y el importe de su vale.
