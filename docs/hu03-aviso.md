@@ -1,10 +1,10 @@
-# HU-03 · Aviso de revisión a Marisa (#38)
+# HU-03 · Aviso de revisión a la tienda (#38)
 
 ## Alcance
 
 Las rutas de revisión por extracción inválida, candidato dudoso, fuera de plazo, saldo insuficiente o respuesta 422/404 envían un correo de texto plano mediante `Mailpit` al buzón de pruebas `tienda@pasofirme.example`. El mensaje incluye motivo, ordenante, importe, método original cuando puede identificarse, concepto, referencia y los candidatos de API disponibles (ID, cliente, producto, talla, pendiente, fecha límite y estado).
 
-El flujo no reenvía el cuerpo original del banco, no registra pagos y no envía recibos al cliente. Recomienda a Marisa revisar y, si corresponde, registrar manualmente. Los valores no confiables se limitan y limpian de saltos de línea y pseudoencabezados. Se muestran hasta 20 candidatos y se indica si hay más.
+El flujo no reenvía el cuerpo original del banco, no registra pagos y no envía recibos al cliente. Pide al equipo de la tienda revisar y, si corresponde, registrar manualmente. Los valores no confiables se limitan y limpian de saltos de línea y pseudoencabezados. Se muestran hasta 20 candidatos y se indica si hay más.
 
 ## Configuración
 

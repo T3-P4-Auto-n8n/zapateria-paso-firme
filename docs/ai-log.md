@@ -1149,7 +1149,7 @@ Ninguna por ahora.
 
 ### Aviso de revisión manual HU-03 (#38)
 
-- **Tarea:** preguntar a Marisa cuando un pago no se registra automáticamente.
+- **Tarea:** avisar a la tienda cuando un pago no se registra automáticamente.
 - **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-aviso.json`. Las rutas de revisión por extracción y decisión/registro pasan a un correo plano por Mailpit. Incluye motivo, ordenante, importe, método original si se identifica, concepto, referencia y candidatos disponibles. El mensaje no reenvía el cuerpo original ni ejecuta registros.
 - **Verificación:** suite HU-03 completa — 35/35 pruebas; incluye motivos, candidatos, 422, método Bizum/transferencia y limpieza de saltos de línea/pseudoencabezados. No se envió ningún correo en las pruebas.
 - **Pendiente:** review y validación en n8n/Mailpit. Mantener workflow inactivo y la PR borrador.

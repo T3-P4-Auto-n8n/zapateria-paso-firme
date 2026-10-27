@@ -86,7 +86,7 @@
         -450
       ],
       "parameters": {
-        "content": "## HU-03 · Aviso a Marisa (#38)\nBorrador parcial e inactivo. Asignar Groq, API Tienda y Mailpit; seleccionar el 08 local en Settings. Solo las ramas de revisión envían un correo de texto a Mailpit; no se reenvía el mensaje bancario ni se registra un abono desde esta etapa. Probar solo con los correos ficticios.",
+        "content": "## HU-03 · Aviso de revisión (#38)\nBorrador parcial e inactivo. Asignar Groq, API Tienda y Mailpit; seleccionar el 08 local en Settings. Solo las ramas de revisión envían un correo de texto a Mailpit; no se reenvía el mensaje bancario ni se registra un abono desde esta etapa. Probar solo con los correos ficticios.",
         "height": 370,
         "width": 540
       }
@@ -751,8 +751,8 @@
       "parameters": {}
     },
     {
-      "name": "Preparar aviso a Marisa (#38)",
-      "id": "f727b846-bf8e-5fad-8e66-3cb513201fa4",
+      "name": "Preparar aviso de revisión (#38)",
+      "id": "7140cf5c-066e-59b2-81a1-0a380ac355d0",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -761,12 +761,12 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// #38: avisar a Marisa con lo necesario para revisar; no reenviar el correo bancario.\nconst e = $json;\nconst safe = (value, limit = 300) => String(value ?? '').replace(/[\\x00-\\x1f\\x7f]+/g,' ').replace(/\\b(?:bcc|cc|to|from)\\s*:\\s*[^\\s]+/gi,'[contenido omitido]').replace(/\\s+/g,' ').trim().slice(0,limit);\nlet source = {};\ntry { source = $('Normalizar entrada de correo').item.json || {}; } catch { /* datos de entrada no disponibles */ }\nconst original = safe(source.asunto,1000) + ' ' + safe(source.cuerpo,20000);\nconst normalized = original.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\nconst medio = safe(e.medio) || (normalized.includes('bizum') ? 'Bizum' : (normalized.includes('transferencia') ? 'Transferencia' : 'No identificado'));\nconst motivo = safe(e.motivo || e.motivo_decision || 'El pago requiere revisión manual');\nconst ordenante = safe(e.ordenante || 'No identificado');\nconst concepto = safe(e.concepto || 'No indicado');\nconst referencia = safe(e.referencia || 'No disponible',300);\nconst importe = Number(e.importe);\nconst importeTexto = Number.isFinite(importe) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(importe) + ' €' : 'No identificado';\nconst candidates = Array.isArray(e.candidatos) ? e.candidatos : (e.apartado && typeof e.apartado === 'object' ? [e.apartado] : []);\nconst shown = candidates.slice(0,20);\nconst lines = shown.map(a => `- #${safe(a.id,20)} · ${safe(a.cliente || 'Cliente desconocido')} · ${safe(a.producto || 'Producto desconocido')}${a.talla ? ' · talla ' + safe(a.talla,30) : ''} · pendiente ${Number.isFinite(Number(a.pendiente)) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(a.pendiente)) + ' €' : 'desconocido'} · límite ${safe(a.fecha_limite || 'desconocido',30)} · estado ${safe(a.estado || 'desconocido',30)}`).join('\\n');\nconst candidatosTexto = lines || 'No hay candidatos disponibles.';\nconst adicionales = candidates.length > shown.length ? `\\nHay ${candidates.length - shown.length} candidatos más; revisar la ejecución.` : '';\nconst text = `Hola Marisa,\\n\\nHa llegado un pago que no he registrado. Revísalo y, si procede, regístralo manualmente en la app.\\n\\nMotivo: ${motivo}\\nOrdenante: ${ordenante}\\nImporte: ${importeTexto}\\nMétodo indicado: ${medio}\\nConcepto: ${concepto}\\nReferencia: ${referencia}\\n\\nApartados candidatos:\\n${candidatosTexto}${adicionales}\\n\\nNo vuelvas a registrar el pago hasta confirmar que no se haya aplicado ya.`;\nreturn {json:{...e,asunto:'Pago recibido para revisar',text}};\n"
+        "jsCode": "// #38: avisar al equipo de la tienda con lo necesario para revisar; no reenviar el correo bancario.\nconst e = $json;\nconst safe = (value, limit = 300) => String(value ?? '').replace(/[\\x00-\\x1f\\x7f]+/g,' ').replace(/\\b(?:bcc|cc|to|from)\\s*:\\s*[^\\s]+/gi,'[contenido omitido]').replace(/\\s+/g,' ').trim().slice(0,limit);\nlet source = {};\ntry { source = $('Normalizar entrada de correo').item.json || {}; } catch { /* datos de entrada no disponibles */ }\nconst original = safe(source.asunto,1000) + ' ' + safe(source.cuerpo,20000);\nconst normalized = original.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\nconst medio = safe(e.medio) || (normalized.includes('bizum') ? 'Bizum' : (normalized.includes('transferencia') ? 'Transferencia' : 'No identificado'));\nconst motivo = safe(e.motivo || e.motivo_decision || 'El pago requiere revisión manual');\nconst ordenante = safe(e.ordenante || 'No identificado');\nconst concepto = safe(e.concepto || 'No indicado');\nconst referencia = safe(e.referencia || 'No disponible',300);\nconst importe = Number(e.importe);\nconst importeTexto = Number.isFinite(importe) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(importe) + ' €' : 'No identificado';\nconst candidates = Array.isArray(e.candidatos) ? e.candidatos : (e.apartado && typeof e.apartado === 'object' ? [e.apartado] : []);\nconst shown = candidates.slice(0,20);\nconst lines = shown.map(a => `- #${safe(a.id,20)} · ${safe(a.cliente || 'Cliente desconocido')} · ${safe(a.producto || 'Producto desconocido')}${a.talla ? ' · talla ' + safe(a.talla,30) : ''} · pendiente ${Number.isFinite(Number(a.pendiente)) ? new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(a.pendiente)) + ' €' : 'desconocido'} · límite ${safe(a.fecha_limite || 'desconocido',30)} · estado ${safe(a.estado || 'desconocido',30)}`).join('\\n');\nconst candidatosTexto = lines || 'No hay candidatos disponibles.';\nconst adicionales = candidates.length > shown.length ? `\\nHay ${candidates.length - shown.length} candidatos más; revisar la ejecución.` : '';\nconst text = `Hola, equipo de la tienda:\\n\\nHa llegado un pago que no he registrado. Revísalo y, si procede, regístralo manualmente en la app.\\n\\nMotivo: ${motivo}\\nOrdenante: ${ordenante}\\nImporte: ${importeTexto}\\nMétodo indicado: ${medio}\\nConcepto: ${concepto}\\nReferencia: ${referencia}\\n\\nApartados candidatos:\\n${candidatosTexto}${adicionales}\\n\\nNo vuelvas a registrar el pago hasta confirmar que no se haya aplicado ya.`;\nreturn {json:{...e,asunto:'Pago recibido para revisar',text}};\n"
       }
     },
     {
-      "name": "Avisar a Marisa para revisar el pago",
-      "id": "ec13cc83-f8f7-59d8-83d6-e1d0ccebb92a",
+      "name": "Avisar a la tienda para revisar el pago",
+      "id": "799d7ff3-6c46-5daa-86a7-2bdceec26bdc",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
@@ -1104,7 +1104,7 @@
       "main": [
         [
           {
-            "node": "Preparar aviso a Marisa (#38)",
+            "node": "Preparar aviso de revisión (#38)",
             "type": "main",
             "index": 0
           }
@@ -1115,7 +1115,7 @@
       "main": [
         [
           {
-            "node": "Preparar aviso a Marisa (#38)",
+            "node": "Preparar aviso de revisión (#38)",
             "type": "main",
             "index": 0
           }
@@ -1126,18 +1126,18 @@
       "main": [
         [
           {
-            "node": "Preparar aviso a Marisa (#38)",
+            "node": "Preparar aviso de revisión (#38)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar aviso a Marisa (#38)": {
+    "Preparar aviso de revisión (#38)": {
       "main": [
         [
           {
-            "node": "Avisar a Marisa para revisar el pago",
+            "node": "Avisar a la tienda para revisar el pago",
             "type": "main",
             "index": 0
           }
