@@ -111,3 +111,7 @@ En n8n: **Overview → Credentials → Create credential**, buscar el tipo y gua
 3. Nombre: `Groq`.
 
 **Verificado HU-06 (28/10/2026):** tabla local `recordatorios enviados`, columnas Number/Number/String, dos filas tras ejecución #45 y ninguna adicional tras #58. Tras restaurar la tienda, se eliminaron solo las dos filas de prueba; tabla vacía. Las credenciales importadas de otro ordenador se reasignaron a la credencial local existente sin guardar valores secretos.
+
+### Extensión IA de recordatorios (#121)
+
+`06 · Recordatorios y vencimientos` añade la credencial **Groq** (Groq API) al HTTP `Redactar con Groq`. Solo se envían instrucciones de tono genéricas; ningún dato de cliente, importe o fecha. API Tienda, sub-workflow 10, Data table y Error workflow 08 conservan su configuración anterior. El flujo permanece inactivo.

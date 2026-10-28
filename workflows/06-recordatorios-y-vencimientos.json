@@ -616,6 +616,71 @@
       ],
       "id": "e3c8a6bd-d959-4616-9b66-f8e75c56a8a1",
       "name": "Registrar recordatorio enviado"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Run once for each item. The model receives generic style instructions only.\nconst base = $json;\nif (typeof base.texto !== 'string' || !base.texto || typeof base.para !== 'string') throw new Error('Falta el recordatorio original');\nconst prompt_ia = 'Redacta en español dos frases breves y cercanas para acompañar un recordatorio de Zapatería Paso Firme. Devuelve JSON con exactamente introduccion y despedida, ambas strings. Solo tono cordial; no incluyas datos personales, cifras, números escritos, importes, pagos, descuentos, fechas, plazos, enlaces ni instrucciones de negocio. No uses artículos un/una. No saludes a ninguna persona concreta. Ejemplo de estilo: Te escribimos con cariño para cuidar de tu apartado. / Nos encantará verte por la tienda. No añadas información ni promesas.';\nreturn { json: { ...base, prompt_ia } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        640
+      ],
+      "id": "23a71dbc-90ab-50b2-aecf-cf6e84c6cfde",
+      "name": "Preparar redacción del recordatorio"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model:\"openai/gpt-oss-20b\",temperature:0,max_completion_tokens:1024,reasoning_effort:\"low\",response_format:{type:\"json_object\"},messages:[{role:\"system\",content:$json.prompt_ia},{role:\"user\",content:\"Devuelve las dos frases cordiales, sin otros datos.\"}]}) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2000,
+        640
+      ],
+      "id": "38ecd755-846b-5ce8-910d-6dceed66b748",
+      "name": "Redactar con Groq",
+      "credentials": {
+        "groqApi": {
+          "id": "AnfBC8J72G4tF4nA",
+          "name": "Groq"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Run once for each item. Never replace or recompute any original financial detail.\nconst base = $('Preparar redacción del recordatorio').item.json;\nconst { prompt_ia, ...original } = base;\nconst fallback = () => ({ json: { ...original, redaccion_ia: 'plantilla' } });\nconst response = $json;\nif (response.statusCode !== 200 || response.error) return fallback();\nlet content;\ntry {\n  const body = typeof response.body === 'string' ? JSON.parse(response.body) : response.body;\n  content = JSON.parse(body.choices[0].message.content);\n} catch { return fallback(); }\nif (!content || typeof content !== 'object' || Array.isArray(content) || Object.keys(content).sort().join(',') !== 'despedida,introduccion') return fallback();\nconst forbidden = /\\b(?:un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci\\w*|veint\\w*|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien\\w*|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil\\w*|billon\\w*|cero|medio|media|mitad|doble|triple|primero|ultimo|importe|saldo|pendiente|plazo\\w*|fecha\\w*|vence\\w*|vencim\\w*|paga\\w*|pago\\w*|abono\\w*|descuent\\w*|gratis|gratuit\\w*|cost\\w*|euro\\w*|centim\\w*|dia\\w*|manana|semana\\w*|mes\\w*|ano\\w*|hoy|ayer|hora\\w*|minuto\\w*|dinero|porcentaje\\w*)\\b/iu;\nconst safe = value => {\n  if (typeof value !== 'string' || value.length < 10 || value.length > 180 || /[^\\p{L}\\p{M} ,.!¡¿?;:()\\-]/u.test(value)) return false;\n  const normalized = value.normalize('NFD').replace(/\\p{M}/gu, '').toLowerCase();\n  return !forbidden.test(normalized);\n};\nif (!safe(content.introduccion) || !safe(content.despedida)) return fallback();\nreturn { json: { ...original, texto: `${content.introduccion}\\n\\n${original.texto}\\n\\n${content.despedida}`, redaccion_ia: 'aceptada' } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        640
+      ],
+      "id": "7683a478-9dac-5cfe-9619-bb2ba5d7d848",
+      "name": "Validar redacción del recordatorio"
     }
   ],
   "connections": {
@@ -760,7 +825,7 @@
       "main": [
         [
           {
-            "node": "Enviar recordatorio al cliente",
+            "node": "Preparar redacción del recordatorio",
             "type": "main",
             "index": 0
           }
@@ -790,6 +855,39 @@
         [
           {
             "node": "Registrar recordatorio enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar redacción del recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Redactar con Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar con Groq": {
+      "main": [
+        [
+          {
+            "node": "Validar redacción del recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar redacción del recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Enviar recordatorio al cliente",
             "type": "main",
             "index": 0
           }

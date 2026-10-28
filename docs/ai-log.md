@@ -2401,6 +2401,25 @@ El agente eligió como siguiente tarea #96 y la extracción de los fixtures fict
 
 </details>
 
+### Estilo IA para recordatorios (#121–#123)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** añadir redacción cercana sin que el modelo cambie cifras.
+- **Resultado:** tres nodos en la rama de email del 06; 17 anteriores intactos. El modelo redacta solo introducción/despedida, sin datos personales/financieros; bloque original y destinatario/asunto inmutables. Validación conservadora y fallback. Fuentes Code, generador, documentación y pruebas.
+- **Pruebas:** aislada n8n #70 Succeeded 1,987 s: Nora 40.00 €/04-11 y Lola 12.50 €/29-10; ambos textos IA aceptados, comprobaciones de invariantes verdaderas y dos emails en Mailpit, con cuatro capturas. Cinco tests locales, incluidos casos adversos y la privacidad del cuerpo HTTP exportado; MCP 0 errores y aviso intencional Execute Once existente.
+- **Problemas encontrados:** no se confía en que un prompt preserve las cifras. Se limita el aporte IA al tono, y se concatena el texto original completo. El filtro léxico no demuestra toda semántica posible; se explica el límite. Se usa item emparejado para no mezclar los dos clientes.
+- **Decisión:** preparar PR para revisión; no publicar ni ejecutar rama de vencimientos. Prueba aislada sin DB, tabla, abonos ni expiraciones; no restauración necesaria. La prueba completa de la nueva versión queda pendiente de revisión humana.
+
+<details><summary>Prompt</summary>
+
+```text
+ok continue completing them
+```
+
+El agente siguió con #121 tras completar la comparación #96. Las instrucciones genéricas enviadas al modelo están completas en `scripts/hu06/preparar-redaccion.js`; no incluyen información del apartado.
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

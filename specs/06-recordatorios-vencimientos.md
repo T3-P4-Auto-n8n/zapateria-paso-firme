@@ -356,3 +356,9 @@ Construcción y dos pruebas manuales completas. El primer criterio queda sin mar
 1. **Validez y uso del vale.** La app no dice cuánto dura un vale ni cómo se marca como usado (`usado` es `0`, sin endpoint para cambiarlo). El correo al cliente no pone caducidad. ¿Tiene caducidad el vale? Si la tiene, hay que añadirla al texto.
 2. **Hora.** Se ha elegido las 9:00 suponiendo que la tienda abre después. ¿A qué hora abre?
 3. **Día sin vencidos.** Se ha decidido no enviar nada (sección 5). Si Marisa prefiere un correo diario para saber que el flujo funciona, habría que conectar la rama false de `¿Hay apartados que vencer?` a `Preparar lista` y que `Preparar lista` lea `Vencer apartado` solo si se ejecutó (`isExecuted`, como en el `09`).
+
+## Extensión de estilo IA (#121)
+
+Esta versión añade tres nodos solo en la rama de email del cliente, después de decidir a quién corresponde avisar. El modelo redacta introducción/despedida genéricas; no recibe datos del cliente ni cifras. El bloque de datos de la API y el texto original se conservan completos, con fallback a la plantilla si la respuesta no es válida.
+
+Diseño, configuración, resultados reales y límites: [docs/recordatorios-ia.md](../docs/recordatorios-ia.md). Prueba aislada n8n #70: dos items, dos emails, 40.00 €/04-11 y 12.50 €/29-10 sin cambios. La rama completa y el Schedule no se reejecutaron en esta tarea; revisión humana antes de publicar.
