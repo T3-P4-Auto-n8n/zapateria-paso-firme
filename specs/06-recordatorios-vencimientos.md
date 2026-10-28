@@ -1,13 +1,13 @@
 # Flujo 06 · Recordatorios y vencimientos
 
-> **Alcance de esta versión:** spec de la **rama de vencimientos** (HU-07, criterios 1 y 3): cada mañana se vencen por API los apartados fuera de plazo y la tienda recibe la lista de zapatos que vuelven a la venta. El criterio 2 (el vale al cliente) va en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)). La rama de vencimientos está **construida** en n8n, exportada en `workflows/06-recordatorios-y-vencimientos.json` (8 nodos) y probada a mano (sección 7). **Sin publicar** a propósito: publicado, vencería de verdad a las 9:00 los apartados fuera de plazo, entre ellos el 16, que la prueba de HU-03 (correo `06_bizum_paula`) necesita `activo` y fuera de plazo. Se publicará cuando terminen las pruebas de HU-03. La **rama de recordatorios** (HU-06) la añadirá Beste en este mismo workflow (sección 4.2, pendiente).
+> **Alcance de esta versión:** spec de **vencimientos y recordatorios**; estado construido: **rama de vencimientos** (HU-07, criterios 1 y 3): cada mañana se vencen por API los apartados fuera de plazo y la tienda recibe la lista de zapatos que vuelven a la venta. El criterio 2 (el vale al cliente) va en el `01`, rama `apartado.vencido` ([specs/01-eventos-tienda.md](01-eventos-tienda.md)). La rama de vencimientos está **construida** en n8n, exportada en `workflows/06-recordatorios-y-vencimientos.json` (8 nodos) y probada a mano (sección 7). **Sin publicar** a propósito: publicado, vencería de verdad a las 9:00 los apartados fuera de plazo, entre ellos el 16, que la prueba de HU-03 (correo `06_bizum_paula`) necesita `activo` y fuera de plazo. Se publicará cuando terminen las pruebas de HU-03. La **rama de recordatorios** (HU-06) está construida y probada a mano el 28/10/2026: 17 nodos en total, 9 nuevos. Primera ejecución #45 con dos recordatorios y segunda #58 sin nuevos envíos. La programación real queda sin probar porque 06 continúa sin publicar. Ver pruebas HU-06 y capturas en sección 7.
 
 ## 1. Cabecera
 
 - **Flujo:** `06 · Recordatorios y vencimientos` (`workflows/06-recordatorios-y-vencimientos.json`), flujo 6 del README.
   - El nombre del archivo lo pone `scripts/flujos.py`: quita «de», «la» y «del», pero no «y».
   - La spec se queda como `specs/06-recordatorios-vencimientos.md`. `AGENTS.md` (sección 5) solo pide el mismo `NN`, y el nombre ya está enlazado desde las specs del `01` y del `10`, `AGENTS.md` y los prompts literales de `docs/ai-log.md`.
-- **HU:** HU-07 · Apartados vencidos con su vale (#64; sub-issues #65–#69). HU-06 · Recordatorios de vencimiento, pendiente (Beste).
+- **HU:** HU-07 · Apartados vencidos con su vale (#64; sub-issues #65–#69). HU-06 · Recordatorios de vencimiento (#57; #58–#63): construida y probada manualmente (Beste); programación pendiente de publicación humana.
 - **Nivel:** Medio.
 - **Responsable:** Esra (vencimientos) · Beste (recordatorios).
 - **Credenciales y variables:**
@@ -19,7 +19,7 @@
 
 ## 2. Objetivo
 
-Que los apartados que se han pasado de plazo se cierren solos cada mañana, la app genere el vale con lo abonado y la tienda sepa qué zapatos vuelven a la venta, sin revisarlos uno a uno.
+Avisar cada mañana de los apartados que vencen en 7 días o mañana, una vez por apartado y tipo de aviso, con el pendiente y la fecha límite de la app. Mantener la rama existente para que los apartados que se han pasado de plazo se cierren solos cada mañana, la app genere el vale con lo abonado y la tienda sepa qué zapatos vuelven a la venta, sin revisarlos uno a uno.
 
 ## 3. Disparador y entradas
 
@@ -39,7 +39,7 @@ Que los apartados que se han pasado de plazo se cierren solos cada mañana, la a
 
 ### 3.2 Entradas
 
-No recibe datos: lee de la app los apartados `activo` con `10 · Buscar apartado`. Campos del Apartado que usa (ontología): `id`, `cliente`, `producto`, `talla`, `fecha_limite`, `estado`; y del Vale que devuelve `POST /vencer`: `codigo` e `importe`.
+No recibe datos: lee de la app los apartados `activo` con `10 · Buscar apartado`. Campos del Apartado que usa (ontología): `id`, `cliente`, `producto`, `talla`, `fecha_limite`, `estado`; HU-06 añade `email`, `telefono`, `pendiente`; y del Vale que devuelve `POST /vencer`: `codigo` e `importe`.
 
 **Qué hace la app al vencer** (`backend/models/apartado.py`, `vencer`):
 
@@ -112,16 +112,34 @@ Probar a mano ──────────┴─ Leer apartados activos ─ El
 
 El texto lo arma el Code, así que no hace falta escribirlo como expresión de una línea con `\n`.
 
-### 4.2 Rama de recordatorios (HU-06) · pendiente, Beste
+### 4.2 Rama de recordatorios (HU-06) · construida y probada, Beste
 
-Esta sección la escribe Beste. Para que las dos ramas convivan en el mismo workflow:
+**Estado:** rama construida por la pareja con los Code de `~/hu06/`, exportada y probada en n8n. Los parámetros de los 8 nodos HU-07 se conservaron; solo se reasignó la credencial local de `Vencer apartado` (la referencia importada no existía). La segunda conexión sale de `Leer apartados activos`, con los mismos disparadores de 3.1. La tabla local se llama `recordatorios enviados` (minúscula), ID seleccionado en ambos nodos.
 
-- **Disparadores:** puede usar los mismos (`Cada mañana a las 9:00` y `Probar a mano`). Por eso el Schedule va todos los días (3.1).
-- **Lectura:** puede salir del mismo `Leer apartados activos` (una segunda conexión desde su salida) en vez de llamar otra vez a `Buscar apartado`.
-- **No se pisan:** los recordatorios son para los apartados con `fecha_limite` igual a hoy + 7 o hoy + 1, y los vencimientos para los de `fecha_limite` anterior a hoy. Un mismo apartado nunca está en las dos ramas el mismo día.
-- **Nombres de nodo:** los de la sección 4.1 ya están usados; los suyos tienen que ser distintos.
-- **Envío:** con `10 · Enviar notificación`, Mode Run once for each item (un recordatorio por cliente: es justo el caso que motivó la regla).
-- Quedan para su spec: cómo se cumple «cada aviso una sola vez», qué hacer con un cliente sin email y la prueba.
+```text
+Leer apartados activos → Elegir los que vencen pronto → ¿Hay recordatorios?
+  true → Leer recordatorios enviados → Descartar avisos ya enviados
+       → ¿Quedan recordatorios por enviar? → true → ¿Tiene email para el recordatorio?
+          true → Enviar recordatorio al cliente ──────────────────┐
+          false → Avisar a la tienda: recordatorio sin email ─────┴→ Registrar recordatorio enviado
+```
+
+Los false de los IF de existencia terminan sin correo. La rama HU-07 conserva su conexión y todos sus nombres. No hay Merge que espere las dos ramas de email.
+
+1. **`Elegir los que vencen pronto`**, Code Run Once for All Items (`~/hu06/1-elegir-los-que-vencen-pronto.js`). Exige un item `{total, apartados}` coherente. Calcula hoy por calendario **Europe/Madrid** con Intl y +7/+1 sumando días de calendario, también en cambios de mes/año/DST. Solo `estado=activo` y `fecha_limite` exactamente hoy+7 u hoy+1. No incluye hoy, vencidos, liquidados ni fechas intermedias. No recalcula `pendiente` ni `fecha_limite`: copia los valores de la app, solo formatea euros a dos decimales y fecha a dd/MM/yyyy. Rechaza fechas inválidas, IDs duplicados y datos necesarios inválidos en candidatos. Devuelve un item por apartado, orden fecha/id, con `id`, `apartado_id`, `dias` (7/1), `hoy`, cliente/producto/talla/pendiente/fecha_limite, `tiene_email`, `para`, `asunto`, `texto`. No devuelve el teléfono en la rama cliente. Sin candidatos: `{id:null,hoy}`; enlazado al item de entrada.
+2. **`¿Hay recordatorios?`**, IF Boolean is true `{{ $json.id !== null }}`; false sin conexión.
+3. **`Leer recordatorios enviados`**, Data table, Resource Row, Get, tabla **recordatorios enviados**, sin filtros, **Return All ON**, **Execute Once ON**, **Always Output Data ON**. Lee TODO el histórico una sola vez para todos los candidatos; tabla vacía produce `{}`. No usar Get por candidato con un vacío global: se podrían perder clientes. Sin Continue On Error ni retry.
+4. **`Descartar avisos ya enviados`**, Code Run Once for All Items (`~/hu06/2-descartar-avisos-ya-enviados.js`). Lee `$input.all()` del histórico y `$('Elegir los que vencen pronto').all()`; descarta parejas existentes `(apartado_id,dias)`, independientemente de fecha. Una fila malformada es error, no «histórico vacío». Devuelve los no enviados (manteniendo sus datos), o `{id:null}`. Cada item lleva pairedItem para que la vinculación posterior sea inequívoca.
+5. **`¿Quedan recordatorios por enviar?`**, IF Boolean is true `{{ $json.id !== null }}`; false sin conexión.
+6. **`¿Tiene email para el recordatorio?`**, IF Boolean is true `{{ $json.tiene_email }}`. Email vacío/null/espacios: false; email no vacío pero inválido: error en el primer Code.
+7. **`Enviar recordatorio al cliente`** (true) y **`Avisar a la tienda: recordatorio sin email`** (false), Execute Sub-workflow **10 · Enviar notificación**, **Run once for each item**, Wait For Sub-Workflow Completion ON. Inputs Expression de una línea, cada uno por separado: `para` = `{{ $json.para }}`, `asunto` = `{{ $json.asunto }}`, `texto` = `{{ $json.texto }}`; html vacío. Los `\n` están construidos en el Code, no como saltos físicos en Workflow Inputs. El Code prepara:
+   - Con email: para = email del cliente, asunto `Tu apartado vence en 7 días: <producto>` o `Tu apartado vence mañana: <producto>`; texto con cliente, número de apartado, producto, talla si existe, pendiente de la app, fecha límite, pago en tienda o Bizum/transferencia con datos habituales, número de apartado en concepto y contacto para solicitar datos. No inventa teléfono, cuenta ni enlace de pago.
+   - Sin email: para = `tienda@pasofirme.example`, asunto `Recordatorio sin email: <cliente> · vence en 7 días/mañana`; texto con teléfono (o «No consta; revisar la ficha del cliente»), datos del apartado, pendiente y fecha, pidiendo avisar por teléfono. Se avisa a la tienda como HU-01/HU-07: el cliente no está delante; guardar un aviso a tienda no significa email entregado al cliente.
+8. **`Registrar recordatorio enviado`**, Data table Row Insert, misma tabla. Ambas salidas de envío llegan directamente aquí. Execute Once OFF; Stop Workflow; sin retries. Columnas (Expression): `apartado_id` Number = `{{ $('Descartar avisos ya enviados').item.json.apartado_id }}`; `dias` Number = `{{ $('Descartar avisos ya enviados').item.json.dias }}`; `fecha` String = `{{ $('Descartar avisos ya enviados').item.json.hoy }}`. Usar `.item`, no `.first()`: el sub-workflow devuelve `{enviado,para,asunto,messageId}`, no el apartado. Solo registrar tras un envío que terminó correctamente.
+
+**Data table**: `recordatorios enviados`, columnas `apartado_id` Number, `dias` Number, `fecha` String, inicialmente vacía. `id`/fechas internas son de n8n. Clave lógica por apartado y aviso: el recordatorio 7 no bloquea el 1, y dos apartados de un mismo cliente se siguen por separado. #63 proponía Sheets; esta Data table cumple el registro persistente sin OAuth, igual que Configuración. No se exporta con el workflow: crear y volver a seleccionar al importar.
+
+**Una sola vez:** no basta con programar una ejecución diaria; Probar a mano, un reinicio o una segunda ejecución pueden repetir. La consulta persistente elimina los ya enviados en ejecuciones secuenciales. No hay transacción SMTP+Insert ni unicidad compuesta en esta configuración: no ejecutar en paralelo. Si el email se envió y falla Insert, revisar Mailpit y registrar solo el aviso confirmado antes de reintentar. Si el envío queda incierto, revisar antes de repetir. No prometer exactly-once ante caídas o concurrencia ni activar retries automáticos de envío.
 
 ## 5. Salidas
 
@@ -159,6 +177,10 @@ Los vales los ha generado la app con lo abonado en cada apartado. Cada cliente r
 - Un fallo no queda en silencio: lo avisa el `08`. Lo que no se ve es que el flujo no se ejecute (por ejemplo, despublicado), y eso tampoco lo resolvería el correo diario si nadie lo echa en falta. El informe mensual (HU-08) cuenta los vencidos de cada mes.
 - No es lo mismo que el cierre diario (HU-04), que pide expresamente «si ese día no hubo movimientos, el resumen lo dice».
 
+### Salidas HU-06
+
+Cliente con email: un recordatorio +7/+1; sin email: un aviso a tienda con teléfono. Sin candidatos o todos ya enviados: ningún correo ni Insert. La Data table guarda solo ID, tipo de aviso y fecha, sin email/teléfono ni cuerpo bancario.
+
 ## 6. Casos de error
 
 Como siempre, el `08` solo salta en las ejecuciones de producción (la programada con el flujo publicado). En una ejecución manual, el error se ve en el editor.
@@ -174,6 +196,15 @@ Como siempre, el `08` solo salta en las ejecuciones de producción (la programad
 | Falla `Enviar lista a la tienda` (Mailpit caído) | Lo avisa el `08` con el mensaje genérico del sub-workflow. Los apartados ya están vencidos: la lista se recupera en la ejecución (salida de `Preparar lista`) o con `GET /api/vales` |
 | El `01` no está publicado cuando se vence | El webhook `apartado.vencido` recibe un `404` y se pierde (la app no reintenta): el cliente no recibe su vale. La tienda tiene el código en la lista y puede avisarle |
 | Se ejecuta dos veces el mismo día | La segunda no vence nada: los apartados ya están `vencido` y `Buscar apartado` solo devuelve los `activo` |
+
+### Errores HU-06
+
+- Lista/API inválida o candidato con fecha/pendiente/email inválidos: error, sin enviar un recordatorio engañoso.
+- Tabla inexistente, permisos/Get fallido o histórico malformado: parar; no interpretar como tabla vacía. El 08 avisa solo en producción.
+- SMTP/sub-workflow falla: Stop Workflow. Run once for each item crea subejecuciones por cliente, pero si una falla después de envíos previos del mismo nodo, Insert puede no haber recibido NINGUNA salida de ese lote. Reconciliar TODAS las subejecuciones y Mailpit: completar filas de cada envío confirmado sin registro antes de reintentar, no solo el último que falló. No marcar el fallido como enviado.
+- Insert falla tras enviar: reconciliar Mailpit y tabla antes de repetir; posible duplicado si se ignora el fallo.
+- Sin teléfono ni email: aviso a tienda indicando que no consta teléfono para revisar ficha.
+- Concurrencia: ejecutar secuencialmente; la tabla no garantiza exclusión atómica.
 
 ## 7. Prueba
 
@@ -266,6 +297,42 @@ La app no vuelve a cargar el seed al reiniciar, porque la base de datos no está
 - Aviso a la tienda de un vencido sin email (`01`): [docs/evidencias/06-hu07-sin-email.png](../docs/evidencias/06-hu07-sin-email.png)
 - Segunda ejecución, por la rama false: [docs/evidencias/06-hu07-segunda-ejecucion.png](../docs/evidencias/06-hu07-segunda-ejecucion.png)
 
+### Prueba HU-06 · preparación y resultados reales
+
+Guía exacta: `~/hu06/LEEME.md`. La pareja construyó los nodos; después autorizó al agente a aplicar dos correcciones locales y completar pruebas, capturas, restauración y export. No se publicó 06.
+
+**Baseline real del 28/10/2026:** 16 activos, 0 con fecha límite hoy+7/hoy+1; fuera de plazo IDs 16,15,14,13. Volver a consultar el día de la prueba; seed/abonos de otras HU pueden cambiar datos. No copiar las cifras históricas de HU-07 como baseline actual.
+
+1. Desde carpeta principal, copia `docker compose cp tienda:/data/tienda.db ~/tienda-antes-hu06.db`; comprobar antes de cambiar datos. No sobrescribir copia previa sin comprobarla.
+2. Crear Nora Prueba con email (fecha hoy−83, precio 60, inicial 20) y Hugo Prueba sin email con teléfono (hoy−89, precio 50, inicial 10). Ambos pendiente 40 de la app; límites +7/+1. Guardar IDs reales. Los curl exactos están en LEEME.
+3. Separar confirmaciones de alta del 01; guardar evidencias previas antes de limpiar mensajes de prueba en Mailpit. Tabla vacía solo si no hay histórico real.
+4. `Probar a mano` primera vez: Nora recibe «7 días», 40.00 €, límite; tienda recibe Hugo «mañana» con teléfono. Dos filas (IDs reales, dias 7/1, fecha de hoy), más los candidatos reales que existan. La rama HU-07 también vence los fuera de plazo: con el baseline son 4 vales y lista adicionales si 01 está publicado. No contarlos como duplicados HU-06.
+5. Segunda ejecución: sin recordatorios nuevos, sin filas adicionales; IF de pendientes false. Registrar IDs de ejecución y cantidades antes/después.
+6. Restaurar SIEMPRE desde carpeta principal: `docker compose cp ~/tienda-antes-hu06.db tienda:/data/tienda.db` y `docker compose restart tienda`. Borrar solo filas de prueba por IDs Nora/Hugo, no histórico real. Verificar restauración. La Data table no se restaura con tienda.db.
+7. Capturas guardadas: `docs/evidencias/06-hu06-primera-ejecucion.png`, `06-hu06-nora-mailpit.png`, `06-hu06-hugo-sin-email-mailpit.png`, `06-hu06-tabla-primera.png`, `06-hu06-segunda-ejecucion.png`.
+
+**Pruebas locales realizadas:** `node --test ~/hu06/test-hu06.cjs`, 4/4: filtro/mensajes/importes sin recalcular, sentinel/entrada inválida, calendario Madrid (medianoche, año, DST), histórico vacío con dos candidatos/deduplicación secuencial/7 no bloquea 1/histórico inválido. Se observaron fallar antes de implementar y pasar después. No acreditan SMTP, Data tables ni n8n. Resultados reales n8n: se detallan a continuación, sin confundir la ejecución manual con la programada.
+
+### Resultados HU-06 · 28/10/2026
+
+- Copia previa `~/tienda-antes-hu06.db`, integridad SQLite `ok`, tomada desde carpeta principal. No se sobrescribió una copia previa.
+- Creación real autorizada: **Nora ID 25**, email, fecha límite **04/11/2026** (+7), pendiente **40.00 €**; **Hugo ID 26**, sin email, teléfono ficticio, límite **29/10/2026** (+1), pendiente **40.00 €**. Los valores se comprobaron en las respuestas de la app.
+- [Primera ejecución #45](http://localhost:5678/workflow/LEG1cBDsrLXn6wL2/executions/45), **Succeeded, 1.934 s**, Probar a mano: 18 activos; rama HU-07 vence 16/15/14/13 y envía lista + 4 vales. HU-06 elige 25/26: Nora recibe «Tu apartado vence en 7 días: Sandalia cuero» con 40.00 € y 04/11/2026; tienda recibe «Recordatorio sin email: Hugo Prueba · vence mañana» con teléfono 600 444 555, 40.00 € y 29/10/2026. Data table: exactamente dos filas `(25,7,2026-10-28)` y `(26,1,2026-10-28)`.
+- [Segunda ejecución #58](http://localhost:5678/workflow/LEG1cBDsrLXn6wL2/executions/58), **Succeeded, 427 ms**: 14 activos, cero nuevos vencimientos, histórico con 2 filas, `Descartar avisos ya enviados` da `{id:null}` y el IF corta. **Ningún email nuevo**, ni recordatorio ni vencimiento. Mailpit antes/después: 13 mensajes, los mismos dos IDs de recordatorio. No se borraron emails de otras HU para probar: se compararon IDs y cantidades exactas.
+- Restauración completada desde carpeta principal y reinicio de tienda. GET posterior: **16 activos**, fuera de plazo **16/15/14/13**, **ningún Nora/Hugo**. Se borraron únicamente las dos filas de prueba de la Data table; total final **0**. Se conservaron los emails como evidencia.
+- Export con `COMPOSE_PROJECT_NAME=zapateria-paso-firme python3 scripts/flujos.py exportar`. Se restauraron los otros JSON rastreados y se apartaron los exports nuevos 03/05 fuera del worktree, sin añadirlos a esta PR. 06 sigue `active:false`.
+- Comprobación del export: 17 nodos; parámetros de los 8 nodos previos sin cambios; los dos Code coinciden con sus fuentes probadas. n8n-mcp: **0 errores, 1 aviso intencional Execute Once** en Get de histórico. Suite local 4/4. La hora de las 9:00 y Error workflow se mantienen; no se ha probado programación ni error de producción.
+
+**Capturas HU-06:**
+
+- [Primera ejecución, ambas ramas](../docs/evidencias/06-hu06-primera-ejecucion.png)
+- [Nora: 7 días, pendiente y fecha](../docs/evidencias/06-hu06-nora-mailpit.png)
+- [Hugo: aviso a tienda con teléfono](../docs/evidencias/06-hu06-hugo-sin-email-mailpit.png)
+- [Data table con 2 filas](../docs/evidencias/06-hu06-tabla-primera.png)
+- [Segunda ejecución, sin envíos](../docs/evidencias/06-hu06-segunda-ejecucion.png)
+- [Segunda ejecución: Succeeded e ID](../docs/evidencias/06-hu06-segunda-estado.png)
+- [Resultados estructurados](../docs/evidencias/06-hu06-resultados.json) y [validación](../docs/evidencias/06-hu06-validacion.json)
+
 ## 8. Criterios de aceptación
 
 **HU-07 · Apartados vencidos con su vale** (flujo 6):
@@ -276,7 +343,13 @@ La app no vuelve a cargar el seed al reiniciar, porque la base de datos no está
 
 Las pruebas se lanzaron a mano: el disparador de cada mañana no se ha probado, porque el `06` está sin publicar.
 
-**HU-06 · Recordatorios de vencimiento:** pendiente (Beste, sección 4.2).
+**HU-06 · Recordatorios de vencimiento** (Beste, sección 4.2):
+
+- [ ] Cada mañana se avisa a los clientes cuyo plazo vence en 7 días y en 1 día.
+- [x] Cada cliente recibe cada aviso una sola vez (pruebas secuenciales #45 y #58; límites de caídas/concurrencia en 4.2).
+- [x] El mensaje incluye lo que falta por pagar y la fecha límite (correos Nora/Hugo, valores de la app).
+
+Construcción y dos pruebas manuales completas. El primer criterio queda sin marcar porque «cada mañana» exige comprobar una ejecución programada después de revisión/publicación humana; la selección +7/+1 sí está verificada manualmente. El 06 sigue sin publicar, como se pidió.
 
 ## 9. Preguntas para la pareja
 
