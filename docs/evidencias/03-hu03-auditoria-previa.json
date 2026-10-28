@@ -1,0 +1,95 @@
+{
+  "fecha": "2026-10-28",
+  "existing_successful_runs": [
+    {
+      "id": 34,
+      "referencia": "01_bizum_carmen",
+      "asunto_original_eml": false,
+      "receipt_verified": false
+    },
+    {
+      "id": 35,
+      "referencia": "02_bizum_jorge",
+      "asunto_original_eml": false,
+      "receipt_verified": true
+    }
+  ],
+  "current_api": [
+    {
+      "id": 1,
+      "estado": "activo",
+      "abonado": 25.0,
+      "pendiente": 9.5,
+      "fecha_limite": "2027-01-22",
+      "abonos_count": 3
+    },
+    {
+      "id": 2,
+      "estado": "activo",
+      "abonado": 60.0,
+      "pendiente": 59.0,
+      "fecha_limite": "2027-01-19",
+      "abonos_count": 5
+    },
+    {
+      "id": 3,
+      "estado": "activo",
+      "abonado": 60.0,
+      "pendiente": 12.0,
+      "fecha_limite": "2027-01-15",
+      "abonos_count": 4
+    },
+    {
+      "id": 12,
+      "estado": "activo",
+      "abonado": 45.0,
+      "pendiente": 10.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 11,
+      "estado": "activo",
+      "abonado": 40.0,
+      "pendiente": 15.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 16,
+      "estado": "activo",
+      "abonado": 5.0,
+      "pendiente": 59.5,
+      "fecha_limite": "2026-09-28",
+      "abonos_count": 1
+    },
+    {
+      "id": 24,
+      "estado": "activo",
+      "abonado": 10.0,
+      "pendiente": 35.0,
+      "fecha_limite": "2027-01-23",
+      "abonos_count": 1
+    }
+  ],
+  "remaining_cases": [
+    "03_transferencia_lucia",
+    "04_bizum_laura",
+    "05_bizum_romero",
+    "06_bizum_paula",
+    "07_transferencia_desconocido",
+    "08_publicidad_banco",
+    "09_bizum_silvia"
+  ],
+  "validation": {
+    "totalNodes": 28,
+    "enabledNodes": 27,
+    "triggerNodes": 2,
+    "validConnections": 36,
+    "invalidConnections": 0,
+    "expressionsValidated": 17,
+    "errorCount": 0,
+    "warningCount": 0
+  },
+  "fresh_posts_by_this_audit": 0
+}

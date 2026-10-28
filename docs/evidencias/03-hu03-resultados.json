@@ -1,0 +1,1007 @@
+{
+  "fecha": "2026-10-28",
+  "workflow_id": "ysSI1lp7LPAfGphe",
+  "runs": [
+    {
+      "execution_id": 34,
+      "status": "success",
+      "startedAt": "2026-10-28 08:58:52.566",
+      "stoppedAt": "2026-10-28 08:58:54.148",
+      "referencia": "01_bizum_carmen",
+      "asunto": "€10 payment + receipt",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Continuar con registro (#37)",
+        "Preparar solicitud de abono (#37)",
+        "¿Solicitud de abono válida? (#37)",
+        "Registrar abono",
+        "Validar respuesta del abono (#37)",
+        "¿Registrado? (#37)",
+        "Fin tras éxito HU-02 (#37)"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 10,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "buscar",
+            "apartado": {
+              "id": 1,
+              "estado": "activo",
+              "pendiente": 19.5,
+              "abonado": 15,
+              "fecha": "2026-10-24",
+              "fecha_limite": "2027-01-22"
+            },
+            "candidatos": [
+              {
+                "id": 1,
+                "estado": "activo",
+                "pendiente": 19.5,
+                "abonado": 15,
+                "fecha": "2026-10-24",
+                "fecha_limite": "2027-01-22"
+              }
+            ]
+          }
+        ],
+        "Registrar abono": [
+          {
+            "statusCode": 201,
+            "body": {
+              "id": 1,
+              "estado": "activo",
+              "pendiente": 9.5,
+              "abonado": 25,
+              "fecha": "2026-10-24",
+              "fecha_limite": "2027-01-22"
+            }
+          }
+        ],
+        "Validar respuesta del abono (#37)": [
+          {
+            "importe": 10,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "enviar",
+            "apartado": {
+              "id": 1,
+              "estado": "activo",
+              "pendiente": 19.5,
+              "abonado": 15,
+              "fecha": "2026-10-24",
+              "fecha_limite": "2027-01-22"
+            },
+            "body": {
+              "importe": 10,
+              "forma_pago": "bizum"
+            },
+            "candidatos": [
+              {
+                "id": 1,
+                "estado": "activo",
+                "pendiente": 19.5,
+                "abonado": 15,
+                "fecha": "2026-10-24",
+                "fecha_limite": "2027-01-22"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 35,
+      "status": "success",
+      "startedAt": "2026-10-28 09:09:18.587",
+      "stoppedAt": "2026-10-28 09:09:19.820",
+      "referencia": "02_bizum_jorge",
+      "asunto": "€20 payment against apartado ID 2 + receipt",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Continuar con registro (#37)",
+        "Preparar solicitud de abono (#37)",
+        "¿Solicitud de abono válida? (#37)",
+        "Registrar abono",
+        "Validar respuesta del abono (#37)",
+        "¿Registrado? (#37)",
+        "Fin tras éxito HU-02 (#37)"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {
+              "id": 2,
+              "estado": "activo",
+              "pendiente": 79,
+              "abonado": 40,
+              "fecha": "2026-10-21",
+              "fecha_limite": "2027-01-19"
+            }
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 20,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "buscar",
+            "apartado": {
+              "id": 2,
+              "estado": "activo",
+              "pendiente": 79,
+              "abonado": 40,
+              "fecha": "2026-10-21",
+              "fecha_limite": "2027-01-19"
+            },
+            "candidatos": [
+              {
+                "id": 2,
+                "estado": "activo",
+                "pendiente": 79,
+                "abonado": 40,
+                "fecha": "2026-10-21",
+                "fecha_limite": "2027-01-19"
+              }
+            ]
+          }
+        ],
+        "Registrar abono": [
+          {
+            "statusCode": 201,
+            "body": {
+              "id": 2,
+              "estado": "activo",
+              "pendiente": 59,
+              "abonado": 60,
+              "fecha": "2026-10-21",
+              "fecha_limite": "2027-01-19"
+            }
+          }
+        ],
+        "Validar respuesta del abono (#37)": [
+          {
+            "importe": 20,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "enviar",
+            "apartado": {
+              "id": 2,
+              "estado": "activo",
+              "pendiente": 79,
+              "abonado": 40,
+              "fecha": "2026-10-21",
+              "fecha_limite": "2027-01-19"
+            },
+            "body": {
+              "importe": 20,
+              "forma_pago": "bizum"
+            },
+            "candidatos": [
+              {
+                "id": 2,
+                "estado": "activo",
+                "pendiente": 79,
+                "abonado": 40,
+                "fecha": "2026-10-21",
+                "fecha_limite": "2027-01-19"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 60,
+      "status": "success",
+      "startedAt": "2026-10-28 13:45:53.144",
+      "stoppedAt": "2026-10-28 13:45:54.996",
+      "referencia": "03_transferencia_lucia",
+      "asunto": "Aviso de transferencia recibida",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Continuar con registro (#37)",
+        "Preparar solicitud de abono (#37)",
+        "¿Solicitud de abono válida? (#37)",
+        "Registrar abono",
+        "Validar respuesta del abono (#37)",
+        "¿Registrado? (#37)",
+        "Fin tras éxito HU-02 (#37)"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 12,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "buscar",
+            "apartado": {
+              "id": 3,
+              "estado": "activo",
+              "pendiente": 12,
+              "abonado": 60,
+              "fecha": "2026-10-17",
+              "fecha_limite": "2027-01-15"
+            },
+            "candidatos": [
+              {
+                "id": 3,
+                "estado": "activo",
+                "pendiente": 12,
+                "abonado": 60,
+                "fecha": "2026-10-17",
+                "fecha_limite": "2027-01-15"
+              }
+            ]
+          }
+        ],
+        "Registrar abono": [
+          {
+            "statusCode": 201,
+            "body": {
+              "id": 3,
+              "estado": "liquidado",
+              "pendiente": 0,
+              "abonado": 72,
+              "fecha": "2026-10-17",
+              "fecha_limite": "2027-01-15"
+            }
+          }
+        ],
+        "Validar respuesta del abono (#37)": [
+          {
+            "importe": 12,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "enviar",
+            "apartado": {
+              "id": 3,
+              "estado": "activo",
+              "pendiente": 12,
+              "abonado": 60,
+              "fecha": "2026-10-17",
+              "fecha_limite": "2027-01-15"
+            },
+            "body": {
+              "importe": 12,
+              "forma_pago": "bizum"
+            },
+            "candidatos": [
+              {
+                "id": 3,
+                "estado": "activo",
+                "pendiente": 12,
+                "abonado": 60,
+                "fecha": "2026-10-17",
+                "fecha_limite": "2027-01-15"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 62,
+      "status": "success",
+      "startedAt": "2026-10-28 13:46:23.651",
+      "stoppedAt": "2026-10-28 13:46:25.177",
+      "referencia": "04_bizum_laura",
+      "asunto": "Has recibido un Bizum de 15,00 €",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Revisar pago (#38)",
+        "Preparar aviso de revisión (#38)",
+        "Avisar a la tienda para revisar el pago"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 15,
+            "decision": "revisar",
+            "motivo_decision": "El importe supera lo pendiente (10 €)",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 12,
+                "estado": "activo",
+                "pendiente": 10,
+                "abonado": 45,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              }
+            ]
+          }
+        ],
+        "Preparar aviso de revisión (#38)": [
+          {
+            "importe": 15,
+            "decision": "revisar",
+            "motivo_decision": "El importe supera lo pendiente (10 €)",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 12,
+                "estado": "activo",
+                "pendiente": 10,
+                "abonado": 45,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 63,
+      "status": "success",
+      "startedAt": "2026-10-28 13:47:18.890",
+      "stoppedAt": "2026-10-28 13:47:20.684",
+      "referencia": "05_bizum_romero",
+      "asunto": "Has recibido un Bizum de 10,00 €",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Revisar pago (#38)",
+        "Preparar aviso de revisión (#38)",
+        "Avisar a la tienda para revisar el pago"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 10,
+            "decision": "revisar",
+            "motivo_decision": "El aviso no incluye concepto suficiente para identificar el apartado",
+            "ruta": "buscar",
+            "candidatos": []
+          }
+        ],
+        "Preparar aviso de revisión (#38)": [
+          {
+            "importe": 10,
+            "decision": "revisar",
+            "motivo_decision": "El aviso no incluye concepto suficiente para identificar el apartado",
+            "ruta": "buscar",
+            "candidatos": []
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 64,
+      "status": "success",
+      "startedAt": "2026-10-28 13:47:44.308",
+      "stoppedAt": "2026-10-28 13:47:45.740",
+      "referencia": "06_bizum_paula",
+      "asunto": "Has recibido un Bizum de 20,00 €",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Revisar pago (#38)",
+        "Preparar aviso de revisión (#38)",
+        "Avisar a la tienda para revisar el pago"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 20,
+            "decision": "revisar",
+            "motivo_decision": "El apartado está fuera de plazo desde 2026-09-28",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 16,
+                "estado": "activo",
+                "pendiente": 59.5,
+                "abonado": 5,
+                "fecha": "2026-06-30",
+                "fecha_limite": "2026-09-28"
+              }
+            ]
+          }
+        ],
+        "Preparar aviso de revisión (#38)": [
+          {
+            "importe": 20,
+            "decision": "revisar",
+            "motivo_decision": "El apartado está fuera de plazo desde 2026-09-28",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 16,
+                "estado": "activo",
+                "pendiente": 59.5,
+                "abonado": 5,
+                "fecha": "2026-06-30",
+                "fecha_limite": "2026-09-28"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 65,
+      "status": "success",
+      "startedAt": "2026-10-28 13:48:20.708",
+      "stoppedAt": "2026-10-28 13:48:22.605",
+      "referencia": "07_transferencia_desconocido",
+      "asunto": "Aviso de transferencia recibida",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Revisar pago (#38)",
+        "Preparar aviso de revisión (#38)",
+        "Avisar a la tienda para revisar el pago"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 25,
+            "decision": "revisar",
+            "motivo_decision": "No hay un apartado que coincida claramente con ordenante y concepto",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 11,
+                "estado": "activo",
+                "pendiente": 15,
+                "abonado": 40,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              },
+              {
+                "id": 12,
+                "estado": "activo",
+                "pendiente": 10,
+                "abonado": 45,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              },
+              {
+                "id": 6,
+                "estado": "activo",
+                "pendiente": 17,
+                "abonado": 55,
+                "fecha": "2026-09-26",
+                "fecha_limite": "2026-12-25"
+              },
+              {
+                "id": 5,
+                "estado": "activo",
+                "pendiente": 29.5,
+                "abonado": 35,
+                "fecha": "2026-10-04",
+                "fecha_limite": "2027-01-02"
+              },
+              {
+                "id": 1,
+                "estado": "activo",
+                "pendiente": 9.5,
+                "abonado": 25,
+                "fecha": "2026-10-24",
+                "fecha_limite": "2027-01-22"
+              },
+              {
+                "id": 24,
+                "estado": "activo",
+                "pendiente": 35,
+                "abonado": 10,
+                "fecha": "2026-10-25",
+                "fecha_limite": "2027-01-23"
+              }
+            ]
+          }
+        ],
+        "Preparar aviso de revisión (#38)": [
+          {
+            "importe": 25,
+            "decision": "revisar",
+            "motivo_decision": "No hay un apartado que coincida claramente con ordenante y concepto",
+            "ruta": "buscar",
+            "candidatos": [
+              {
+                "id": 11,
+                "estado": "activo",
+                "pendiente": 15,
+                "abonado": 40,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              },
+              {
+                "id": 12,
+                "estado": "activo",
+                "pendiente": 10,
+                "abonado": 45,
+                "fecha": "2026-08-04",
+                "fecha_limite": "2026-11-02"
+              },
+              {
+                "id": 6,
+                "estado": "activo",
+                "pendiente": 17,
+                "abonado": 55,
+                "fecha": "2026-09-26",
+                "fecha_limite": "2026-12-25"
+              },
+              {
+                "id": 5,
+                "estado": "activo",
+                "pendiente": 29.5,
+                "abonado": 35,
+                "fecha": "2026-10-04",
+                "fecha_limite": "2027-01-02"
+              },
+              {
+                "id": 1,
+                "estado": "activo",
+                "pendiente": 9.5,
+                "abonado": 25,
+                "fecha": "2026-10-24",
+                "fecha_limite": "2027-01-22"
+              },
+              {
+                "id": 24,
+                "estado": "activo",
+                "pendiente": 35,
+                "abonado": 10,
+                "fecha": "2026-10-25",
+                "fecha_limite": "2027-01-23"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 66,
+      "status": "success",
+      "startedAt": "2026-10-28 13:48:46.946",
+      "stoppedAt": "2026-10-28 13:48:47.395",
+      "referencia": "08_publicidad_banco",
+      "asunto": "Hasta 150 € por domiciliar tus cobros con tarjeta",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Ignorar publicidad"
+      ],
+      "results": {
+        "Ignorar publicidad": [
+          {
+            "motivo": "No es un aviso de pago recibido reconocido",
+            "ruta": "ignorar"
+          }
+        ]
+      }
+    },
+    {
+      "execution_id": 67,
+      "status": "success",
+      "startedAt": "2026-10-28 13:49:30.200",
+      "stoppedAt": "2026-10-28 13:49:33.560",
+      "referencia": "09_bizum_silvia",
+      "asunto": "Has recibido un Bizum de 5,00 €",
+      "nodes": [
+        "Formulario de desarrollo",
+        "Normalizar entrada de correo",
+        "Filtrar aviso bancario",
+        "¿Es un pago?",
+        "Preparar correo",
+        "Según preparación",
+        "Extraer datos con Groq",
+        "Validar extracción",
+        "¿Extracción válida?",
+        "Continuar con búsqueda (#35)",
+        "Buscar apartado",
+        "Resultados de búsqueda",
+        "Decidir apartado (#36)",
+        "¿Se puede registrar? (#36)",
+        "Continuar con registro (#37)",
+        "Preparar solicitud de abono (#37)",
+        "¿Solicitud de abono válida? (#37)",
+        "Registrar abono",
+        "Validar respuesta del abono (#37)",
+        "¿Registrado? (#37)",
+        "Fin tras éxito HU-02 (#37)"
+      ],
+      "results": {
+        "Resultados de búsqueda": [
+          {
+            "statusCode": 200,
+            "body": {}
+          }
+        ],
+        "Decidir apartado (#36)": [
+          {
+            "importe": 5,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "buscar",
+            "apartado": {
+              "id": 24,
+              "estado": "activo",
+              "pendiente": 35,
+              "abonado": 10,
+              "fecha": "2026-10-25",
+              "fecha_limite": "2027-01-23"
+            },
+            "candidatos": [
+              {
+                "id": 24,
+                "estado": "activo",
+                "pendiente": 35,
+                "abonado": 10,
+                "fecha": "2026-10-25",
+                "fecha_limite": "2027-01-23"
+              }
+            ]
+          }
+        ],
+        "Registrar abono": [
+          {
+            "statusCode": 201,
+            "body": {
+              "id": 24,
+              "estado": "activo",
+              "pendiente": 30,
+              "abonado": 15,
+              "fecha": "2026-10-25",
+              "fecha_limite": "2027-01-23"
+            }
+          }
+        ],
+        "Validar respuesta del abono (#37)": [
+          {
+            "importe": 5,
+            "decision": "registrar",
+            "motivo_decision": "Coincidencia única; apartado activo, en plazo y con saldo suficiente",
+            "ruta": "enviar",
+            "apartado": {
+              "id": 24,
+              "estado": "activo",
+              "pendiente": 35,
+              "abonado": 10,
+              "fecha": "2026-10-25",
+              "fecha_limite": "2027-01-23"
+            },
+            "body": {
+              "importe": 5,
+              "forma_pago": "bizum"
+            },
+            "candidatos": [
+              {
+                "id": 24,
+                "estado": "activo",
+                "pendiente": 35,
+                "abonado": 10,
+                "fecha": "2026-10-25",
+                "fecha_limite": "2027-01-23"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "added_test_payments": [
+    {
+      "id": 84,
+      "apartado_id": 1,
+      "importe": 10.0,
+      "forma_pago": "bizum",
+      "fecha": "2026-10-28"
+    },
+    {
+      "id": 85,
+      "apartado_id": 2,
+      "importe": 20.0,
+      "forma_pago": "bizum",
+      "fecha": "2026-10-28"
+    },
+    {
+      "id": 86,
+      "apartado_id": 3,
+      "importe": 12.0,
+      "forma_pago": "bizum",
+      "fecha": "2026-10-28"
+    },
+    {
+      "id": 87,
+      "apartado_id": 24,
+      "importe": 5.0,
+      "forma_pago": "bizum",
+      "fecha": "2026-10-28"
+    }
+  ],
+  "before_restore_api": [
+    {
+      "id": 1,
+      "estado": "activo",
+      "abonado": 25.0,
+      "pendiente": 9.5,
+      "fecha_limite": "2027-01-22",
+      "abonos_count": 3
+    },
+    {
+      "id": 2,
+      "estado": "activo",
+      "abonado": 60.0,
+      "pendiente": 59.0,
+      "fecha_limite": "2027-01-19",
+      "abonos_count": 5
+    },
+    {
+      "id": 3,
+      "estado": "liquidado",
+      "abonado": 72.0,
+      "pendiente": 0.0,
+      "fecha_limite": "2027-01-15",
+      "abonos_count": 5
+    },
+    {
+      "id": 12,
+      "estado": "activo",
+      "abonado": 45.0,
+      "pendiente": 10.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 11,
+      "estado": "activo",
+      "abonado": 40.0,
+      "pendiente": 15.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 16,
+      "estado": "activo",
+      "abonado": 5.0,
+      "pendiente": 59.5,
+      "fecha_limite": "2026-09-28",
+      "abonos_count": 1
+    },
+    {
+      "id": 24,
+      "estado": "activo",
+      "abonado": 15.0,
+      "pendiente": 30.0,
+      "fecha_limite": "2027-01-23",
+      "abonos_count": 2
+    }
+  ],
+  "restored_api": [
+    {
+      "id": 1,
+      "estado": "activo",
+      "abonado": 15.0,
+      "pendiente": 19.5,
+      "fecha_limite": "2027-01-22",
+      "abonos_count": 2
+    },
+    {
+      "id": 2,
+      "estado": "activo",
+      "abonado": 40.0,
+      "pendiente": 79.0,
+      "fecha_limite": "2027-01-19",
+      "abonos_count": 4
+    },
+    {
+      "id": 3,
+      "estado": "activo",
+      "abonado": 60.0,
+      "pendiente": 12.0,
+      "fecha_limite": "2027-01-15",
+      "abonos_count": 4
+    },
+    {
+      "id": 12,
+      "estado": "activo",
+      "abonado": 45.0,
+      "pendiente": 10.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 11,
+      "estado": "activo",
+      "abonado": 40.0,
+      "pendiente": 15.0,
+      "fecha_limite": "2026-11-02",
+      "abonos_count": 4
+    },
+    {
+      "id": 16,
+      "estado": "activo",
+      "abonado": 5.0,
+      "pendiente": 59.5,
+      "fecha_limite": "2026-09-28",
+      "abonos_count": 1
+    },
+    {
+      "id": 24,
+      "estado": "activo",
+      "abonado": 10.0,
+      "pendiente": 35.0,
+      "fecha_limite": "2027-01-23",
+      "abonos_count": 1
+    }
+  ],
+  "backup_comparison": {
+    "apartados": {
+      "before_count": 24,
+      "current_count": 24,
+      "added_ids": [],
+      "removed_ids": [],
+      "modified_ids": [
+        3
+      ]
+    },
+    "abonos": {
+      "before_count": 83,
+      "current_count": 87,
+      "added_ids": [
+        84,
+        85,
+        86,
+        87
+      ],
+      "removed_ids": [],
+      "modified_ids": []
+    },
+    "ventas": {
+      "before_count": 256,
+      "current_count": 256,
+      "added_ids": [],
+      "removed_ids": [],
+      "modified_ids": []
+    },
+    "vales": {
+      "before_count": 1,
+      "current_count": 1,
+      "added_ids": [],
+      "removed_ids": [],
+      "modified_ids": []
+    }
+  },
+  "receipt_carmen": {
+    "method": "Replay existing abono.registrado event via workflow 01; original HU03 payment execution 34 was not rerun",
+    "evidence": "03-hu03-01-carmen-recibo-replay.json"
+  },
+  "limits": [
+    "IMAP disabled and untested; manual form only",
+    "Carmen receipt verified separately by authorized event replay",
+    "First two form subjects were descriptions rather than original eml subjects",
+    "Extra error/multiple-candidate cases covered locally, not all end-to-end; re-read/deduplication not tested or implemented"
+  ]
+}

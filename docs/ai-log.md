@@ -2048,6 +2048,79 @@ Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apa
   - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
 - **Decisión:** pendiente de revisión de la pareja.
 
+### Filtro de avisos bancarios HU-03 (#33)
+
+- **Autora:** Beste.
+- **Tarea:** añadir el filtro determinista que distingue pagos recibidos, publicidad y entradas inválidas.
+- **Resultado:** `workflows/03-abonos-distancia-filtro.json`, generador reproducible, código del nodo, cinco pruebas y `docs/hu03-filtro.md`. La salida `extraer` prepara el siguiente paso (#34); `ignorar` termina; `revisar` no registra pagos. Esta rama continúa #32.
+- **Verificación local:** `node --test tests/test_hu03_filtro.cjs tests/test_hu03_entrada.cjs` — 11/11 superadas. El JSON se regeneró y `git diff --check` no encontró errores.
+- **Pendiente:** importación y validación n8n-mcp siguen sin realizarse para la exportación específica de #33. Esta PR se mantiene como borrador.
+- **Decisión:** el filtro reconoce las plantillas del repositorio y no autentica el banco. IA, búsqueda, registro y avisos corresponden a tareas posteriores.
+
+### Extracción estructurada HU-03 (#34)
+
+- **Autora:** Beste.
+- **Tarea:** extraer ordenante, importe y concepto de los avisos que el filtro #33 reconoce como pagos.
+- **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-extraccion.json`, generador independiente, Code nodes de preparación/validación, cuatro pruebas y guía `docs/hu03-extraccion.md`. No consulta la API de tienda, no registra abonos ni envía emails. Credencial `Groq`; `08` enlazado por el ID del export del equipo y debe volver a seleccionarse en una instancia donde cambie.
+- **Verificación local:** cuatro pruebas sobre el JSON generado cubren ocho pagos de ejemplo, publicidad, valores inventados, esquemas inválidos, importe negativo, JSON truncado y fallo de Groq.
+- **Prueba real (26/10/2026):** los ocho pagos llegaron a `buscar` y publicidad a `ignorar` usando `openai/gpt-oss-20b`; no hubo escrituras. Se guardan salidas, capturas y los nueve IDs de ejecución (pagos 5–11 y 13; publicidad 12).
+- **Pendiente:** revisar el enlace local de `08` y validar el export final con n8n-mcp. PR en borrador; no cerrar #34 hasta completar la revisión.
+
+### Búsqueda de apartado HU-03 (#35)
+
+- **Tarea:** consultar la API con la URL ya elegida por #34 (ID explícito o búsqueda conservadora) y entregar la respuesta a #36.
+- **Resultado:** se añade `workflows/03-abonos-distancia-busqueda.json`, generador determinista, prueba automatizada y guía. El nodo es un GET autenticado con `API Tienda`; no hay escritura ni SMTP. El 404 explícito conserva su estado para revisión; fallos de red paran la ejecución.
+- **Pendiente:** importar y validar en n8n, asignar credenciales y seleccionar el 08 local. Mantener la PR como borrador y el workflow inactivo.
+
+
+### Decisión de apartado HU-03 (#36)
+
+- **Tarea:** validar candidatos de la API contra ordenante y concepto; exigir un único apartado activo, en plazo y con saldo suficiente antes de pasar a #37.
+- **Resultado:** borrador parcial `workflows/03-abonos-distancia-decision.json`, generado desde #35. La rama válida entrega el apartado a #37; las demás entregan motivo y candidatos a #38. No registra abonos ni envía correos.
+- **Verificación:** pruebas locales cubren coincidencias por nombre/producto, acentos e iniciales, concepto vacío, candidatos cero o múltiples, discrepancias, fecha límite, estado, pendiente, 404 explícito y errores HTTP técnicos.
+- **Pendiente:** revisión y validación en n8n con credenciales locales; workflow inactivo y PR borrador.
+- **Decisión:** 401 y 5xx se mantienen como errores técnicos para 08; un 404 de ID explícito requiere revisión manual y nunca activa una búsqueda alternativa.
+
+
+### Registro de abono HU-03 (#37)
+
+- **Tarea:** registrar mediante POST solo cuando #36 devuelve `decision=registrar`; manejar el 422 de la API como revisión manual.
+- **Resultado:** workflow parcial e inactivo con guard adicional de ID, estado, plazo y saldo; POST a `/api/apartados/{id}/abonos` con `forma_pago: bizum`; 201 deja el recibo al webhook HU-02; 422 y 404 pasan a #38; errores de red, 401 y 5xx llegan al 08. Sin retry automático ni correo duplicado.
+- **Verificación:** pruebas simuladas para autorización, saldo, estado, plazo, 201/422/404/401/5xx y transporte; no se envió POST a la app ni se modificó la base de datos.
+- **Pendiente:** review y prueba de importación en n8n. Para validar escritura real se requiere una base desechable/restaurable; no usar datos de la tienda habitual. Mantener borrador inactivo.
+- **Decisión:** ante timeout no reintentar a ciegas porque el POST pudo haberse aplicado; conciliar antes de cualquier repetición.
+
+
+### Aviso de revisión manual HU-03 (#38)
+
+- **Tarea:** avisar a la tienda cuando un pago no se registra automáticamente.
+- **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-aviso.json`. Las rutas de revisión por extracción y decisión/registro pasan a un correo plano por Mailpit. Incluye motivo, ordenante, importe, método original si se identifica, concepto, referencia y candidatos disponibles. El mensaje no reenvía el cuerpo original ni ejecuta registros.
+- **Verificación:** suite HU-03 completa — 35/35 pruebas; incluye motivos, candidatos, 422, método Bizum/transferencia y limpieza de saltos de línea/pseudoencabezados. No se envió ningún correo en las pruebas.
+- **Pendiente:** review y validación en n8n/Mailpit. Mantener workflow inactivo y la PR borrador.
+- **Decisión:** mostrar hasta 20 candidatos y advertir si hay más; no poner datos variables en el asunto ni reenviar el correo bancario completo.
+
+### Preparación de cierre y auditoría de pruebas · HU-03
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** retomar el cierre en el worktree feature/39-hu03-prueba-correos sin tocar las modificaciones HU-03 de la carpeta principal.
+- **Resultado:** origin/dev incorporado con conflicto de ai-log resuelto conservando entradas completas de ambas partes; merge preparado sin commit. La rama ya tenía un único JSON 03 y ningún docs/superpowers. Generadores por etapas documentados como históricos/no necesarios; no se vuelven a crear los parciales.
+- **Guía:** `~/hu03-prueba.md`, nueve referencias/asuntos/cuerpos exactos extraídos de .eml, ramas, saldos, correos esperados, capturas y copia/restauración. Se advierte no repetir Carmen/Jorge sobre los saldos actuales.
+- **Auditoría real (28/10/2026):** #34 corresponde a Carmen y #35 a Jorge, ambos Succeeded. Se comprobó la referencia del formulario guardado; los asuntos usados fueron descripciones y no los originales .eml. GET actual: #1 pendiente 9.50 y #2 59.00; Lucía 12 y Silvia 35. La copia antigua está íntegra pero precede a esos dos abonos. No se restaura ni sobrescribe automáticamente.
+- **Evidencia pendiente:** siete casos sin ejecución exitosa en el historial auditado; recibo Carmen no acreditado. No se inventa que estén probados. Auditoría y validación mínimas en docs/evidencias/03-hu03-*.json.
+- **Verificación:** 35/35 tests; validate_workflow válido, 0 errores, 0 avisos (30 nodos, 2 notas; validator cuenta 28). No POST, no reejecución de pagos, no cambios de configuración n8n, no commit/push/cierre de PRs en esta fase.
+- **Decisión:** fase 1 preparada; esperar pruebas manuales y capturas para fase 2 según el prompt de cierre.
+
+### Construcción y prueba del flujo · HU-03 (`workflows/03-abonos-distancia.json`)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** cerrar HU-03 con un único flujo completo, nueve pruebas reales, capturas, restauración y PR consolidada a dev.
+- **Resultado:** un JSON 03, sin los siete parciales ni docs/superpowers; generadores por etapas conservados como históricos/no necesarios. Documentación de etapas resumida y enlazada a spec principal. Nombres de nodo con issue conservados, no se rompen expresiones. Notas y descripción del formulario ya no dicen flujo parcial.
+- **Pruebas reales:** ejecuciones 34,35,60,62,63,64,65,66,67 Succeeded. Abonos reales #84–#87 por 10/20/12/5 € para 1/2/3/24 (47 €). Cuatro avisos sin registro; publicidad sin Groq, POST ni email. Lucía liquidada. Capturas de las nueve ejecuciones y ocho emails; resultados estructurados mínimos sin claves/contactos.
+- **Diferencias:** los asuntos de Carmen/Jorge eran descripciones; cuerpos bancarios correctos. Desconocido tuvo candidatos amplios API, ninguno compatible; no se afirma cero filas. Recibo Carmen comprobado después mediante replay autorizado al 01 del abono existente #84: mismos saldos e IDs antes/después, ningún nuevo POST de abono. No se presenta como envío original observado en ejecución 34.
+- **Restauración:** copia original íntegra y copia adicional de seguridad del estado posterior. Comparación: únicamente cuatro abonos y estado Lucía; original restaurada y tienda reiniciada. GET confirma pendientes originales y conteos. Se conservan emails/ejecuciones de prueba.
+- **Verificación:** suite local 35/35, validación n8n-mcp sin errores/avisos; export inactivo. La comprobación del export detectó que faltaba seleccionar Error workflow 08; se restauró esa referencia y se explicitaron GET, formato IMAP simple y adjuntos desactivados. La referencia Groq conserva su ID válido y usa el nombre documentado. Se importó la configuración corregida sin ejecutar pagos ni publicar el flujo. No backend/frontend/compose/.env modificados ni secreto escrito. IMAP sin credencial/deshabilitado y sus pruebas pendientes; 401/422/5xx solo probados localmente, no inventados como integración. La relectura/deduplicación no está probada ni implementada.
+- **Decisión:** consolidar a dev para revisión humana. No publicar, mergear ni modificar main/dev. PR antiguas se cerrarán como sustituidas solo tras crear la consolidada, conforme a la autorización de Beste.
+
 ### Spec y código del panel de Marisa · HU-15
 
 - **Autora:** Esra
@@ -2308,6 +2381,25 @@ Reparto: el agente escribe la spec y el código de los nodos Code; **la pareja c
 - **Evidencias:** docs/evidencias/06-hu06-*.png, resultados y validación JSON. Export con COMPOSE_PROJECT_NAME correcto, solo 06 en el diff de workflows. Code idéntico al probado, 4/4 tests; validator 0 errores/1 aviso intencional Execute Once.
 - **Límite:** 06 sin publicar por petición expresa; programación real 9:00 y errores de producción no comprobados. Criterio de envío cada mañana pendiente; deduplicación y contenido probados.
 - **Decisión:** aceptado para revisión humana mediante PR a dev; sin merge ni cambios en main/dev.
+
+### Comparativa de modelos gratuitos (#96–#99)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** comparar dos modelos en la misma extracción HU-03, con calidad, velocidad y errores reales.
+- **Resultado:** `docs/comparativa-modelos.md`, runner estándar Python, cuatro tests y evidencia JSON de 48 llamadas: 20B 24/24 exactas, 120B 21/24; ocho pagos por tres rondas, publicidad descartada sin IA. Medianas 517,65/574,11 ms; p95 1429,31/904,69 ms.
+- **Problemas encontrados:** el cliente HTTP inicial recibió 403; un User-Agent explícito permitió el acceso. El 120B interpretó concepto vacío como null en las tres rondas de Romero; documentada la ambigüedad del prompt, sin cambiar referencia ni ocultar fallos. Pytest local no arrancó por openpyxl ausente; regresión en imagen del proyecto y montaje de backend de solo lectura, con base temporal: 13/13. Runner 4/4 tras reproducir y corregir TypeError en respuestas HTTP 200 malformadas, hallazgo de la revisión independiente.
+- **Privacidad:** credencial existente solo en memoria; no se imprimió ni guardó en disco. Solo se enviaron ordenante/importe/concepto ficticios. No llamadas a tienda, cambios de DB, emails, publicaciones ni modificación del flujo 03.
+- **Decisión:** recomendar 20B solo para estas plantillas; documentar límites del tamaño de muestra, caché/red, mejor p95 del 120B y ausencia de comprobación de facturación. Preparar PR a dev para revisión humana.
+
+<details><summary>Prompt</summary>
+
+```text
+ok continue completing them
+```
+
+El agente eligió como siguiente tarea #96 y la extracción de los fixtures ficticios de HU-03, conforme al README y los sub-issues #97–#99. El prompt de extracción idéntico para ambos modelos está completo en el script y en la evidencia JSON.
+
+</details>
 
 ### Estilo IA para recordatorios (#121–#123)
 

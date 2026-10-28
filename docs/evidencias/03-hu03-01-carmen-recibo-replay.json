@@ -1,0 +1,26 @@
+{
+  "test": "Replay existing Carmen abono event to workflow 01 only; no payment POST",
+  "source_abono_id": 84,
+  "before": {
+    "pendiente": 9.5,
+    "abonado": 25.0,
+    "abono_ids": [
+      1,
+      2,
+      84
+    ]
+  },
+  "webhook_status": 200,
+  "after": {
+    "pendiente": 9.5,
+    "abonado": 25.0,
+    "abono_ids": [
+      1,
+      2,
+      84
+    ]
+  },
+  "receipt_ids": [
+    "3t2sZ7mflqSEzLi2Gto6GX"
+  ]
+}
