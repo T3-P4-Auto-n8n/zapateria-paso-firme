@@ -96,6 +96,8 @@
       ],
       "id": "27bd73ed-7c42-4a1f-9dc3-fcc3190a2bfd",
       "name": "Leer apartado por número",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -138,6 +140,8 @@
       ],
       "id": "eea83f9d-7e98-4270-9cd5-9bdadf0509ca",
       "name": "Buscar apartados por texto",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -235,5 +239,5 @@
   "tags": [],
   "active": true,
   "id": "O7p1CtzUTrhjchSm",
-  "versionId": "4840d578-590e-4594-b23f-627da5ee83cf"
+  "versionId": "ca5ca63e-0c15-491a-bd3b-42cd59f86d93"
 }
