@@ -2048,6 +2048,85 @@ Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apa
   - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
 - **Decisión:** pendiente de revisión de la pareja.
 
+### README del proyecto
+
+- **Autora:** Esra
+- **Tarea:** que el `README.md` sea la documentación principal del proyecto, y el enunciado del profesor pase a `docs/enunciado.md`.
+- **Resultado:**
+  - `git mv README.md docs/enunciado.md`, para conservar la historia.
+    - En el enunciado solo cambian los enlaces relativos que se rompían (`data/`, `backend/`, `frontend/`, `guia-de-la-app.md`).
+    - Se quitaron las 3 líneas que habíamos añadido en «Cómo empezar» (instalación, mapa y apartado completo), que pasan al README nuevo.
+  - `README.md` nuevo, con 11 secciones:
+    - qué es y qué problema resuelve;
+    - tabla de workflows con spec, JSON y pruebas;
+    - cada criterio de los niveles Esencial, Medio y Avanzado con ✅/🟡/❌;
+    - instalación corta, decisiones, organización y desarrollo con IA;
+    - los 10 entregables, la estructura del repo y las mejoras futuras.
+  - Fuentes:
+    - el repo en `dev` (`12a92bf`);
+    - en GitHub, solo lectura: las PR, los issues y el Project 1 de la organización;
+    - las ramas de Beste: `feature/39-hu03-prueba-correos` (`9c086d3`) y `feature/hu04-cierre-diario` (`4b5aa96`, PR #173).
+  - Se comprobó con un script que todos los enlaces relativos del README y del enunciado, y sus anclas, existen.
+- **Criterios en 🟡 o ❌:**
+  - **Esencial:**
+    - flujo 3 y sus 8 correos 🟡 (rama sin PR y PR parciales);
+    - flujo 5 🟡 (#173);
+    - bitácora 🟡: faltan las entradas de construcción del `03` y del `05`.
+  - **Medio:**
+    - recordatorios de HU-06 🟡: sin rama ni PR todavía;
+    - comparativa de modelos ❌ (#96, sin empezar).
+  - **Avanzado:**
+    - comandos 🟡 (#179);
+    - Telegram, recordatorios por IA, webhook protegido y RGPD ❌.
+  - **Entregables en curso:** bitácora (#145) y retrospectiva (#146).
+- **Problemas encontrados:**
+  - **Sección 1 de la bitácora.** Al resolver el conflicto de #176 (merge `672eff6`), se volvió a la versión antigua: «Groq · Por decidir», sin Codex. La entrada «Agente, modelos y n8n-mcp · #8» sí está. No se ha corregido aquí, porque este prompt solo deja tocar la bitácora para esta entrada. El README enlaza a la entrada de #8, que sí está bien.
+  - **HU-06** estaba en el plan de entrega (#141), pero no tiene rama ni PR. Se marcó 🟡 con esa nota, no ❌.
+  - **`main`** sigue en el commit del enunciado (20/10): todavía no ha recibido ningún nivel. El README lo dice.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+El `README.md` sigue siendo el **enunciado del profesor**. El profesor lo leerá primero y tiene que entender de un vistazo **nuestro** proyecto. Rama `docs/readme-final`, que sale de `dev` cuando estén fusionados nuestros PR de entregables. Solo documentación.
+
+1. Mueve el enunciado tal cual a `docs/enunciado.md` con `git mv README.md docs/enunciado.md` (así se conserva su historia). Arregla en ese archivo solo los enlaces relativos que se rompan al moverlo (`docs/…` → `…`, `data/…` → `../data/…`, etc.); el texto no se toca. Quita de él las líneas que añadimos nosotras en «Cómo empezar» (enlaces a `docs/instalacion.md`, `docs/mapa-proceso.md`, `docs/evidencias/apartado-completo.md`): pasan al README nuevo.
+2. Escribe un `README.md` nuevo, en español, que sea la documentación principal del proyecto.
+
+## Fuentes
+
+- `docs/enunciado.md` (el README original): planteamiento, requisitos técnicos, automatizaciones, historias, niveles y entregables.
+- `AGENTS.md` (sección 8: decisiones), `specs/*.md`, `workflows/*.json` de `dev`, `docs/instalacion.md`, `docs/credenciales.md`, `docs/mapa-proceso.md`, `docs/evidencias/`, `docs/ai-log.md`, `docs/revision-secretos.md`, `docs/retrospectiva.md` si existe.
+- GitHub (solo lectura, con `gh`): PRs fusionados y abiertos, issues abiertos y cerrados por nivel, el Project (Kanban) de la organización `T3-P4-Auto-n8n`, las ramas de Beste sin fusionar (`feature/39-hu03-prueba-correos`, `feature/hu04-cierre-diario`).
+
+## Contenido del README nuevo
+
+1. **Título y una frase**: qué es (automatizaciones con n8n para la app de la Zapatería Paso Firme). Pareja: Esra Kesken y Beste Ozaydin. Enlace al enunciado (`docs/enunciado.md`).
+2. **Qué problema resuelve y para quién** (Marisa, la dependienta, el cliente), en 4–5 líneas, con enlace a `docs/mapa-proceso.md`.
+3. **Qué hemos construido**: tabla de workflows (número y nombre real, disparador, qué hace, HU, spec, JSON, evidencias). Solo lo que existe; lo que está en un PR abierto, márcalo como tal con su número.
+4. **Niveles**: por nivel (Esencial, Medio, Avanzado), cada criterio del enunciado con ✅ hecho / 🟡 en curso (PR o rama) / ❌ no lo hacemos, con enlace a la prueba (spec sección 7 o evidencia). Sé exacta: no marques como hecho lo que no está en `dev`.
+5. **Cómo ponerlo en marcha**: 5–6 líneas (`.env`, `docker compose up -d`, URLs) y enlace a `docs/instalacion.md` para todo lo demás.
+6. **Decisiones técnicas** más importantes (5–8), cada una en una línea con su porqué, enlazando a `AGENTS.md` sección 8: un webhook + Switch, sub-workflows `10`, umbral en Data table, transferencias como `bizum`, la IA solo extrae en el flujo 3, Retry solo en `GET`, `06` vence y el `01` envía el vale, datáfono como variante de HU-13…
+7. **Cómo nos organizamos**: Kanban (enlace al Project), una tarea = una rama = una PR a `dev`, Conventional Commits en inglés y documentación en español, revisión de la pareja en cada PR, cómo resolvimos los conflictos de `docs/ai-log.md`. Estructura de ramas (`main`, `dev`, `feature/…`, `docs/…`).
+8. **Desarrollo con IA**: 3–4 líneas y enlace a `docs/ai-log.md` (Claude Code y Codex, Groq `openai/gpt-oss-20b`, n8n-mcp sin API key).
+9. **Entregables**: los 10 del enunciado, cada uno con su enlace (o «en curso»).
+10. **Estructura del repo**: árbol corto de carpetas con una línea por carpeta.
+11. **Mejoras futuras**: lo que no hemos hecho del nivel Avanzado (asistente de Telegram, HU-14, …), 1 línea cada una.
+
+Estilo: frases cortas, tablas donde ayuden, nada de relleno. Que se lea en 3 minutos; el detalle está en los enlaces. Comprueba que todos los enlaces relativos apuntan a archivos que existen.
+
+## Límites
+
+- Solo `README.md` y `docs/enunciado.md` (y `docs/ai-log.md` para la entrada de abajo). No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API de la tienda.
+- `docs/ai-log.md`: entrada «### README del proyecto» con el formato habitual y este prompt literal en un bloque `<details>`.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué criterios has marcado como 🟡 o ❌.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
