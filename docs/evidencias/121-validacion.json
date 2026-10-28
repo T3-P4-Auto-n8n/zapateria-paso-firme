@@ -1,0 +1,23 @@
+{
+  "valid": true,
+  "summary": {
+    "totalNodes": 20,
+    "enabledNodes": 20,
+    "triggerNodes": 2,
+    "validConnections": 20,
+    "invalidConnections": 0,
+    "expressionsValidated": 17,
+    "errorCount": 0,
+    "warningCount": 1
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "node": "Leer recordatorios enviados",
+      "message": "executeOnce is enabled. This node will execute only once regardless of input items."
+    }
+  ],
+  "suggestions": [
+    "Most nodes lack error handling. Use \"onError\" property for modern error handling: \"continueRegularOutput\" (continue on error), \"continueErrorOutput\" (use error output), or \"stopWorkflow\" (stop execution)."
+  ]
+}
