@@ -89,6 +89,8 @@
       "name": "Leer ventas del mes",
       "alwaysOutputData": true,
       "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -122,6 +124,8 @@
       "name": "Leer abonos desde el día 1",
       "alwaysOutputData": true,
       "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -146,6 +150,8 @@
       "name": "Leer apartados",
       "alwaysOutputData": true,
       "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -170,6 +176,8 @@
       "name": "Leer vales",
       "alwaysOutputData": true,
       "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -322,5 +330,5 @@
   "tags": [],
   "active": false,
   "id": "iX7z8Uy8V36e7QL5",
-  "versionId": "3b558bfb-ed3c-42fd-b19b-e81945fcdaf2"
+  "versionId": "be15853a-6048-4a44-beb1-39ac0e279baf"
 }

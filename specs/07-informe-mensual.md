@@ -47,6 +47,7 @@ Todas usan HTTP Request a `http://tienda:8000/api/...` con Authentication **Gene
 
 - **Execute Once** hace que cada `GET` se haga una vez, aunque el anterior le pase muchos items (uno por venta, por abono...).
 - **Always Output Data** evita que el flujo se pare cuando una lista está vacía (un `GET` sin resultados no da ningún item): llega un item vacío y el Code lo ignora.
+- **Settings → Retry On Fail:** 3 intentos, 2000 ms en los 4. Si fallan los 3, para el flujo y avisa el `08` ([specs/08-error-workflow.md](08-error-workflow.md#reintentos), #56).
 
 2. `Leer ventas del mes`: `GET /api/ventas?desde={{ desde }}&hasta={{ hasta }}`. Sin `pagina` devuelve todas.
 3. `Leer abonos desde el día 1`: `GET /api/abonos?desde={{ desde }}`, **sin `hasta`**. Trae los abonos del mes y los posteriores. Los posteriores solo sirven para la regla de liquidados (paso 7); la recaudación usa solo los del mes.
@@ -96,8 +97,8 @@ No escribe nada en la app: solo hace `GET`.
 
 | Caso | Qué hace el flujo |
 |---|---|
-| La API responde `401` (credencial `API Tienda` mal) | El `GET` falla y la ejecución se para; lo avisa el `08` (solo en ejecuciones de producción, como la del día 1). No se envía un informe incompleto |
-| La app no responde (contenedor parado, error de red) | El `GET` falla y lo avisa el `08`. Al arreglarlo, el informe se repite con el formulario |
+| La API responde `401` (credencial `API Tienda` mal) | El `GET` se reintenta (3 intentos, 2 s), falla y la ejecución se para; lo avisa el `08` (solo en ejecuciones de producción, como la del día 1). No se envía un informe incompleto |
+| La app no responde (contenedor parado, error de red) | El `GET` se reintenta (3 intentos, 2 s): si la app vuelve a tiempo, el flujo sigue. Si no, falla y lo avisa el `08`. Al arreglarlo, el informe se repite con el formulario |
 | Otro error de la API (`404`, `5xx`) | Igual que el `401` |
 | Una lista vacía (ninguna venta, abono, apartado o vale) | Sigue (Always Output Data): el Code ignora el item vacío y esa cifra sale a `0.00` o «Ninguno» |
 | Mes sin ningún movimiento | El informe lo dice (paso 8) y se envía igual |

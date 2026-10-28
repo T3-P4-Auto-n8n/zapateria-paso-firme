@@ -142,6 +142,7 @@ Subir el CSV del datáfono ─────────────────�
 
 7. `Leer ventas de esos días`: `GET http://tienda:8000/api/ventas` con query `desde` y `hasta` del rango, sin `pagina` (así devuelve todas).
    - Settings **Execute Once** y **Always Output Data**, como en el `09`. Si no hay ventas, llega un item vacío y se ignora.
+   - **Settings → Retry On Fail:** 3 intentos, 2000 ms ([specs/08-error-workflow.md](08-error-workflow.md#reintentos), #56). `Registrar ventas` (`POST`) no lleva reintentos.
    - Credencial `API Tienda`.
 
 **Regla de duplicados** (`Decidir qué crear`, Code)
@@ -221,7 +222,7 @@ Si falla `Enviar informe del datáfono` (por ejemplo, Mailpit caído), el aviso 
 | Fila con `fecha`, `importe` u `operacion` no válidos | No se importa; va al informe como «fila no válida» |
 | Operación repetida en el CSV | Solo se cuenta la primera; las demás van al informe |
 | Cobro ya importado o ya apuntado en el mostrador | No se crea (pasos 8 y 9) |
-| `GET /api/ventas` responde `401` (credencial mal) o la app no responde | Falla `Leer ventas de esos días` y se para **antes de crear nada**; lo avisa el `08` |
+| `GET /api/ventas` responde `401` (credencial mal) o la app no responde | `Leer ventas de esos días` se reintenta (3 intentos, 2 s); si sigue fallando, falla y se para **antes de crear nada**; lo avisa el `08` |
 | `POST /api/ventas` responde `422` | Esa venta va al informe como rechazada, con el `detail`; el flujo sigue con las demás |
 | `POST` responde `401` u otro código que no es `201` ni `422` | `Preparar informe` para con error; lo avisa el `08`. Las ventas ya creadas se quedan, y la siguiente ejecución no las repite (paso 8) |
 | Se ejecuta dos veces el mismo día, o el formulario después de la programada | No duplica (paso 10) |
