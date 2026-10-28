@@ -1,0 +1,18 @@
+{
+  "valid": true,
+  "summary": {
+    "totalNodes": 2,
+    "enabledNodes": 2,
+    "triggerNodes": 1,
+    "validConnections": 1,
+    "invalidConnections": 0,
+    "expressionsValidated": 1,
+    "errorCount": 0,
+    "warningCount": 0
+  },
+  "errors": [],
+  "warnings": [],
+  "suggestions": [
+    "Consider enabling alwaysOutputData on \"estado_apartado\" to capture error responses for debugging"
+  ]
+}
