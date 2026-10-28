@@ -52,6 +52,35 @@ No llama a la API.
 | Falla el propio envío del correo (Mailpit caído, credencial mal) | El aviso se pierde; queda solo en las ejecuciones de n8n (un Error Workflow no se vigila a sí mismo) |
 | El mensaje de error incluye datos sensibles | El aviso solo usa los cuatro campos del paso 2; si algún error mostrara datos sensibles, se revisa ese flujo |
 
+### Reintentos
+
+#56. Los HTTP Request de **lectura** (`GET`) llevan **Settings → Retry On Fail** con **Max Tries** `3` y **Wait Between Tries** `2000` ms. Los `POST`, no. Decisión en [AGENTS.md, sección 8](../AGENTS.md#8-decisiones-tomadas). La pareja los activó a mano en n8n y los exportó.
+
+**Cómo encaja con el `08`:**
+
+1. Primero, los reintentos. Si el nodo falla, n8n espera 2 s y lo vuelve a intentar, hasta 3 intentos en total.
+2. Si un intento sale bien, el flujo sigue y no hay aviso.
+3. Si fallan los 3, el nodo falla, la ejecución se para y, en las ejecuciones de producción, salta el `08` **una sola vez**, con el error del último intento.
+
+Un fallo pasajero (la app reiniciándose, un corte de red) ya no llega como aviso. Un fallo que dura, sí, unos 4 s más tarde.
+
+**Solo reintenta si el nodo falla.** Con **Never Error** (cualquier código de respuesta da salida) o **On Error → Continue**, el nodo no falla y no reintenta. Los `GET` de `10 · Buscar apartado` llevan Never Error: allí solo se reintentan los errores sin respuesta (app parada, tiempo agotado). Un `401` o un `5xx` llegan a `Preparar resultado`, que para con el error, como antes.
+
+| Workflow | Nodo | Método | Reintento | Por qué |
+|---|---|---|---|---|
+| `07 · Informe mensual` | `Leer ventas del mes`, `Leer abonos desde el día 1`, `Leer apartados`, `Leer vales` | `GET` | **Sí** | Lectura: repetirla no cambia nada |
+| `09 · Migración del Excel` | `Leer apartados de la app`, `Leer abonos de la app`, `Leer ventas de la app`, `Comprobar pendientes` | `GET` | **Sí** | Lectura |
+| `10 · Buscar apartado` | `Leer apartado por número`, `Buscar apartados por texto` | `GET` | **Sí** (solo errores de red, por Never Error) | Lectura. Lo aprovechan los flujos que lo llaman, como `Leer apartados activos` del `06` |
+| `11 · Datáfono` | `Leer ventas de esos días` | `GET` | **Sí** | Lectura |
+| `06 · Recordatorios y vencimientos` | `Vencer apartado` | `POST` | **No** | Si el `POST` llegó pero la respuesta se perdió, el segundo intento recibiría `422` «ya está vencido» y el apartado saldría en la lista como no vencido |
+| `09 · Migración del Excel` | `Crear apartados`, `Registrar abonos`, `Registrar ventas` | `POST` | **No** | Un segundo intento crearía un apartado, un abono o una venta duplicados. Una segunda ejecución del flujo ya no duplica (lo comprueba con los `GET`) |
+| `11 · Datáfono` | `Registrar ventas` | `POST` | **No** | Igual: una venta duplicada. La siguiente ejecución no repite lo creado |
+| `03 · Abonos a distancia`, `05 · Cierre diario` | — | — | Los decide la pareja en su rama | Ver [specs/03-abonos-distancia.md](03-abonos-distancia.md) (paso 8: «no reintentar un POST a ciegas») |
+
+Los 5 `POST` llevan además Never Error: un código de error tampoco los reintentaría. Pero un error de red, sí, y es justo el caso peligroso, en el que no se sabe si la app guardó el registro.
+
+**En el JSON exportado:** `"retryOnFail": true` y `"waitBetweenTries": 2000` en cada uno de esos 11 nodos. `maxTries` no aparece, porque `3` es el valor por defecto y n8n no exporta los valores por defecto.
+
 ## 7. Prueba
 
 Con el `01` y el `08` publicados y el `08` asignado en el `01`, enviar a la **Production URL** un evento que haga fallar el `01`:
@@ -99,3 +128,7 @@ curl -X POST http://localhost:5678/webhook/tienda \
 
 - [x] Cualquier flujo que falle envía un aviso con el nombre del flujo, el paso y el error.
 - [x] El aviso no incluye contraseñas ni claves.
+
+**#56 · Reintentos (Retry On Fail) en los nodos HTTP Request**
+
+- [x] Los HTTP Request `GET` reintentan (3 intentos, 2 s) antes de fallar y avisar con el `08`; los `POST`, no (sección [Reintentos](#reintentos)). Comprobado en los 4 JSON exportados: tienen `retryOnFail` esos 11 nodos y solo ellos.

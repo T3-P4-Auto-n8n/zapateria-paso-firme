@@ -88,6 +88,7 @@ Estos campos no son de la ontología: son la interfaz del sub-workflow, igual qu
 4. Los dos `GET` llevan Authentication **Generic Credential Type → Header Auth → `API Tienda`** y, en Options, **Include Response Headers and Status** y **Never Error**.
    - Siempre devuelven **un item** `{ statusCode, body }`, también con una lista vacía. No hace falta Always Output Data.
    - Un `404` no para el flujo.
+   - **Settings → Retry On Fail:** 3 intentos, 2000 ms. Con Never Error solo se reintentan los errores sin respuesta (app parada, tiempo agotado); un `401` o un `5xx` llegan a `Preparar resultado` sin reintento ([specs/08-error-workflow.md](08-error-workflow.md#reintentos), #56).
 5. `Preparar resultado` (Code), al que llegan las dos ramas:
    - **`200`:** la lista de apartados (por número, una lista de uno). Si se buscó por número y llega `estado`, se filtra también por `estado`.
    - **`404` por número:** lista vacía.
@@ -208,7 +209,7 @@ Como siempre, solo en ejecuciones de producción.
 | Buscar apartado | `estado` no válido o `id` que no es un entero positivo | Para con error |
 | Buscar apartado | Sin resultados (texto que no encuentra nada, o `404` por número) | **No es error:** `{ total: 0, apartados: [] }` |
 | Buscar apartado | La API responde `401` (credencial `API Tienda` mal) u otro código que no es `200` ni el `404` por número | Para con error con el código y el `detail`; lo avisa el `08` del flujo que llama |
-| Buscar apartado | La app no responde | Falla el `GET` (Never Error no cubre los errores de red); igual que el `401` |
+| Buscar apartado | La app no responde | El `GET` se reintenta (3 intentos, 2 s); si sigue sin responder, falla (Never Error no cubre los errores de red) y lo avisa el `08` del flujo que llama |
 | Buscar apartado | Varios resultados | Se devuelven todos; elegir uno es cosa del flujo que llama (en el flujo 3, varios candidatos = consulta a Marisa) |
 | Enviar notificación | Falta `para`, `asunto` o el cuerpo, o `para` sin `@` | Para con error sin enviar nada |
 | Enviar notificación | Mailpit caído o credencial `Mailpit` mal | Falla el Send Email; lo avisa el `08` del flujo que llama, salvo si quien llama es el propio `08` (4.4) |
