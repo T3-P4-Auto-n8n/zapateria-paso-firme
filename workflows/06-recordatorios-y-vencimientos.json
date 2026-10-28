@@ -172,7 +172,7 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "HU04ApiTienda01",
-          "name": "API Tienda HU04"
+          "name": "API Tienda"
         }
       }
     },
@@ -810,5 +810,5 @@
   "tags": [],
   "active": false,
   "id": "LEG1cBDsrLXn6wL2",
-  "versionId": "4a54d59f-50f0-44da-90f1-a9a6d0786e07"
+  "versionId": "f3de77f8-f0cc-4651-b6ac-533e7f528c2f"
 }
