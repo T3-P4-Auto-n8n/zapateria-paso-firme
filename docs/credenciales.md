@@ -10,6 +10,7 @@ Qué credenciales y variables necesita cada workflow. **Aquí nunca se escriben 
 | `API Tienda` | Header Auth | Name `X-API-Key`, Value = `API_KEY` del `.env` | Llamar a la API de la app (`http://tienda:8000/api/...`) |
 | `Groq` | Groq API | API Key de Groq | Modelo de IA en los nodos de IA (`03 · Abonos a distancia`) |
 | `Google Sheets` | Google Sheets OAuth2 API | Conexión OAuth con una cuenta de Google con permiso de edición en el documento del histórico; los tokens solo viven en n8n | Histórico de `05 · Cierre diario` (PR #173) |
+| `Panel Marisa` | Basic Auth | User y Password que elige la pareja; solo viven en n8n | Proteger la página de `12 · Panel de Marisa`: el navegador los pide al abrir `/webhook/panel` (HU-15) |
 
 `03 · Abonos a distancia` tiene además un nodo `Correo bancario IMAP` **deshabilitado y sin credencial**: hoy se prueba con el formulario. Hará falta una credencial IMAP cuando se active la entrada por correo.
 
@@ -29,6 +30,7 @@ Estado final con todos los workflows: los de `dev` (con el `06` y la rama `apart
 | `10 · Buscar apartado` | `API Tienda` (`Leer apartado por número`, `Buscar apartados por texto`) | — | — | `API_KEY` (por `API Tienda`) | ninguno: lo avisa el `08` del flujo que llama |
 | `10 · Enviar notificación` | `Mailpit` (`Enviar correo en HTML`, `Enviar correo de texto`) | — | — | — | ninguno: lo avisa el `08` del flujo que llama |
 | `11 · Datáfono` | `API Tienda` (`Leer ventas de esos días`, `Registrar ventas`) | `Mailpit`, por `10 · Enviar notificación` (`Enviar informe del datáfono`, `Avisar de que falta el CSV`) | Carpeta `/home/node/.n8n-files/datafono/` del contenedor de n8n, con `datafono-AAAA-MM-DD.csv` (spec del `11`, sección 3.1) | `API_KEY` (por `API Tienda`). Cada venta creada dispara `venta.registrada` (aviso de venta grande del `01`) | `08` |
+| `12 · Panel de Marisa` | `Panel Marisa` (`Abrir el panel`, Basic Auth del Webhook), `API Tienda` (`Leer ventas del mes`, `Leer abonos del mes`, `Leer apartados activos`) | — (no llama a los `10`) | — | `API_KEY` (por `API Tienda`). Solo hace `GET`: no dispara eventos | `08` |
 
 **Lo que no está en el `.env`:** la zona horaria (`TZ` y `GENERIC_TIMEZONE` = `Europe/Madrid`) va fija en `docker-compose.yml`, y cada workflow con fechas la fija también en **Settings → Timezone**. `SEED` no la usa ningún workflow, pero las pruebas de las specs cuentan con los datos de ejemplo (`SEED=1`).
 
@@ -82,6 +84,13 @@ En n8n: **Overview → Credentials → Create credential**, buscar el tipo y gua
 3. Value: el valor de `API_KEY` de vuestro `.env`.
 4. Nombre: `API Tienda`.
 5. En cada nodo HTTP Request: Authentication → Generic Credential Type → Header Auth → `API Tienda`.
+
+### Panel Marisa (Basic Auth)
+
+1. Tipo: **Basic Auth**.
+2. User y Password: los elige la pareja. No se escriben en ningún archivo ni mensaje.
+3. Nombre: `Panel Marisa`.
+4. En el Webhook `Abrir el panel` del `12`: Authentication → Basic Auth → `Panel Marisa`.
 
 ### Groq (Groq API)
 
