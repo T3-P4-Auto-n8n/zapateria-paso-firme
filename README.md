@@ -63,6 +63,12 @@ Para probarlos, enviad estos correos (asunto y cuerpo) a la cuenta que lea n8n. 
 
 ## 🚀 Cómo empezar
 
+> **Instalar nuestro proyecto terminado en otro ordenador** (credenciales, Data tables, importar los workflows en orden, qué publicar y pruebas de humo): [docs/instalacion.md](docs/instalacion.md).
+
+> **Mapa del proceso de apartado** (cómo se hace hoy y cómo queda automatizado, con diagramas): [docs/mapa-proceso.md](docs/mapa-proceso.md).
+
+> **Un apartado completo de principio a fin** (alta, abonos y liquidación, con las capturas de la app y los correos): [docs/evidencias/apartado-completo.md](docs/evidencias/apartado-completo.md).
+
 Necesitáis [Git](https://git-scm.com/) y [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalados y abiertos.
 
 **1. Una persona de la pareja clona el proyecto:**

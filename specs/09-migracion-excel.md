@@ -92,6 +92,8 @@ Todas las llamadas usan HTTP Request a `http://tienda:8000/api/...` con Authenti
    - `Leer ventas de la app`: `GET /api/ventas?desde=&hasta=`, con el `rango`.
 
    Si una lista está vacía, llega un item vacío y se ignora: sin Always Output Data, un `GET` sin resultados no da ningún item y el flujo se pararía. Execute Once hace que cada consulta se haga una sola vez, aunque le lleguen muchos items.
+
+   **Settings → Retry On Fail:** 3 intentos, 2000 ms en los tres (y en `Comprobar pendientes`, paso 17). Los `POST` de los pasos 11 a 16 no llevan reintentos: un segundo intento duplicaría lo creado ([specs/08-error-workflow.md](08-error-workflow.md#reintentos), #56).
 10. `Decidir qué crear` (Code) compara el plan con esas listas y marca cada registro como «crear» o «ya existía»:
     - **Apartado:** cliente normalizado + `producto` + `talla` + `fecha`. Si ya existía, se usa su `id`, y su abono inicial se descuenta antes de comparar los demás abonos.
     - **Abono:** `apartado_id` + `fecha` + `importe`. Si el apartado es nuevo, todos sus abonos se crean.
@@ -136,7 +138,7 @@ Todas las llamadas usan HTTP Request a `http://tienda:8000/api/...` con Authenti
 
 **Comprobación e informe**
 
-17. `Comprobar pendientes` hace `GET /api/apartados` (Execute Once, Always Output Data).
+17. `Comprobar pendientes` hace `GET /api/apartados` (Execute Once, Always Output Data, **Settings → Retry On Fail:** 3 intentos, 2000 ms).
 18. `Preparar informe` (Code):
     - lee las respuestas de `Registrar ventas`, si se ejecutó;
     - compara el `pendiente` de la app de cada apartado migrado con la `resta` de la última fila de su grupo. Si no coincide, va al informe como **diferencia**, con los dos valores; nunca se corrige a mano, porque `abonado` y `pendiente` son siempre los de la app;
