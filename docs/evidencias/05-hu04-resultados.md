@@ -1,6 +1,6 @@
-# HU-04 · Resultados verificables de preparación
+# HU-04 · Resultados verificables
 
-Fecha de preparación: 27/10/2026. **No es una prueba de extremo a extremo en n8n.**
+Preparación: 27/10/2026. Pruebas completas con Sheets y Mailpit: 28/10/2026.
 
 ## Verificación ejecutada
 
@@ -45,4 +45,27 @@ La prueba del flujo completo se detuvo por la credencial Google Sheets ausente. 
 
 La credencial temporal de HU39 falló como inválida en la primera prueba. Se creó una credencial dedicada `API Tienda HU04` con la clave local vigente a través de stdin, sin mostrarla ni guardar un archivo de claves. Se importaron 08 y 10 desde dev, inactivos, con la referencia SMTP local.
 
-**Pendiente real:** conectar Google Sheets OAuth en n8n, ejecutar el flujo completo con movimientos/sin movimientos y repetición de fecha, comprobar fila/actualización en Sheets y envío posterior. También falta la revisión humana en PR antes de publicar, la entrega nocturna y el aviso de errores en producción. No se ha publicado ningún flujo ni se han modificado datos de la app. Las pruebas aisladas no acreditan esas partes.
+## Pruebas completas · 28/10/2026
+
+OAuth conectado por la pareja. Se corrigió la referencia vacía del nodo Sheets para usar la credencial local conectada; no se guardaron secretos.
+
+| Caso | Ejecución real | Resultado |
+|---|---|---|
+| 2026-10-26 | [32](http://localhost:5678/workflow/HU04CierreDiario1/executions/32), 3.603 s | Succeeded; histórico y correo 213.65 €, 5 operaciones. |
+| 1900-01-01 | [37](http://localhost:5678/workflow/HU04CierreDiario1/executions/37), 3.219 s | Succeeded; histórico con ceros, correo «No hubo movimientos». |
+| Repetir 2026-10-26 | [38](http://localhost:5678/workflow/HU04CierreDiario1/executions/38), 7.661 s | Succeeded; una sola fila para esa fecha después de repetir. |
+
+GET actuales confirmaron de nuevo 213.65 € y cero para el día vacío. [Readback de Sheets antes/después](05-hu04-sheets-readback.json): dos filas de datos, una por fecha, mismas cifras. El correo de la repetición puede reenviarse según la spec.
+
+### Capturas guardadas
+
+- [Ejecución con movimientos](05-hu04-con-movimientos-n8n.jpg).
+- [Correo con movimientos](05-hu04-con-movimientos-mailpit.jpg), Mailpit `4c2qab2tABubnRW5GmeeW6`.
+- [Histórico de Sheets](05-hu04-historico-sheets.jpg).
+- [Ejecución sin movimientos](05-hu04-sin-movimientos-n8n.jpg).
+- [Correo sin movimientos](05-hu04-sin-movimientos-mailpit.jpg), Mailpit `4QhkCwUpF9ELzYe4zCscn3`.
+- [Repetición de fecha](05-hu04-repeticion-n8n.jpg).
+
+### Pendiente de producción
+
+El flujo 05 sigue sin publicar. AGENTS.md prohíbe al agente activar/publicar y exige revisión humana en PR. Por ello siguen pendientes la entrega automática real a las 00:05 y una prueba del aviso de error del 08 desde una ejecución de producción. Una ejecución manual exitosa no acredita esas dos pruebas. La regla de fecha programada sí está cubierta por la suite (Madrid, cambio de año y horario de verano). No se modificaron datos de la app durante estas pruebas HU-04.

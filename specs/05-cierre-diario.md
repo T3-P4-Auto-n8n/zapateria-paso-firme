@@ -69,14 +69,14 @@ Suite `node --test tests/test_hu04.cjs`: datos mixtos, céntimos, abonos inicial
 | Método desconocido, negativo, null, 3 decimales, otra fecha o ID duplicado | Error; no guardar ni enviar. |
 | 2026-01-01 a las 00:05 Madrid | Cierra 2025-12-31. |
 | Cambio de horario marzo/octubre | Ayer según calendario Madrid; sin restar 24 horas al instante. |
-| Repetir una fecha en Sheets | Una fila actualizada; correo puede repetirse. Verificación real pendiente si falta OAuth. |
+| Repetir una fecha en Sheets | Una fila actualizada; correo puede repetirse. Verificado con ejecuciones 32 y 38 y readback de Sheets: una fila para 2026-10-26. |
 
 Los resultados ejecutados y sus límites se recogen en [evidencias](../docs/evidencias/05-hu04-resultados.md). Las pruebas automáticas no demuestran entrega programada ni OAuth de Google.
 
 ## 8. Criterios de aceptación
 
 - [ ] Cada noche llega un resumen con ventas directas, abonos y el total, separados por forma de pago (efectivo, tarjeta y Bizum).
-- [ ] Los importes coinciden con los de la app.
-- [ ] Si ese día no hubo movimientos, el resumen lo dice en vez de fallar.
+- [x] Los importes coinciden con los de la app.
+- [x] Si ese día no hubo movimientos, el resumen lo dice en vez de fallar.
 
 No marcar la entrega nocturna ni Sheets sin ejecución real. El estado final de cada requisito se documenta con evidencia en la sección 7 y su enlace.

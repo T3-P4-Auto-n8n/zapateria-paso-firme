@@ -1312,3 +1312,8 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
+
+
+## 2026-10-28 · HU-04: cierre de pruebas manuales y capturas
+
+Petición: terminar pruebas y guardar capturas. La pareja conectó OAuth; el agente corrigió la referencia del nodo Sheets. Flujo completo: ejecución 32 (213.65 €), 37 (día vacío) y 38 (repetición). GET independientes y readback de Sheets confirman cifras y una fila por fecha. Cinco capturas obligatorias más repetición en docs/evidencias. Suite HU-04: 8/8. No se escribieron claves ni se modificó la tienda. Publicación, entrega nocturna y aviso del 08 en producción pendientes: AGENTS.md reserva publicación a la pareja después de revisión humana.
