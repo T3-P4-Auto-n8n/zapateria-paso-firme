@@ -69,6 +69,16 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
   - validar los JSON de `workflows/` con `validate_workflow` antes de abrir una PR.
 - Al abrir el proyecto, Claude Code pide aprobar el servidor.
 
+**Comandos de Claude Code** (`.claude/commands/`, se lanzan con `/nombre argumentos`). Ninguno hace commit, push ni merge, ni publica flujos:
+
+| Comando | Qué hace | Cuándo |
+|---|---|---|
+| `/generar-spec NN nombre HU-xx` | Crea `specs/NN-nombre.md` desde la plantilla con el README, la ontología, la guía y las decisiones de la sección 8; lo que no se sabe va como pregunta abierta. No sobrescribe una spec existente | Al empezar un flujo, antes de construirlo |
+| `/revisar-flujo workflows/NN-nombre.json` | Revisión de solo lectura del JSON exportado: nombres, secretos, credenciales, Settings, Mode de los Execute Workflow, Retry On Fail, expresiones, `active`, spec y `validate_workflow`. Acaba con «Listo para PR» o «Corregir antes de la PR» | Después de exportar, antes de abrir la PR |
+| `/cerrar-tarea [nº de issue]` | Repasa `git status` y el diff (`.DS_Store`, JSON de otros flujos reescritos por el export, secretos) y propone el mensaje de commit y los `Closes #` | Justo antes del commit |
+
+Codex (Beste) no lee `.claude/commands/`: puede usar el mismo texto de cada archivo pegándolo como prompt, cambiando `$1`, `$2`, `$3` o `$ARGUMENTS` por los argumentos.
+
 ## 7. Importar y exportar flujos
 
 **Desde la interfaz de n8n:** menú del flujo → *Import from File* para importar y *Download* para exportar. Guardar el JSON en `workflows/`.

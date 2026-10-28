@@ -1763,6 +1763,79 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Comandos personalizados de Claude Code · #124
+
+- **Autora:** Esra
+- **Tarea:** comandos de Claude Code para tareas repetitivas (#124, #125, #126), nivel Avanzado del README. Son archivos Markdown en `.claude/commands/`, porque el agente del proyecto es Claude Code y no OpenCode (sección 1).
+- **Resultado:**
+  - `.claude/commands/revisar-flujo.md` (`/revisar-flujo workflows/NN-nombre.json`): revisión de solo lectura con 11 comprobaciones, de los nombres a `git status`. Acaba con un veredicto.
+  - `.claude/commands/generar-spec.md` (`/generar-spec NN nombre HU-xx`): crea la spec desde la plantilla, con preguntas abiertas en vez de suposiciones. No sobrescribe.
+  - `.claude/commands/cerrar-tarea.md` (`/cerrar-tarea [nº de issue]`): repaso antes del commit y propuesta del mensaje y los `Closes #`. No hace commit.
+  - Cada comando tiene frontmatter `description`, `argument-hint` y `allowed-tools`, y usa `$1`, `$2`, `$3` o `$ARGUMENTS`. `generar-spec` es el único que puede escribir (`Write`); los otros dos solo leen y usan comandos `git` de consulta.
+  - Las comprobaciones salen de errores que ya nos han pasado:
+    - el espacio después de `}}` en el IF `¿Tiene email? (abono)`;
+    - el Mode Run once with all items en `Enviar lista a la tienda`;
+    - los Workflow Inputs de una línea en el `08`;
+    - el export que reescribe el `01` de otra rama;
+    - el `precio` usado como total pagado (recálculo).
+  - `AGENTS.md`, sección 6: tabla con los 3 comandos y una nota para Codex (Beste), que puede pegar el texto como prompt.
+  - **Prueba en esta sesión**, siguiendo las instrucciones del comando:
+    - `/revisar-flujo` sobre el `06` y el `01`: «Listo para PR» en los dos, solo con ⚠️. `validate_workflow` da los dos válidos, sin errores ni avisos. Para validar se simplificaron el código de `Preparar lista` en el `06` y el `texto` de los 4 Execute Workflow del `01`.
+    - `/generar-spec 12 asistente-marisa HU-12` en seco: crearía `specs/12-asistente-marisa.md`. No se creó.
+- **Problemas encontrados:**
+  - **Documentación de Claude Code.** No se consultó en esta sesión: el formato (frontmatter, `$ARGUMENTS`, `$1`…) es el que el agente ya conocía. Queda por comprobar lanzando los comandos en una sesión nueva.
+  - **`docs/revision-secretos.md` no está en `dev`** (está en `docs/entregables-instalacion`). Los comandos lo citan como fuente; hasta que se fusione, las búsquedas están descritas dentro de `revisar-flujo.md`.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#124 (#125, #126) · Comandos personalizados del agente para tareas repetitivas. Nivel Avanzado del README: «Comandos, skills o subagentes personalizados en OpenCode para tareas repetitivas (generar specs, revisar flujos…)». Usamos Claude Code (ver `docs/ai-log.md`, sección 1), así que son **comandos de Claude Code**: archivos Markdown en `.claude/commands/` que se lanzan con `/nombre argumentos`. Rama `feature/124-comandos`. Solo archivos de texto.
+
+Mira la documentación de Claude Code sobre *custom slash commands* (frontmatter `description`, `argument-hint`, `allowed-tools`; `$ARGUMENTS`, `$1`, `$2`) y sigue ese formato. Si no la tienes, dímelo y usa el formato básico (Markdown con `$ARGUMENTS`).
+
+## Fuentes
+
+- `AGENTS.md` (todo, sobre todo secciones 3, 5, 6, 7, 8 y 9), `specs/_plantilla.md`, varias specs ya hechas como ejemplo de estilo (`specs/07-informe-mensual.md`, `specs/11-datafono.md`, `specs/10-sub-workflows.md`).
+- `docs/revision-secretos.md` (las búsquedas de secretos), `docs/credenciales.md`, `docs/ontologia.md`, `scripts/flujos.py`.
+- Los errores que ya nos han pasado y están en `docs/ai-log.md` (por ejemplo: espacio después de `}}` en un IF, Execute Workflow sin Mode «Run once for each item», Workflow Inputs de varias líneas, el export que reescribe el `01` de otra rama).
+
+## Contenido
+
+1. **`.claude/commands/revisar-flujo.md`** · `/revisar-flujo workflows/NN-nombre.json`
+   Revisión **de solo lectura** de un JSON exportado antes de abrir la PR. Informe en español con ✅ / ⚠️ / ❌ y, para cada problema, nodo y motivo. Comprueba al menos:
+   - nombre `NN · …` y nombre de archivo según `scripts/flujos.py`; nodos con nombres descriptivos en español;
+   - **secretos**: ninguna clave, token, contraseña ni cabecera con valor; sin `pinData` ni `shared`; emails solo `@example.com` / `@pasofirme.example` / `@bancoejemplo.example` (las búsquedas de `docs/revision-secretos.md`);
+   - credenciales: los HTTP Request a la app con **Header Auth `API Tienda`**, nunca `X-API-Key` escrita; URL `http://tienda:8000`, nunca `localhost`;
+   - **Settings**: Error workflow = `08` (salvo el `08` y los `10`), zona horaria `Europe/Madrid`;
+   - **Execute Workflow**: Mode «Run once for each item» (`"mode": "each"`), sub-workflow por id que existe en `workflows/`;
+   - **Retry On Fail** solo en `GET`, nunca en `POST`;
+   - IF y expresiones: sin espacio después de `}}`; nada de `abonado`/`pendiente` recalculados (AGENTS.md, sección 9);
+   - `"active"`: avisa si el JSON viene publicado y la spec dice que no;
+   - que exista `specs/NN-….md` y que los nombres de nodo de la spec coincidan con los del JSON;
+   - `validate_workflow` de n8n-mcp, si está disponible, con sus errores y avisos.
+   Termina con «Listo para PR» o «Corregir antes de la PR». **No modifica nada.**
+2. **`.claude/commands/generar-spec.md`** · `/generar-spec NN nombre HU-xx`
+   Crea `specs/NN-nombre.md` a partir de `specs/_plantilla.md`, rellenando desde el README (la HU y sus criterios, el flujo), `docs/ontologia.md` (solo campos que existen), `docs/guia-de-la-app.md` (endpoints y eventos) y las decisiones de `AGENTS.md`. Lo que no se pueda saber, como pregunta abierta en la spec, nunca inventado. Si el archivo ya existe, no lo sobrescribe: avisa. No toca n8n ni `workflows/`. Al final, lista las preguntas abiertas para la pareja.
+3. Un tercero, si lo ves útil y es corto: **`.claude/commands/cerrar-tarea.md`** · `/cerrar-tarea` — antes del commit: `git status`, avisar de `.DS_Store`, de JSON de otros flujos cambiados por el export (y del `git restore`), de secretos en el diff, y proponer el mensaje de commit (Conventional Commits en inglés) y la lista de `Closes #`. No hace commit.
+4. `AGENTS.md`, sección 6 «Herramientas del agente»: los comandos, qué hace cada uno y cuándo usarlo (una línea cada uno). Nota: Codex (Beste) no lee `.claude/commands/`; puede usar el mismo texto pegándolo como prompt.
+5. **Prueba** (la haces tú ahora, en esta sesión, siguiendo las instrucciones de cada comando como si te lo hubieran lanzado):
+   - `revisar-flujo` sobre `workflows/06-recordatorios-y-vencimientos.json` y `workflows/01-eventos-tienda.json`: pega el informe en tu respuesta.
+   - `generar-spec` en seco: di qué archivo crearía para `12 asistente-marisa HU-12` y las primeras secciones, **sin crearlo**.
+6. `docs/ai-log.md`: entrada «### Comandos personalizados de Claude Code · #124» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo `.claude/commands/*.md`, `AGENTS.md` y `docs/ai-log.md`. No toques n8n, `workflows/`, `specs/`, `backend/`, `frontend/`, `docker-compose.yml`, `.env` ni `.claude/settings.local.json`.
+- Ningún comando hace commit, push, merge ni publica flujos.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has creado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
