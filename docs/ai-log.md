@@ -2027,6 +2027,27 @@ Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apa
 
 </details>
 
+### Evidencias de un apartado completo · #144
+
+- **Autora:** Esra
+- **Tarea:** entregable 5 del README. Documentar con capturas un apartado completo (alta → abonos → liquidación) en `docs/evidencias/apartado-completo.md`.
+- **Resultado:**
+  - **La prueba y las capturas las hizo la pareja**, el 28/10/2026, en la app real y con el `01` publicado:
+    - copia de la base de datos en `~/tienda-antes-hu144.db`, restaurada al terminar;
+    - clienta inventada Irene Navarro y apartado #31 (Botín piel marrón, talla 37, 40,00 €);
+    - alta con 10,00 € en efectivo, abono de 15,00 € por bizum y abono de 15,00 € con tarjeta, que lo liquida;
+    - 3 correos en Mailpit y 3 ejecuciones correctas del `01` (08:24:47, 08:25:43 y 08:27:08).
+  - **El agente la documentó** a partir de las 7 capturas de `docs/evidencias/apartado-completo-*.png`, después de mirarlas una a una:
+    - cada paso con su captura de la app, su correo, el evento y la rama del `01`;
+    - una tabla que compara cada cifra de la app con la del correo (todas coinciden);
+    - los criterios de HU-01 y HU-02 que demuestra la prueba.
+  - Enlace al documento en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Asunto sin «¡».** El prompt da el asunto del tercer correo como «¡Ya puedes recoger tus zapatos! Botín piel marrón». En la captura, y en el Send Email `Avisar de que puede recoger` de `workflows/01-eventos-tienda.json`, es «Ya puedes recoger tus zapatos! …», sin el signo de apertura. Se documentó el asunto real y una nota. El flujo no se toca: es una tarea aparte.
+  - **«Menos de un minuto» (HU-01).** Las capturas muestran la hora de la ejecución (08:24:47) y la del correo (8:24), pero no la hora exacta del alta en la app. Se dice así en el documento.
+  - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
+- **Decisión:** pendiente de revisión de la pareja.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
