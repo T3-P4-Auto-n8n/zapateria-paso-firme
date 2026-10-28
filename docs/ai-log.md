@@ -2420,6 +2420,24 @@ El agente siguió con #121 tras completar la comparación #96. Las instrucciones
 
 </details>
 
+### Especificación e identidad Telegram HU-11 (#102)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** preparar el contrato de identificación antes de implementar #100; bot y rol de Marisa aún no configurados.
+- **Resultado:** spec 14 con una entrada por bot, rutas separadas cliente/personal, tabla de permisos externa a la app y aprobación humana por IDs concretos. Nombre/teléfono escrito/contacto propio no conceden acceso automáticamente. Herramienta cliente limitada a IDs aprobados y render financiero determinista. Matriz de pruebas propia/ajena/desconocida, revocación, prompt injection y aislamiento. Revisión independiente sin bloqueos; aclarados mensajes de contacto sin texto y normalización de IDs numéricos antes de comparar.
+- **Problemas encontrados:** la app no tiene login/telegram_user_id ni ID de cliente; no se inventan campos backend ni se confunde un contacto Telegram con titularidad histórica. No existe credencial bot; localhost no sirve como webhook Telegram HTTPS. No se crean túneles ni se publican flujos para fingir pruebas.
+- **Decisión:** entregar #102 para revisión. HU-11 y HU-12 siguen pendientes de implementación y pruebas; se necesita credencial bot, ID Marisa y URL HTTPS autorizada. Ninguna cuenta, tabla, API, bot ni configuración de red modificada en esta tarea.
+
+<details><summary>Prompt</summary>
+
+```text
+ok continue completing them
+```
+
+Preparación independiente de #102 mientras se esperan los datos de conexión Telegram solicitados a Beste.
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
