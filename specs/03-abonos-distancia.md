@@ -1,16 +1,16 @@
 # HU-03 · Abonos a distancia — especificación y tabla de decisión
 
-Estado: especificación de #31 preparada para revisión de la pareja. Primera subtarea: [#31](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/issues/31), historia [#30](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/issues/30).
+Estado: flujo completo construido, exportado y probado manualmente con los nueve correos el 28/10/2026. Un único JSON `workflows/03-abonos-distancia.json` (30 nodos, incluidas 2 notas), export inactivo. IMAP está deshabilitado y sin credencial: la entrada real de buzón no se ha probado. Los resultados y límites están en sección 7. El recibo Carmen se verificó aparte mediante replay de su evento existente al 01, sin otro abono.
 
 ## 1. Cabecera
 
-- **Flujo:** `03 · Abonos a distancia`; futuro JSON `workflows/03-abonos-distancia.json`.
-- **HU:** HU-03, historia #30; esta entrega cubre la especificación #31.
+- **Flujo:** `03 · Abonos a distancia`; JSON `workflows/03-abonos-distancia.json`.
+- **HU:** HU-03, historia #30; esta entrega consolida #31–#40 con las pruebas indicadas.
 - **Nivel:** Esencial.
 - **Responsable:** Beste.
 - **Credenciales y variables:** Header Auth de la API (`X-API-Key`), `Mailpit` (SMTP), credencial del proveedor de IA y Gmail o IMAP para la entrada final. Solo referencias a credenciales; nunca valores.
 - **Dependencias:** HU-02 en workflow 01 para el recibo y workflow 08 para errores técnicos. La pareja importa, prueba y publica los flujos.
-- **Alcance:** #32 entrada, #33 filtro, #34 extracción, #35 búsqueda, #36 decisión, #37 registro, #38 aviso, #39 pruebas y #40 exportación/PR. Este documento define el comportamiento; no acredita que esos pasos estén implementados.
+- **Alcance:** #32 entrada, #33 filtro, #34 extracción, #35 búsqueda, #36 decisión, #37 registro, #38 aviso, #39 pruebas y #40 exportación/PR. Implementación y pruebas manuales completadas; IMAP y errores adicionales conservan los límites documentados.
 
 ## 2. Objetivo y vocabulario
 
@@ -84,15 +84,41 @@ Para #39, guardar en `docs/evidencias/` una tabla con correo, ID de ejecución, 
 
 La app admite `efectivo`, `tarjeta` y `bizum`. Las transferencias se registran como `bizum`, decisión confirmada por el profesor y recogida en AGENTS.md, sección 8. Conservar el medio original en el contexto del aviso para trazabilidad, sin inventar un campo nuevo en la API ni modificar el backend. Nunca omitir `forma_pago`, porque su valor por defecto es `efectivo`.
 
+### Resultados reales · 28/10/2026
+
+La pareja ejecutó los nueve correos por Form Trigger. Todos terminaron **Succeeded**. El agente auditó los registros existentes y capturó las ejecuciones sin repetir pagos. [Resultados estructurados](../docs/evidencias/03-hu03-resultados.json) y [capturas de Mailpit](../docs/evidencias/03-hu03-mailpit-capturas.md).
+
+| Caso | Ejecución | App / decisión | Mailpit |
+|---|---|---|---|
+| 01-carmen | [#34](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/34) · [captura](../docs/evidencias/03-hu03-01-carmen.png) | #1: 19.50 → 9.50, activo; POST 201 | Recibo 10 € por replay al 01 (abono existente #84), sin nuevo registro [email](../docs/evidencias/03-hu03-01-carmen-mailpit.png) |
+| 02-jorge | [#35](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/35) · [captura](../docs/evidencias/03-hu03-02-jorge.png) | #2: 79 → 59, activo; POST 201 | Recibo 20 € [email](../docs/evidencias/03-hu03-02-jorge-mailpit.png) |
+| 03-lucia | [#60](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/60) · [captura](../docs/evidencias/03-hu03-03-lucia.png) | #3: 12 → 0, liquidado; POST 201 | Aviso de recogida tras pagar 12 € [email](../docs/evidencias/03-hu03-03-lucia-mailpit.png) |
+| 04-laura | [#62](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/62) · [captura](../docs/evidencias/03-hu03-04-laura.png) | #12: sigue 10, activo; no se ejecuta POST | Aviso: 15 € supera pendiente 10 € [email](../docs/evidencias/03-hu03-04-laura-mailpit.png) |
+| 05-romero | [#63](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/63) · [captura](../docs/evidencias/03-hu03-05-romero.png) | #11: sigue 15, activo; no se ejecuta POST | Aviso: falta concepto suficiente [email](../docs/evidencias/03-hu03-05-romero-mailpit.png) |
+| 06-paula | [#64](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/64) · [captura](../docs/evidencias/03-hu03-06-paula.png) | #16: sigue 59.50, activo fuera de plazo; no POST ni vale | Aviso: fecha límite 28/09/2026 superada [email](../docs/evidencias/03-hu03-06-paula-mailpit.png) |
+| 07-desconocido | [#65](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/65) · [captura](../docs/evidencias/03-hu03-07-desconocido.png) | Sin registro ni apartado nuevo; no se ejecuta POST | Aviso: ninguno coincide claramente tras contraste determinista [email](../docs/evidencias/03-hu03-07-desconocido-mailpit.png) |
+| 08-publicidad | [#66](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/66) · [captura](../docs/evidencias/03-hu03-08-publicidad.png) | Ignorar publicidad; no Groq, búsqueda, POST ni envío | Ningún correo: nodo de email no ejecutado |
+| 09-silvia | [#67](http://localhost:5678/workflow/ysSI1lp7LPAfGphe/executions/67) · [captura](../docs/evidencias/03-hu03-09-silvia.png) | #24: 35 → 30, activo; POST 201 | Recibo 5 € [email](../docs/evidencias/03-hu03-09-silvia-mailpit.png) |
+
+**Recuento:** cuatro registros nuevos reales (#84–#87) por **47 €** (10+20+12+5), todos `forma_pago=bizum`; cuatro avisos y un descarte. Los tres recibos y el aviso de recogida están capturados. Los errores históricos previos por credenciales no se presentan como éxitos.
+
+**Diferencias respecto al caso ideal:** Carmen (#34) y Jorge (#35) se probaron con asuntos descriptivos en inglés, manteniendo el cuerpo bancario; las otras pruebas usan los asuntos de los .eml. El recibo original de Carmen no estaba en Mailpit; se reprodujo solo su evento `abono.registrado` existente por petición expresa de Beste. [Prueba antes/después](../docs/evidencias/03-hu03-01-carmen-recibo-replay.json): pendiente 9.50, abonado 25 e IDs de abonos [1,2,84] iguales. Acredita el recibo HU-02 por separado, no un segundo pago ni una ejecución original con entrega observada.
+
+Desconocido recibió candidatos amplios de la API (búsqueda conservadora), pero ninguno pasó el contraste de identidad/concepto; no se registró nada. No se afirma que la API devolviera literalmente cero filas. Romero llegó a decisión sin concepto y se revisó; no se asignó automáticamente a David.
+
+**Restauración:** se verificó la copia original `~/tienda-antes-hu03.db` y se creó antes una copia adicional del estado posterior `~/tienda-antes-cierre-hu03-20261028.db`. Comparación de las cuatro tablas: solo 4 abonos añadidos y el estado de #3 cambiados; sin cambios en ventas, vales u otros apartados. Se restauró la original y reinició tienda. GET posterior: pendientes #1 19.50, #2 79, #3 12 activo, #12 10, #11 15, #16 59.50 activo fuera de plazo, #24 35; conteos de abonos iniciales recuperados. Los emails y ejecuciones se conservaron como evidencia.
+
+**Límites:** 35 pruebas locales cubren también varios candidatos, 404/401/422/5xx, respuesta inválida y transporte. No se afirma haber ejecutado todos esos errores en n8n. No hay deduplicación persistente de correos; no releer pagos sin conciliar. IMAP y ejecución automática desde buzón no probados; seguir desactivado hasta configurar y revisar con la pareja. El Error workflow 08 solo avisa en producción, no en estas pruebas manuales.
+
 ## 8. Criterios de aceptación
 
-- [ ] Los correos que no son un pago (como la publicidad del banco) se ignoran.
-- [ ] De cada pago se extraen ordenante, importe y concepto, y se busca el apartado por API.
-- [ ] Si hay un único apartado claro, se registra el abono y el cliente recibe su recibo (HU-02).
-- [ ] Si el pago es dudoso (varios apartados posibles, sin concepto o cliente desconocido), no se registra nada y se pregunta a Marisa.
-- [ ] Si el importe supera lo pendiente o el apartado está fuera de plazo, no se registra nada y se avisa a Marisa con el motivo.
-- [ ] El flujo resuelve bien los correos de `data/correos/`.
+- [x] Los correos que no son un pago (como la publicidad del banco) se ignoran.
+- [x] De cada pago se extraen ordenante, importe y concepto, y se busca el apartado por API.
+- [x] Si hay un único apartado claro, se registra el abono y el cliente recibe su recibo (HU-02).
+- [x] Si el pago es dudoso (varios apartados posibles, sin concepto o cliente desconocido), no se registra nada y se pregunta a Marisa.
+- [x] Si el importe supera lo pendiente o el apartado está fuera de plazo, no se registra nada y se avisa a Marisa con el motivo.
+- [x] El flujo resuelve bien los correos de `data/correos/`.
 
-Los criterios quedan sin marcar hasta las pruebas reales del flujo (#39).
+Los criterios se acreditan con las ejecuciones y capturas de la sección 7. IMAP sigue fuera de la evidencia: el criterio funcional se probó por formulario. Carmen combina ejecución 34 y replay de recibo al 01, no una entrega original observada en 34.
 
 Fuentes locales: `README.md` (HU-03 y tabla de correos), `data/correos/`, `backend/seed.py`, `backend/tests/test_datos_de_ejemplo.py`, rutas/controladores/modelos de apartados y abonos, `backend/config.py`.

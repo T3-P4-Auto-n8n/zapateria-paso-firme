@@ -166,65 +166,11 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        32,
-        -368
+        -80,
+        -560
       ],
       "id": "80b4cb36-fa64-490c-89af-f5fbcfc5faef",
       "name": "¿Tiene email?"
-    },
-    {
-      "parameters": {
-        "fromEmail": "tienda@pasofirme.example",
-        "toEmail": "={{ $json.body.datos.email }}",
-        "subject": "=Tu apartado en Paso Firme: {{ $json.body.datos.producto }}",
-        "emailFormat": "text",
-        "text": "=Hola {{ $json.body.datos.cliente }}:\n\nHemos registrado tu apartado n.º {{ $json.body.datos.id }} en Zapatería Paso Firme.\n\nModelo: {{ $json.body.datos.producto }}\nTalla: {{ $json.body.datos.talla }}\nPrecio: {{ $json.body.datos.precio.toFixed(2) }} €\nAbonado: {{ $json.body.datos.abonado.toFixed(2) }} €\nPendiente: {{ $json.body.datos.pendiente.toFixed(2) }} €\nFecha límite: {{ DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') }}\n\nPuedes pagar lo pendiente en abonos de cualquier importe antes de la fecha límite.\n\nGracias,\nZapatería Paso Firme",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        192,
-        -464
-      ],
-      "id": "e72354a4-704b-48de-b8cc-0e29db251369",
-      "name": "Enviar confirmación al cliente",
-      "webhookId": "edaed55e-76ae-4fde-b528-84f3f422a759",
-      "credentials": {
-        "smtp": {
-          "id": "fJ41sXzJzc6Ciubq",
-          "name": "Mailpit"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "fromEmail": "tienda@pasofirme.example",
-        "toEmail": "tienda@pasofirme.example",
-        "subject": "=Apartado {{ $json.body.datos.id }} sin email: no se envió la confirmación",
-        "emailFormat": "text",
-        "text": "=No se pudo enviar la confirmación del apartado porque el cliente no tiene email.\n\nApartado: {{ $json.body.datos.id }}\nCliente: {{ $json.body.datos.cliente }}\nTeléfono: {{ $json.body.datos.telefono || 'sin teléfono' }}\nProducto: {{ $json.body.datos.producto }} (talla {{ $json.body.datos.talla }})\n\nAvisad al cliente por teléfono o en la tienda.",
-        "options": {
-          "appendAttribution": false
-        }
-      },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        192,
-        -288
-      ],
-      "id": "8a0ba270-249d-4d08-8422-225c08cf2ff8",
-      "name": "Avisar a la tienda: sin email",
-      "webhookId": "8debb57b-18c1-42f6-8fd1-9c635328dec8",
-      "credentials": {
-        "smtp": {
-          "id": "fJ41sXzJzc6Ciubq",
-          "name": "Mailpit"
-        }
-      }
     },
     {
       "parameters": {
@@ -255,8 +201,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        96,
-        -112
+        0,
+        -320
       ],
       "id": "11bbf3a5-7ca7-465b-99b3-c6be415a13d4",
       "name": "¿Tiene email? (abono)"
@@ -290,8 +236,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        336,
-        -128
+        224,
+        -288
       ],
       "id": "293bbaf9-48a4-41a2-9e88-13fb2a8ed922",
       "name": "¿Liquidado?"
@@ -310,8 +256,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        496,
-        -48
+        480,
+        -208
       ],
       "id": "350db7d0-b73e-432c-ad9c-799338d5bdb9",
       "name": "Enviar recibo del abono",
@@ -337,8 +283,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        496,
-        -224
+        560,
+        -384
       ],
       "id": "8524d69f-a966-43e5-980e-696b5df19858",
       "name": "Avisar de que puede recoger",
@@ -374,8 +320,8 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        96,
-        64
+        144,
+        -128
       ],
       "id": "1388dfec-60ad-49ef-a7af-07864d52028e",
       "name": "Leer umbral de venta grande",
@@ -410,8 +356,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        288,
-        96
+        320,
+        -48
       ],
       "id": "ca8e2ebd-6aaa-4d06-9e2f-9c87a6c6922c",
       "name": "¿Hay umbral?"
@@ -423,8 +369,8 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        432,
-        192
+        784,
+        96
       ],
       "id": "db5a08d2-daf8-4907-b123-51f93edd70d2",
       "name": "Falta el umbral"
@@ -457,8 +403,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.4,
       "position": [
-        544,
-        112
+        608,
+        -48
       ],
       "id": "7f465eb1-414c-4182-ad20-26acd55a56e6",
       "name": "¿Venta grande?"
@@ -477,8 +423,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        704,
-        16
+        832,
+        -176
       ],
       "id": "a2c774ac-2673-481c-a994-ec0c8b51fc57",
       "name": "Avisar a la tienda: venta grande",
@@ -489,6 +435,328 @@
           "name": "Mailpit"
         }
       }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "={{ $json.body.datos.email }}",
+            "asunto": "=Tu apartado en Paso Firme: {{ $json.body.datos.producto }}",
+            "texto": "={{ 'Hola ' + $json.body.datos.cliente + ':\\n\\nHemos registrado tu apartado n.º ' + $json.body.datos.id + ' en Zapatería Paso Firme.\\n\\nModelo: ' + $json.body.datos.producto + '\\nTalla: ' + $json.body.datos.talla + '\\nPrecio: ' + $json.body.datos.precio.toFixed(2) + ' €\\nAbonado: ' + $json.body.datos.abonado.toFixed(2) + ' €\\nPendiente: ' + $json.body.datos.pendiente.toFixed(2) + ' €\\nFecha límite: ' + DateTime.fromISO($json.body.datos.fecha_limite).toFormat('dd/MM/yyyy') + '\\n\\nPuedes pagar lo pendiente en abonos de cualquier importe antes de la fecha límite.\\n\\nGracias,\\nZapatería Paso Firme' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        144,
+        -624
+      ],
+      "id": "a549c6b3-c2d5-4f07-8fab-c0162800dde8",
+      "name": "Enviar confirmación al cliente"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "=Apartado {{ $json.body.datos.id }} sin email: no se envió la confirmación",
+            "texto": "={{ 'No se pudo enviar la confirmación del apartado porque el cliente no tiene email.\\n\\nApartado: ' + $json.body.datos.id + '\\nCliente: ' + $json.body.datos.cliente + '\\nTeléfono: ' + ($json.body.datos.telefono || 'sin teléfono') + '\\nProducto: ' + $json.body.datos.producto + ' (talla ' + $json.body.datos.talla + ')\\n\\nAvisad al cliente por teléfono o en la tienda.' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        336,
+        -512
+      ],
+      "id": "c3dce7f7-7022-4eef-a096-7186dafc9cfb",
+      "name": "Avisar a la tienda: sin email"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "617f908f-6ac3-4285-9ccb-1b9403cc4620",
+              "leftValue": "={{ $json.body.datos.apartado.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        16,
+        32
+      ],
+      "id": "a1485d96-2765-466b-8f68-d1e65fe14150",
+      "name": "¿Tiene email? (vencido)"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "={{ $json.body.datos.apartado.email }}",
+            "asunto": "=Tu apartado n.º {{ $json.body.datos.apartado.id }} ha vencido: tu vale de {{ $json.body.datos.vale.importe.toFixed(2) }} €",
+            "texto": "={{ 'Hola ' + $json.body.datos.apartado.cliente + ':\\n\\nEl plazo de tu apartado n.º ' + $json.body.datos.apartado.id + ' en Zapatería Paso Firme terminó el ' + DateTime.fromISO($json.body.datos.apartado.fecha_limite).toFormat('dd/MM/yyyy') + ' sin que se completara el pago, así que los zapatos vuelven a la venta.\\n\\nModelo: ' + $json.body.datos.apartado.producto + '\\nTalla: ' + ($json.body.datos.apartado.talla || 'sin talla') + '\\n\\nLo que habías abonado no se pierde: lo tienes en un vale de compra.\\n\\nCódigo del vale: ' + $json.body.datos.vale.codigo + '\\nImporte: ' + $json.body.datos.vale.importe.toFixed(2) + ' €\\n\\nPuedes usarlo en tu próxima compra en la tienda: enséñanos este correo o dinos el código. El vale no se cambia por dinero en efectivo.\\n\\nGracias,\\nZapatería Paso Firme' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        384,
+        80
+      ],
+      "id": "a7c9d2a5-0bed-4a89-9773-d27466a467e5",
+      "name": "Enviar vale al cliente"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "=Apartado {{ $json.body.datos.apartado.id }} vencido sin email: no se envió el vale",
+            "texto": "={{ 'No se pudo enviar el vale al cliente porque no tiene email.\\n\\nApartado: ' + $json.body.datos.apartado.id + '\\nCliente: ' + $json.body.datos.apartado.cliente + '\\nTeléfono: ' + ($json.body.datos.apartado.telefono || 'sin teléfono') + '\\nProducto: ' + $json.body.datos.apartado.producto + ' (talla ' + ($json.body.datos.apartado.talla || 'sin talla') + ')\\nVale: ' + $json.body.datos.vale.codigo + ' de ' + $json.body.datos.vale.importe.toFixed(2) + ' €\\n\\nAvisad al cliente por teléfono o cuando venga a la tienda.' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        208
+      ],
+      "id": "02a53ad5-5279-48e7-800e-d17b0446abe9",
+      "name": "Avisar a la tienda: vencido sin email"
     }
   ],
   "connections": {
@@ -522,6 +790,13 @@
         [
           {
             "node": "Leer umbral de venta grande",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Tiene email? (vencido)",
             "type": "main",
             "index": 0
           }
@@ -614,6 +889,24 @@
           }
         ]
       ]
+    },
+    "¿Tiene email? (vencido)": {
+      "main": [
+        [
+          {
+            "node": "Enviar vale al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar a la tienda: vencido sin email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -622,7 +915,8 @@
     "timeSavedMode": "fixed",
     "errorWorkflow": "z1T27bO8VvzyoL18",
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timezone": "Europe/Madrid"
   },
   "meta": {
     "templateCredsSetupCompleted": true
@@ -630,5 +924,5 @@
   "tags": [],
   "active": true,
   "id": "cDr6t9FK9qRYt4Fn",
-  "versionId": "8b432a79-4465-451a-a003-3dc108481b65"
+  "versionId": "e8c23bb4-70f3-4c3b-b552-8f7031029335"
 }

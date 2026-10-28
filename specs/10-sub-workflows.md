@@ -88,6 +88,7 @@ Estos campos no son de la ontología: son la interfaz del sub-workflow, igual qu
 4. Los dos `GET` llevan Authentication **Generic Credential Type → Header Auth → `API Tienda`** y, en Options, **Include Response Headers and Status** y **Never Error**.
    - Siempre devuelven **un item** `{ statusCode, body }`, también con una lista vacía. No hace falta Always Output Data.
    - Un `404` no para el flujo.
+   - **Settings → Retry On Fail:** 3 intentos, 2000 ms. Con Never Error solo se reintentan los errores sin respuesta (app parada, tiempo agotado); un `401` o un `5xx` llegan a `Preparar resultado` sin reintento ([specs/08-error-workflow.md](08-error-workflow.md#reintentos), #56).
 5. `Preparar resultado` (Code), al que llegan las dos ramas:
    - **`200`:** la lista de apartados (por número, una lista de uno). Si se buscó por número y llega `estado`, se filtra también por `estado`.
    - **`404` por número:** lista vacía.
@@ -130,17 +131,24 @@ Con 0 resultados: `{ "total": 0, "apartados": [] }`. **No es un error:** el fluj
 | Workflow | Nodo actual | Se sustituye por | Cuándo |
 |---|---|---|---|
 | `08 · Error Workflow` | `Avisar a la tienda del error` | `Enviar notificación` | **En este PR** (4.4) |
-| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Pendiente, en una PR aparte |
-| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Pendiente, en una PR aparte |
-| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Pendiente, en una PR aparte |
+| `01 · Eventos de la tienda`, flujo 1 (HU-01) | `Enviar confirmación al cliente` · `Avisar a la tienda: sin email` | `Enviar notificación` | **En la PR de #95 (ejemplo)**, ver [specs/01-eventos-tienda.md](01-eventos-tienda.md) |
+| `01`, flujo 2 (HU-02) | `Enviar recibo del abono` · `Avisar de que puede recoger` | `Enviar notificación` | Se queda con Send Email (opcional) |
+| `01`, flujo 4 (HU-09) | `Avisar a la tienda: venta grande` | `Enviar notificación` | Se queda con Send Email (opcional) |
+| `07 · Informe mensual` | `Enviar informe mensual` (HTML) | `Enviar notificación` con `html` | Se queda con Send Email (opcional) |
+| `09 · Migración del Excel` | `Enviar informe de migración` | `Enviar notificación` | Se queda con Send Email (opcional) |
 | `03 · Abonos a distancia` (Beste, PR #158) | Pasos 2 y 3 de su spec: `GET /api/apartados/{id}` y `GET /api/apartados?estado=activo&q=...` | `Buscar apartado`: con `id` (sin `estado`, para poder avisar si está liquidado o fuera de plazo) o con `texto` y `estado` `activo` | Lo decide Beste al construirlo o corregirlo |
 | `03` | Consulta o rechazo a Marisa (sección 5 de su spec) | `Enviar notificación` | Igual |
-| `06 · Recordatorios y vencimientos` (Beste, sin empezar) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` | Al construirlo |
-| `06` | Recordatorios al cliente (7 días y 1 día), aviso del vale al cliente (HU-07) y lista de zapatos que vuelven a la venta a la tienda | `Enviar notificación` | Al construirlo |
+| `06 · Recordatorios y vencimientos` (vencimientos: Esra, HU-07, [specs/06-recordatorios-vencimientos.md](06-recordatorios-vencimientos.md); recordatorios: Beste) | Leer los apartados activos | `Buscar apartado` con `estado` `activo` (`Leer apartados activos`) | Al construirlo |
+| `06` | Recordatorios al cliente (7 días y 1 día) y lista de zapatos que vuelven a la venta a la tienda (`Enviar lista a la tienda`) | `Enviar notificación` | Al construirlo |
+| `01`, rama `apartado.vencido` (HU-07) | Vale al cliente (`Enviar vale al cliente`) y aviso a la tienda si no tiene email (`Avisar a la tienda: vencido sin email`) | `Enviar notificación` | Al construirla ([specs/01-eventos-tienda.md](01-eventos-tienda.md)) |
 
-- Los PR #159, #160 y #161 ya están fusionados en `dev`. El cambio de `01`, `07` y `09` no va en este PR para no mezclarlo con #92 y para repetir sus pruebas por separado.
+- Los PR #159, #160 y #161 ya están fusionados en `dev`.
+- **Por qué el flujo 1 como ejemplo:** la prueba de HU-05 (`error-email-espacio.json`) pasa por `Enviar confirmación al cliente`. Con el cambio comprueba también que un error del sub-workflow lo avisa el `08` del flujo que llama, lo que quedó pendiente al construir #92.
+- **Por qué los demás se quedan con Send Email (opcional):**
+  - ya funcionan y están probados;
+  - el correo sería el mismo;
+  - cambiarlos obliga a reescribir cada texto como expresión de una línea y a repetir todas sus pruebas.
+  - El uso del sub-workflow ya queda demostrado con el `08` y el flujo 1. Se pueden cambiar más adelante, uno por PR.
 - El `POST /api/apartados/{id}/vencer` del flujo 6 **no** pasa a un sub-workflow: solo se reutilizan la búsqueda y el envío.
 - Los flujos 1 y 2 no usan `Buscar apartado`: el webhook ya trae el apartado actualizado.
 - **#95** («usarlos desde los flujos 1, 2, 3, 6») queda **abierta**: este PR solo la referencia (`Refs #95`). Se cierra cuando los cuatro flujos usen los sub-workflows.
@@ -184,8 +192,14 @@ El `08` está en `dev` y ningún PR abierto lo toca.
 
 **Cómo llega un error al `08`:** los sub-workflows no tienen Error workflow. Si un sub-workflow para con error, falla el nodo **Execute Workflow** del flujo que llama, y con él la ejecución del que llama. Su `08` avisa con:
 - el flujo que llama;
-- el paso, que es el nombre del nodo Execute Workflow (por ejemplo, `Avisar a la tienda: venta grande`);
-- el mensaje del sub-workflow.
+- el paso, que es el nombre del nodo Execute Workflow (por ejemplo, `Enviar confirmación al cliente`);
+- el mensaje **genérico de n8n** «Error executing workflow with item at index 0», no el del sub-workflow. n8n no lo pasa al nodo que llama.
+
+**El motivo real** («Enviar notificación: falta `para`», «Buscar apartado: la app respondió 401: ...») solo está en la ejecución del sub-workflow. Para verlo:
+- abrir la ejecución del enlace del aviso y, desde el nodo Execute Workflow, ir a la sub-ejecución;
+- o buscar en las ejecuciones del sub-workflow la de la misma hora.
+
+Se comprobó en #95 con la prueba de HU-05 ([specs/01-eventos-tienda.md](01-eventos-tienda.md), sección 7).
 
 Como siempre, solo en ejecuciones de producción.
 
@@ -195,7 +209,7 @@ Como siempre, solo en ejecuciones de producción.
 | Buscar apartado | `estado` no válido o `id` que no es un entero positivo | Para con error |
 | Buscar apartado | Sin resultados (texto que no encuentra nada, o `404` por número) | **No es error:** `{ total: 0, apartados: [] }` |
 | Buscar apartado | La API responde `401` (credencial `API Tienda` mal) u otro código que no es `200` ni el `404` por número | Para con error con el código y el `detail`; lo avisa el `08` del flujo que llama |
-| Buscar apartado | La app no responde | Falla el `GET` (Never Error no cubre los errores de red); igual que el `401` |
+| Buscar apartado | La app no responde | El `GET` se reintenta (3 intentos, 2 s); si sigue sin responder, falla (Never Error no cubre los errores de red) y lo avisa el `08` del flujo que llama |
 | Buscar apartado | Varios resultados | Se devuelven todos; elegir uno es cosa del flujo que llama (en el flujo 3, varios candidatos = consulta a Marisa) |
 | Enviar notificación | Falta `para`, `asunto` o el cuerpo, o `para` sin `@` | Para con error sin enviar nada |
 | Enviar notificación | Mailpit caído o credencial `Mailpit` mal | Falla el Send Email; lo avisa el `08` del flujo que llama, salvo si quien llama es el propio `08` (4.4) |
@@ -307,7 +321,7 @@ Las issues #92–#95 no traen checklist: solo el título. Los criterios salen de
 - [x] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
 - [x] El `08` envía su aviso con `Enviar notificación` y el correo llega igual que antes.
 - [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta, `Refs #95`):
-  - [ ] Flujo 1 (`01`, HU-01)
-  - [ ] Flujo 2 (`01`, HU-02)
+  - [x] Flujo 1 (`01`, HU-01): en la PR de #95 (ejemplo), probado
+  - [ ] Flujo 2 (`01`, HU-02): se queda con Send Email (opcional, 4.3)
   - [ ] Flujo 3 (`03`, Beste)
   - [ ] Flujo 6 (`06`, Beste)

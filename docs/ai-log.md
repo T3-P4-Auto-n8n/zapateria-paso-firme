@@ -1285,7 +1285,7 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
     - **`401`:** no se hizo; obligaba a crear una credencial falsa. El camino de error está en `Preparar resultado`.
   - Lo pendiente de comprobar del código, después de construir:
     - **Publicar:** los dos sub-workflows están publicados (`"active": true`).
-    - **Error del sub-workflow en el `08` del que llama:** sigue sin comprobarse. Ningún flujo con `08` llama todavía a un sub-workflow; se verá en la PR de #95.
+    - **Error del sub-workflow en el `08` del que llama:** comprobado en #95 (ver «Construcción del flujo 1 con `Enviar notificación` · #95»).
     - **Respuesta del HTTP Request y campos vacíos:** todas las pruebas dieron lo esperado. El código acepta las dos formas, así que no hizo falta mirar cuál llega.
   - Esta vez no hizo falta `git restore` del `01` tras exportar: la rama ya tiene `dev` con #159, #160 y #161 fusionados.
 - **Problemas encontrados:**
@@ -1308,6 +1308,1094 @@ Issue #92 (sub-issues #93, #94, #95), nivel Medio: «Sub-workflows reutilizables
 - **Prompt resumido:** «Empezar y terminar HU-04, cubrir todos los requisitos y minimizar preguntas». No se hicieron cambios en backend/frontend/compose/.env, ni en los archivos HU-03.
 - **Entrega:** [PR #173](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/pull/173), borrador a dev desde feature/hu04-cierre-diario, con código, spec y evidencia real de las pruebas aisladas.
 - **Decisión:** implementación preparada para revisión; historia pendiente de configuración OAuth y ejecución completa. No afirmar entrega de producción.
+
+### Spec del flujo 1 con `Enviar notificación` · #95 (`specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** #95 (parte de #92): spec y valores para pegar para que los 2 correos del flujo 1 (`Enviar confirmación al cliente` y `Avisar a la tienda: sin email`) se envíen con `10 · Enviar notificación`. Es el ejemplo de uso. Solo documentación; la pareja cambia los nodos a mano en n8n.
+- **Resultado:**
+  - **`~/subflujos/LEEME-95.md`** (fuera del repo):
+    - pasos para cambiar cada Send Email por un Execute Workflow con el mismo nombre y las mismas conexiones (Mode Run once for each item, Wait For Sub-Workflow Completion);
+    - los Workflow Inputs `para`, `asunto` y `texto` de cada nodo, cada uno en su bloque;
+    - las 3 pruebas con sus `curl`.
+  - **`texto` como una sola expresión de una línea con `\n`**, como el del `08`, con `toFixed(2)`, la fecha `dd/MM/yyyy` y `|| 'sin teléfono'` entre paréntesis.
+  - **Comprobado en local con node y Luxon:** con `apartado.creado.json` y `apartado.creado-sin-email.json`, las expresiones nuevas dan **exactamente** el mismo `para`, `asunto` y `texto` que las plantillas actuales de `workflows/01-eventos-tienda.json`.
+  - **`specs/01-eventos-tienda.md`:**
+    - nota de alcance;
+    - pasos 4 y 5 con los Execute Workflow y sus valores;
+    - sección 6: los casos de `email` `" "` y de importes que faltan;
+    - sección 7: las pruebas de #95.
+  - **`specs/08-error-workflow.md`, sección 7:** con el cambio, la prueba de HU-05 ya no falla en el Send Email («No recipients defined»). Falla en `Comprobar la notificación` del sub-workflow («Enviar notificación: falta `para`»). El `08` avisa con el paso `Enviar confirmación al cliente`; el texto exacto del error queda a comprobar.
+  - **`specs/10-sub-workflows.md`:**
+    - en la sección 4.3, el flujo 1 va «en la PR de #95 (ejemplo)» y los demás Send Email del `01`, el `07` y el `09` «se quedan con Send Email (opcional)», con el porqué;
+    - en la sección 8, el flujo 1 queda sin marcar hasta probarlo.
+- **Problemas encontrados:**
+  - **`error-email-espacio.json` no trae `precio`, `abonado` ni `pendiente`.** En local, la expresión nueva de `texto` lanza `TypeError` en el `.toFixed(2)`.
+    - Con el Send Email, n8n dejaba vacío ese trozo de la plantilla y seguía hasta «No recipients defined». Lo dicen la spec del `08` («las expresiones de n8n con campos que faltan dan texto vacío») y el resultado real de HU-05.
+    - Lo esperado ahora es que deje vacío todo el `texto` y que el sub-workflow pare por `para`, que comprueba primero.
+    - Si n8n hiciera fallar el Execute Workflow por la expresión, el `08` avisaría igual, pero el error no vendría del sub-workflow y lo pendiente de #92 no quedaría comprobado. Queda **a comprobar** en la prueba.
+  - **Diferencia con datos incompletos.** Un campo `null` sale como `null` en la expresión nueva y en blanco en la plantilla antigua. Si falta un importe, antes llegaba un correo con campos vacíos; ahora (a comprobar) el sub-workflow para con error y avisa el `08`. Con los payloads de prueba completos no hay diferencia.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#95 (parte de #92): como ejemplo de uso, el **flujo 1** del `01 · Eventos de la tienda` pasa a enviar sus 2 correos con el sub-workflow `10 · Enviar notificación`, en lugar de sus 2 nodos Send Email: `Enviar confirmación al cliente` y `Avisar a la tienda: sin email`. La pareja cambiará los nodos a mano en n8n; tú preparas la spec y los valores exactos para pegar. Estamos en la rama `feature/95-sub-workflows-en-01` (sale de `dev`, que ya tiene #159, #160, #161 y #162).
+
+**Alcance:** solo esos 2 nodos. Los flujos 2 y 4 del `01`, el `07` y el `09` se quedan con su Send Email; los flujos 3 y 6 son de Beste. #95 sigue abierta (`Refs #95`). Se elige el flujo 1 porque la prueba de HU-05 (`error-email-espacio.json`) pasa por `Enviar confirmación al cliente`: así se comprueba también que un error del sub-workflow lo avisa el `08` del flujo que llama (pendiente en `docs/ai-log.md`, #92).
+
+## Fuentes
+
+- `workflows/01-eventos-tienda.json` (los 2 Send Email del flujo 1).
+- `specs/01-eventos-tienda.md`, `specs/08-error-workflow.md`, `specs/10-sub-workflows.md` (secciones 3, 4.3 y 4.4), `workflows/10-enviar-notificacion.json`, `workflows/08-error-workflow.json` (cómo quedó su Execute Workflow), `AGENTS.md`, `docs/ai-log.md`.
+- `tests/payloads/` (los de `apartado.creado` con y sin email, y `error-email-espacio.json`).
+
+## Contenido
+
+1. `~/subflujos/LEEME-95.md` (fuera del repo), para la pareja:
+   - Pasos para cada uno de los 2 nodos: borrar el Send Email, añadir un **Execute Workflow** con **el mismo nombre** y las mismas conexiones, **Source** Database, **Workflow** `10 · Enviar notificación` (From list), **Mode** Run once for each item, **Options → Wait For Sub-Workflow Completion** activado.
+   - Para cada nodo, los **Workflow Inputs** `para`, `asunto` y `texto` listos para pegar (`html` vacío). Los campos de Workflow Inputs son de **una sola línea**: `texto` tiene que ser **una sola expresión en una línea** con `\n` (como el `texto` del `08`). El correo tiene que quedar **igual** que el de ahora (mismas líneas, `toFixed(2)`, fecha `dd/MM/yyyy`, `|| 'sin teléfono'`).
+   - Cada valor en su propio bloque de código, para copiarlo de uno en uno.
+   - Las pruebas (abajo) con los `curl` exactos.
+2. **Comprueba los textos con node**: para cada nodo, evalúa la expresión nueva y la plantilla actual del JSON con el payload de prueba que le toca (simula `$json` y `DateTime` de Luxon si no está instalado, sin instalar nada en el repo) y confirma que dan **exactamente** el mismo texto. Dime el resultado.
+3. `specs/01-eventos-tienda.md`: los 2 nodos del flujo 1 pasan a ser Execute Workflow a `10 · Enviar notificación`; el resto igual. Nota de alcance de esta versión.
+4. `specs/08-error-workflow.md`, sección 7: con el cambio, el `email` `" "` ya no falla en el Send Email sino en `Comprobar la notificación` del sub-workflow («Enviar notificación: falta `para`»). Escribe qué se espera ahora (el `08` avisa con el paso `Enviar confirmación al cliente` del `01` y el mensaje que llegue del sub-workflow; si no sabes el texto exacto que pone n8n, déjalo como «a comprobar»).
+5. `specs/10-sub-workflows.md`: sección 4.3, el flujo 1 «en la PR de #95 (ejemplo)» y los demás nodos del `01`, el `07` y el `09` «se quedan con Send Email (opcional)», con el porqué. Sección 8: el criterio del flujo 1 sin marcar hasta probarlo.
+6. `docs/ai-log.md`: entrada «### Spec del flujo 1 con `Enviar notificación` · #95 (`specs/01-eventos-tienda.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Pruebas (ponlas en la spec del `01`, sección 7, y en `LEEME-95.md`)
+
+- Flujo 1 con email: llega la confirmación al cliente, igual que antes.
+- Flujo 1 sin email: llega el aviso a la tienda, igual que antes.
+- HU-05 con `error-email-espacio.json` a la Production URL: llega el aviso del `08`.
+- En cada correo: remitente `tienda@pasofirme.example`, sin firma de n8n, saltos de línea correctos.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del flujo 1 con `Enviar notificación` · #95 (`workflows/01-eventos-tienda.json`)
+
+- **Autora:** Esra
+- **Tarea:** cambiar en n8n los 2 nodos de la rama HU-01 del `01` (`Enviar confirmación al cliente` y `Avisar a la tienda: sin email`) por Execute Workflow a `10 · Enviar notificación`, según `specs/01-eventos-tienda.md`, probarlo y exportarlo.
+- **Resultado:**
+  - La pareja cambió los 2 Send Email por Execute Workflow con el mismo nombre y las mismas conexiones, y pegó los valores de `~/subflujos/LEEME-95.md`.
+  - El JSON exportado solo cambia en esos 2 nodos (conexiones y settings iguales). Lleva Mode `each`, y los dos `texto` son idénticos a las expresiones comprobadas en local.
+  - Wait For Sub-Workflow Completion queda en su valor por defecto (activado), por eso no aparece en `options`.
+  - `validate_workflow` de n8n-mcp: válido, 14 nodos, sin errores ni avisos.
+  - **Pruebas:**
+    - **Con email** (`apartado.creado.json`, Test URL): llega a `carmen@example.com` «Tu apartado en Paso Firme: Botín piel marrón», desde `tienda@pasofirme.example`, sin firma y con el texto idéntico al de antes.
+    - **Sin email** (`apartado.creado-sin-email.json`, Test URL): llega a la tienda «Apartado 26 sin email: no se envió la confirmación», idéntico al de antes.
+    - **HU-05** (`error-email-espacio.json`, Production URL): 3 ejecuciones:
+      - el `01` (100) en error en `Enviar confirmación al cliente`;
+      - `10 · Enviar notificación` (101) en error en `Comprobar la notificación`, «falta `para`»;
+      - el `08` (102) correcto: avisa con el paso `Enviar confirmación al cliente` y el enlace a la 100.
+  - Queda comprobado lo pendiente de #92: un error dentro de un sub-workflow hace fallar el nodo que lo llama, y lo avisa el `08` del flujo que llama.
+- **Lo observado:**
+  - **Mensaje genérico.** n8n no pasa el mensaje del sub-workflow al nodo que lo llama. El Execute Workflow falla con «Error executing workflow with item at index 0», y es lo que dice el aviso del `08`. El motivo real solo se ve en la sub-ejecución. Las specs `01` (sección 7), `08` (sección 7) y `10` (sección 6) explican cómo encontrarla.
+  - **Payload incompleto.** Con `error-email-espacio.json` (sin `precio`), el sub-workflow recibió `{ "para": "{{ $json.body.datos.email }}", "asunto": "Tu apartado en Paso Firme: ", "html": null }`.
+    - **Sin `texto`:** el `.toFixed(2)` no se pudo calcular y n8n no pasó el campo.
+    - **`para` sin resolver:** llegó como el texto literal de la expresión. No sabemos por qué: la configuración es correcta y con el payload completo se resolvió.
+    - El error salió del sub-workflow, no de la expresión del `01`. Ya no se envía un correo con campos vacíos, como pasaba con el Send Email.
+- **Decisión:** aceptado. #95 sigue abierta (`Refs #95`): faltan los flujos 3 y 6 (Beste); el flujo 2 se queda con Send Email (opcional).
+- No hay prompt: los nodos los cambió la pareja a mano.
+
+### Spec del datáfono · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** HU-13 (#110), variante *Datáfono*: spec de un flujo que importa cada noche el CSV de cobros con tarjeta como ventas sin duplicar, y un CSV de ejemplo. Solo documentación; el flujo lo construye después la pareja.
+- **Resultado:**
+  - **`data/datafono_ejemplo.csv`:**
+    - 10 cobros del 21/10/2026, con separador `;`, decimales con coma y la tarjeta enmascarada, sin nombres;
+    - 2 cobros coinciden con ventas `tarjeta` reales del seed (253 y 254);
+    - 4 no están en la app: uno coincide en importe con una venta `efectivo`, y otro es un segundo 18,95 del mismo día;
+    - 1 es una venta grande;
+    - hay una `DENEGADA`, una `ANULADA`, una `DEVOLUCION` y una fila sin importe.
+  - **Numeración:** `11 · Datáfono`, porque no es uno de los flujos 1–8 del README y el `09` y el `10` están ocupados. `scripts/flujos.py` lo exportaría como `11-datafono.json`. Añadido a `AGENTS.md` (sección 5).
+  - **Origen del CSV:** se compararon cuatro opciones (carpeta de n8n, formulario, correo con adjunto, carpeta del repo montada). Se elige un Schedule Trigger de lunes a sábado a las 22:00, más Read/Write Files from Disk en `/home/node/.n8n-files/datafono/`, la carpeta que n8n 2.x permite por defecto. El CSV se copia ahí con `docker compose cp`. Un Form Trigger sirve para las pruebas, como en el `09`.
+  - **Regla de duplicados:** la app no guarda el nº de operación.
+    - Una venta con `concepto` `Datáfono op. <operacion>` de la misma `fecha` reconoce lo ya importado.
+    - El resto se cuenta por `fecha` + `importe` contra las ventas `tarjeta` apuntadas a mano.
+    - Se comprobó en local con un script de Python sobre el CSV y las ventas reales del 21/10/2026, leídas de la base de datos en solo lectura (`mode=ro`), sin llamar a la API. La 1.ª ejecución crea 4 ventas (208.75 €), con 2 ya registradas y 4 no importadas. La 2.ª, simulada con esas 4 ventas añadidas, no crea nada.
+  - **HU-09:** las ventas creadas disparan `venta.registrada`. La de 129,90 € genera el aviso de venta grande, y se da por esperado.
+  - **Informe** a la tienda con `Enviar notificación` (Mode Run once for each item). Lleva aviso propio si una noche no llega el fichero.
+  - Cuatro decisiones nuevas en `AGENTS.md`, sección 8.
+  - **Consultas a n8n-mcp:**
+    - Read/Write Files from Disk 1.1: File(s) Selector, Put Output File in Field;
+    - Extract From File: opción Delimiter;
+    - Schedule Trigger: intervalo cron.
+- **Problemas encontrados:**
+  - **Las issues no son de esta variante.** #110 y sus sub-issues #112–#114 describen *Apartados desde casa*. Se proponen títulos nuevos (fuera del repo, para que la pareja decida).
+  - **Acceso a ficheros sin confirmar.** n8n-mcp no documenta `N8N_RESTRICT_FILE_ACCESS_TO`: solo avisa de que el nodo lee bajo `/home/node/`. Que `~/.n8n-files` sea la carpeta permitida por defecto en n8n 2.x queda **a comprobar al construir**. También queda por comprobar qué hace el nodo si el fichero del día no existe.
+  - **La carpeta no es persistente.** `/home/node/.n8n-files` no está en un volumen, y montarla obliga a cambiar `docker-compose.yml`. Queda como pregunta en la spec; no se ha cambiado.
+  - **Versión de n8n.** `n8n --version` en el contenedor da **2.44.5**, no la 2.4.5 que dicen los documentos. La imagen de `docker-compose.yml` no fija versión, así que cambia al actualizarla.
+  - **Las pruebas cambian los datos.** Las 4 ventas creadas en el 21/10/2026 cambian el cierre de ese día y el informe de octubre de HU-08. Está anotado en la spec.
+  - **Orden con el cierre diario.** El flujo 5 todavía no tiene spec. El datáfono tiene que ir antes que el cierre; queda como pregunta.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (#110, nivel Avanzado), variante **Datáfono**: «cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas». El README pide al menos una de las dos variantes; hacemos solo esta (la de «apartados desde casa» queda fuera). Escribe la spec y un CSV de ejemplo. La pareja construirá el flujo a mano en n8n después; ahora solo la spec. Estamos en la rama `feature/hu-13-datafono` (sale de `dev`).
+
+## Fuentes
+
+- README (HU-13 y lo que diga del datáfono), `AGENTS.md`, `docs/ontologia.md` (Venta), `docs/guia-de-la-app.md`, `specs/_plantilla.md`.
+- `backend/routes/ventas.py`, `backend/models/venta.py` y el servicio de ventas: qué acepta `POST /api/ventas` (incluida `fecha`), qué devuelve `GET /api/ventas` (filtros por fecha, paginación) y qué webhook envía al registrar.
+- Cómo se hizo algo parecido: `specs/09-migracion-excel.md` y `workflows/09-migracion-excel.json` (CSV con Form Trigger + Extract From File, carga idempotente, informe a la tienda) y `specs/07-informe-mensual.md` (Schedule Trigger + Form Trigger de prueba).
+- `specs/01-eventos-tienda.md` (rama HU-09: cada venta registrada por API dispara `venta.registrada` y, si supera el umbral, un aviso de venta grande).
+- `specs/10-sub-workflows.md` (`Enviar notificación`, regla Run once for each item).
+- n8n-mcp (n8n 2.4.5 community): Schedule Trigger, Form Trigger con archivo, Extract From File, **Read/Write Files from Disk** (qué rutas puede leer n8n 2.x por defecto, `N8N_RESTRICT_FILE_ACCESS_TO`, `~/.n8n-files`).
+- Issues: `gh issue view 110` y sus sub-issues #111–#115 (están pensadas para la otra variante).
+
+## Contenido
+
+1. **CSV de ejemplo** `data/datafono_ejemplo.csv`: el formato típico de un extracto de datáfono (por ejemplo `fecha`, `hora`, `importe`, `operacion`, `tarjeta` enmascarada `**** 1234`, `estado`). Sin nombres de personas. 6–10 filas pensadas para las pruebas:
+   - cobros que **no** están en la app (se crean);
+   - cobros que **ya** están en la app como venta `tarjeta` del mismo día e importe (no se duplican); usa ventas reales de los datos de ejemplo (`GET /api/ventas` en Swagger no: no llames a la API; léelas del seed en `backend/`);
+   - una fila no válida o anulada/devuelta (qué se hace con ella);
+   - dos cobros iguales el mismo día (cómo se cuentan).
+   Pon fechas que existan en el seed para que la comprobación de duplicados tenga algo que encontrar.
+2. `specs/NN-datafono.md` con la plantilla (`NN` según la numeración que decidas abajo). Decide y explica (y llévalo a `AGENTS.md`, sección 8):
+   - **Numeración:** el README numera los flujos 1–8; mira si el datáfono es un flujo del README o no, y sigue la convención de `AGENTS.md`, sección 5 (el `09` es la migración y el `10` los sub-workflows). Propón nombre del workflow y del archivo.
+   - **De dónde sale el CSV «cada noche»:** compara las opciones sin tocar `docker-compose.yml` si se puede (por ejemplo, Schedule Trigger + Read Files from Disk en una carpeta que n8n 2.x ya permite, con el CSV copiado ahí con `docker cp`; o Form Trigger para subirlo a mano) y elige. Si alguna opción obliga a cambiar `docker-compose.yml`, dilo como pregunta para la pareja, no lo cambies. Para probar, un Form Trigger con el CSV (como el `09`).
+   - **Cómo se detecta un duplicado:** la app no guarda el número de operación. Define la regla (por ejemplo, misma `fecha`, mismo `importe` y `forma_pago` `tarjeta`, contando cuántas hay de cada en la app y en el CSV) y qué `concepto` lleva la venta creada (que permita reconocerla después, por ejemplo con el número de operación). Que una segunda ejecución con el mismo CSV no cree nada.
+   - **Qué venta se crea:** `POST /api/ventas` con `fecha` del cobro, `forma_pago` `tarjeta`, `importe` y `concepto`.
+   - **Efecto en HU-09:** cada venta creada dispara `venta.registrada`; las que superen el umbral generarán un aviso de venta grande. Di si es lo esperado o no y qué se hace.
+   - **Informe a la tienda** al terminar (creadas, ya existían, no válidas), con `Enviar notificación` (Execute Workflow, Run once for each item).
+   - Casos de error (CSV vacío o con columnas que faltan, `401`, `422`) y cómo llegan al `08`.
+   - Prueba: primera ejecución (qué se crea, con cifras), segunda ejecución con el mismo CSV (0 creadas), CSV con una fila mal; cómo comprobarlo en la app.
+   - Criterios de aceptación: los de README/#110 para el datáfono.
+   - Evidencias previstas con nombres de archivo.
+3. Propuesta (solo texto en tu respuesta, no lo hagas) de nuevos títulos para las sub-issues #112, #113 y #114, que hoy describen la otra variante.
+4. `docs/ai-log.md`: entrada «### Spec del datáfono · HU-13 (`specs/NN-datafono.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo la spec y el CSV: no toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`. No llames a la API.
+- Usa solo campos de `docs/ontologia.md` para la Venta; las columnas del CSV son del datáfono, no de la app.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
+### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)
+
+- **Autora:** Esra
+- **Tarea:** escribir el JavaScript de los 3 nodos Code de `11 · Datáfono` (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`) y un `LEEME.md` con la configuración de los demás nodos. **Reparto:** la pareja construye los nodos en n8n y pega el código; el agente solo escribe el código.
+- **Resultado:**
+  - **`~/hu13/`** (fuera del repo): `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js` y `LEEME.md`.
+    - El `LEEME.md` lleva qué recibe y qué devuelve cada Code, la configuración de los demás nodos y el esquema de conexiones.
+    - Los Workflow Inputs de los 2 Execute Workflow van listos para pegar, en una línea.
+    - Incluye los comandos `docker compose` para la carpeta y cómo hacer cada prueba.
+  - Mismos patrones que HU-10:
+    - `{ cuerpo: null }` cuando no hay nada que crear;
+    - `isExecuted` con `try/catch` para leer `Registrar ventas`;
+    - respuestas del `POST` con Never Error, emparejadas por orden;
+    - `detail` de la app en los `422`.
+  - `Revisar los cobros` sabe qué disparador se ejecutó con `$('Subir el CSV del datáfono').isExecuted`.
+  - **Prueba en local con node:**
+    - `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` real, con la clave del `.env` sin imprimirla;
+    - el CSV leído como lo daría Extract From File (texto, con y sin Include Empty Cells);
+    - los `POST` simulados.
+    - **Prueba 1:** 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas (ventas 253 y 254) y 4 no importadas. Asunto «Datáfono del 21/10/2026: 4 ventas creadas».
+    - **Prueba 2** (la app ya tiene las 4 ventas `Datáfono op. …`): 0 creadas, 4 ya importadas.
+    - **Prueba 3** (mes 13 en la línea 4): `fila no válida (fecha)`, 0 creadas. En una base limpia serían 3 (163.75 €).
+    - **Prueba 4** (sin `estado`): error «Datáfono: faltan columnas en el CSV: estado».
+    - **Otros casos:**
+      - un `422` va a «Rechazadas por la app» y el flujo sigue;
+      - un `401` en el `POST` para con el código y el `detail`;
+      - un CSV con solo la cabecera da «0 ventas creadas»;
+      - el BOM se quita;
+      - con separador `,`, falla con las 4 columnas que faltan;
+      - una venta `tarjeta` sin cobro sale en su sección del informe.
+- **Problemas encontrados:**
+  - **Celdas vacías.** Según n8n-mcp, en Extract From File la opción **Include Empty Cells** viene desactivada, y una celda vacía no llega como `""`: esa columna no aparece en el item. Se añadió a la spec (paso 3) activarla, y el Code comprueba las columnas con la unión de todas las filas, así que funciona de las dos formas.
+  - **BOM.** Extract From File tiene la opción **Exclude Byte Order Mark (BOM)**, desactivada por defecto. Se añadió a la spec activarla; el Code también quita el BOM.
+  - **Una fila por operación.** El código supone que cada operación sale una vez con su estado final. Si un datáfono pusiera la anulación en otra fila con el mismo nº de operación, se importaría la `APROBADA` y la anulación saldría como no importada.
+  - **Comprobado al construir:** sin fichero, Read/Write Files from Disk no se pone en rojo y llega al IF un item vacío; la carpeta `/home/node/.n8n-files/` se lee sin cambiar variables; `$binary.datafono` funciona en el IF (ver «Construcción del flujo · HU-13»).
+  - **Versión de n8n.** El prompt sigue diciendo n8n 2.4.5; el contenedor da 2.44.5 (ver «Spec del datáfono · HU-13»).
+- **Decisión:** aceptado. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-13 (Datáfono): vamos a construir a mano en n8n `11 · Datáfono` siguiendo `specs/11-datafono.md`. Tú escribes solo el JavaScript de los 3 nodos Code (`Revisar los cobros`, `Decidir qué crear`, `Preparar informe`); la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/11-datafono.md` (secciones 3, 4, 5, 6 y 7), `data/datafono_ejemplo.csv`, `AGENTS.md`.
+- Ejemplo de estilo y patrones ya probados: `workflows/09-migracion-excel.json` y `~/hu10-codigo/` (Code, `LEEME.md`, `isExecuted`, salida del HTTP Request con Never Error, `{ cuerpo: null }`), `~/hu08/`, `~/subflujos/LEEME.md` y `~/subflujos/LEEME-95.md` (Execute Workflow a `10 · Enviar notificación`, Workflow Inputs de una línea).
+- `backend/routes/ventas.py`, `backend/schemas/venta.py`, `backend/models/venta.py`: forma de `GET /api/ventas` y de la respuesta de `POST /api/ventas`, y el `detail` de los `422`.
+- n8n-mcp (n8n 2.4.5): Extract From File (CSV con `;`: ¿los valores llegan como texto? ¿qué pasa con el BOM y las columnas vacías?), Read/Write Files from Disk (qué devuelve si el fichero no existe), Form Trigger con archivo (nombre del campo binario), Schedule Trigger, y cómo saber en un Code qué disparador se ejecutó (`$('Subir el CSV del datáfono').isExecuted`).
+
+## Contenido
+
+1. En `~/hu13/` (fuera del repo, no se sube):
+   - `1-revisar-los-cobros.js`, `2-decidir-que-crear.js`, `3-preparar-informe.js`.
+   - Comentarios cortos en español, sin librerías externas. Mensajes de error exactamente como en la spec.
+   - `LEEME.md`: qué recibe y qué devuelve cada Code (con un ejemplo corto); la configuración exacta de los demás nodos (los 2 disparadores, Read Files from Disk, los IF, Extract From File, el `GET`, el `POST`, los 2 Execute Workflow a `10 · Enviar notificación` con sus Workflow Inputs de una línea listos para pegar, Settings con Error workflow `08` y zona horaria); un dibujo de las conexiones; los comandos `docker compose` para crear la carpeta y copiar el CSV; y cómo hacer cada prueba de la sección 7.
+2. Comprueba la lógica en local con node: lee `data/datafono_ejemplo.csv` como lo daría Extract From File, haz `GET /api/ventas?desde=2026-10-21&hasta=2026-10-21` (con la clave del `.env`, sin imprimirla), simula las respuestas del `POST` (201 con id inventado, y un 422) y ejecuta los 3 Code. Comprueba:
+   - prueba 1: 4 creadas (004513, 004515, 004516, 004517; 208.75 €), 2 ya registradas, 4 no importadas;
+   - prueba 2: simula que la app ya tiene esas 4 ventas `Datáfono op. ...` → 0 creadas;
+   - prueba 3 (fecha mal) y prueba 4 (sin columna `estado`);
+   - el texto del informe completo de la prueba 1.
+   Dime los resultados. Si algo de la spec no cuadra con la API o con n8n-mcp, dímelo.
+3. `specs/11-datafono.md`: solo si algo de la sección 4 no coincide con lo que has visto, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-13 (`specs/11-datafono.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del flujo · HU-13 (`workflows/11-datafono.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `11 · Datáfono` según `specs/11-datafono.md`, y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 3 Code. El flujo tiene 13 nodos con los nombres de la spec, Error workflow `08` y zona horaria `Europe/Madrid`. Los 3 Code del JSON exportado son idénticos a `~/hu13/*.js`.
+  - El JSON pasa `validate_workflow` de n8n-mcp sin errores. Da un aviso: `Leer ventas de esos días` tiene Execute Once, que es lo que pide la spec.
+  - El flujo está publicado (`"active": true`).
+  - **Pruebas** (copia de la base de datos en `~/tienda-antes-hu13.db`, restaurada al terminar):
+    - **Prueba 1** (formulario, Test URL): «Datáfono del 21/10/2026: 4 ventas creadas».
+      - Creadas, por 208.75 €: 004513 → 258, 004515 → 259, 004516 → 261 y 004517 → 260. Los `id` 260 y 261 salieron en otro orden que las operaciones, pero el informe los empareja bien (comprobado en la app).
+      - 2 ya registradas (253 y 254), 4 no importadas, 0 rechazadas y 0 sin cobro.
+      - Llega «Venta grande: 129.90 €» del `01` con `Datáfono op. 004517`.
+      - En la app, 8 ventas el 21/10/2026, 6 con tarjeta.
+    - **Prueba 2** (mismo CSV): 0 creadas, 4 ya importadas, 2 ya registradas y 4 no importadas. Sin aviso de venta grande.
+    - **Prueba 3** (línea 4 con mes 13): 0 creadas; 004513 como «fila no válida (fecha)»; 3 ya importadas, 2 ya registradas y 5 no importadas.
+    - **Prueba 4** (sin `estado`): `Revisar los cobros` en rojo con «Datáfono: faltan columnas en el CSV: estado». Sin correo: por la Test URL no salta el `08`.
+    - **Prueba 5** (disparador programado, CSV en `/home/node/.n8n-files/datafono/datafono-2026-10-27.csv`): el informe de la prueba 2 con «(ejecución programada)». La carpeta se lee sin cambiar variables.
+    - **Sin fichero del día:** `Leer el CSV del día` no se pone en rojo y devuelve un item vacío; el IF va por false y llega «Datáfono: no ha llegado el CSV del 27/10/2026».
+  - Evidencias: los 7 `docs/evidencias/11-hu13-*.png`, enlazados en la sección 7 de la spec.
+- **Problemas encontrados:**
+  - **Conexión mal.** `Registrar ventas` estaba conectado a `Enviar informe del datáfono` en vez de a `Preparar informe`. Se corrigió antes de probar.
+  - **El formulario de prueba solo vale una vez.** Para cada prueba hay que volver a pulsar **Execute workflow** y usar la pestaña nueva.
+  - **Dos disparadores.** «Execute step» del Schedule Trigger solo ejecuta ese nodo; para probar la rama programada hay que elegir el disparador en el desplegable de **Execute workflow**.
+  - **`docker compose exec n8n rm`** pide confirmación (`y`).
+  - **Export del `01`.** El export vuelve a reescribir el `01` con el cambio de #95 (PR #170, sin fusionar); se descartó con `git restore`.
+  - **Días del Schedule Trigger.** En el primer export, **Trigger on Weekdays** tenía solo el lunes y el sábado (`"triggerAtDay": [1, 6]`), no de lunes a sábado. Las pruebas no lo podían detectar, porque la rama programada se lanzó a mano. Se corrigió en n8n y se volvió a exportar: ahora es `[1, 2, 3, 4, 5, 6]` (spec, sección 3.2).
+  - **On Error en `Leer el CSV del día`.** El JSON exportado tiene On Error → Continue (regular output) además de Always Output Data. La spec (paso 1) recoge la configuración exportada.
+- **Decisión:** aceptado. Con los días del Schedule Trigger corregidos, todos los criterios de la sección 8 de la spec están cumplidos.
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
+### Spec de vencimientos · HU-07 (`specs/06-recordatorios-vencimientos.md`, `specs/01-eventos-tienda.md`)
+
+- **Autora:** Esra
+- **Tarea:** HU-07 (#64, sub-issues #65–#69): spec de las dos partes ya repartidas. **Parte A** (criterios 1 y 3): el `06 · Recordatorios y vencimientos`, solo con la rama de vencimientos. **Parte B** (criterio 2): la rama `apartado.vencido` del `01`, que envía el vale al cliente con `10 · Enviar notificación`. Solo documentación; la pareja construye a mano en n8n. Rama `feature/hu-07-vencidos`, que sale de `feature/95-sub-workflows-en-01` (PR #170).
+- **Resultado:**
+  - **`specs/06-recordatorios-vencimientos.md`** (nuevo), nodo a nodo:
+    - `Cada mañana a las 9:00` (todos los días) y `Probar a mano` (Manual Trigger);
+    - `Leer apartados activos` (`Buscar apartado` con `estado` `activo`, Run once for each item);
+    - `Elegir los fuera de plazo` (Code: `fecha_limite` < hoy en `Europe/Madrid`, `{ id: null }` si no hay ninguno) y el IF `¿Hay apartados que vencer?`;
+    - `Vencer apartado` (`POST /vencer` con Batching 1 y Never Error);
+    - `Preparar lista` (Code: `200` vencido, `404`/`422` a la lista, otro código para con error y nombra los ya vencidos);
+    - `Enviar lista a la tienda` (`Enviar notificación`).
+    - Sección 4.2 para HU-06, «pendiente, Beste», con lo que tiene que saber para compartir el workflow (los disparadores, la lectura y que los dos conjuntos de apartados no se cruzan), sin escribirla.
+    - Casos de error, 4 pruebas, criterios y 3 preguntas (validez del vale, hora de apertura, día sin vencidos).
+  - **`specs/01-eventos-tienda.md`:** nota de alcance, campos de la rama, pasos 16–18 (`¿Tiene email? (vencido)`, `Enviar vale al cliente`, `Avisar a la tienda: vencido sin email`) con los Workflow Inputs de una línea, salidas, casos de error, pruebas y el criterio 2.
+  - **`tests/payloads/apartado.vencido-sin-email.json`** (nuevo): `apartado.vencido.json` con `email` `null`, para la rama No.
+  - **`specs/10-sub-workflows.md`, sección 4.3:** el vale al cliente pasa del `06` al `01`.
+  - **`AGENTS.md`, sección 8:** 4 filas (el reparto, «Tomada»; la hora y la regla de fuera de plazo, el día sin vencidos y el vencido sin email, «Pendiente de revisión»).
+  - **Lo que hace la app al vencer** (`backend/models/apartado.py`): `200` con `{ apartado, vale }` (vale `VALE-<id con 5 cifras>`, `importe` = `abonado`) y el webhook `apartado.vencido`; `422` si no está `activo` («El apartado ya está …») o si hoy ≤ `fecha_limite` («no vence hasta …»); `404` si no existe. Usa `date.today()` con `TZ=Europe/Madrid`.
+  - **Datos reales** (`GET /api/apartados?estado=activo`, solo lectura): 20 activos; fuera de plazo el 27/10/2026, el 16 (Paula Ramos), el 15 (Sergio Delgado), el 14 (Marta Molina) y el 13 (Pablo Rubio), como decía el prompt. Los 4 tienen email, así que se esperan 4 correos a clientes, 0 avisos de «sin email» y 1 lista.
+  - **Comprobado en local con node y Luxon:**
+    - las expresiones de la parte B con `apartado.vencido.json`, con el payload sin email y con los 4 avisos que enviará la app (construidos con el `GET` real y el vale del backend);
+    - el filtro y la lista de la parte A con el `GET` real y respuestas de `/vencer` simuladas: los 4 apartados en orden de `fecha_limite`; con un `422` simulado, 3 vencidos y 1 con error; con los activos que quedan después, `{ id: null }`.
+- **Decisiones tomadas en la spec:**
+  - **Hora y días:** 9:00, todos los días. Por la mañana n8n y la app tienen el mismo «hoy», no se cruza con el datáfono (22:00) ni con el cierre, y los recordatorios de HU-06 no pueden saltarse el domingo.
+  - **Fuera de plazo:** `fecha_limite` anterior a hoy. El de hoy no se vence, porque la app daría `422`.
+  - **Día sin vencidos:** no se envía nada. La lista es para actuar y un correo diario vacío acaba sin leerse; los fallos los avisa el `08`.
+  - **Vencido sin email:** aviso a la tienda con el teléfono y el vale, como HU-01. Un vencimiento ocurre sin el cliente delante.
+  - **Error a mitad:** un `401` o `5xx` para el flujo, y el mensaje del `08` lleva los apartados ya vencidos con su vale, para que la tienda no pierda esa lista.
+- **Problemas encontrados:**
+  - **El payload de prueba no coincide con los datos de ejemplo.** En `apartado.vencido.json`, el 16 tiene talla 39 y fecha límite 18/10/2026; en la app, talla 40 y 23/09/2026. Se anota en la spec del `01`; las pruebas del webhook usan el payload y la de extremo a extremo, los datos reales.
+  - **El resultado depende del día de carga del seed.** Con un seed cargado otro día, cambian los apartados fuera de plazo. Desde el 29/10 también saldrían el 11 y el 12 (vencen el 28/10).
+  - **Un webhook perdido no se recupera.** Si el `01` no está publicado cuando se vence un apartado, el cliente no recibe el vale. La lista de la tienda lleva el código para avisarle.
+  - **La app no dice cómo se usa ni cuánto dura un vale** (`usado` siempre `0`, sin endpoint). El correo no pone caducidad; queda como pregunta.
+- **Decisión:** pendiente de revisión por la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-07 · Apartados vencidos con su vale (#64, nivel Medio; sub-issues #65–#69). Escribe la spec. La pareja construirá a mano en n8n después; ahora solo documentación. Rama `feature/hu-07-vencidos`, que sale de `feature/95-sub-workflows-en-01` (PR #170, sin fusionar: el flujo 1 del `01` ya usa `10 · Enviar notificación`).
+
+Criterios (README):
+1. Los apartados fuera de plazo se vencen por API y la app genera el vale.
+2. El cliente recibe un mensaje con el código y el importe de su vale.
+3. Marisa recibe la lista de zapatos que vuelven a la venta.
+
+## Reparto ya decidido
+
+- **Parte A (criterios 1 y 3):** workflow nuevo **`06 · Recordatorios y vencimientos`** (`specs/06-recordatorios-vencimientos.md`, `workflows/06-recordatorios-vencimientos.json`), con **solo la rama de vencimientos**. La rama de recordatorios (HU-06, 7 días y 1 día) la añadirá Beste después **en el mismo workflow**: deja la spec preparada para eso (sección para HU-06 «pendiente, Beste»), sin escribirla.
+- **Parte B (criterio 2):** en el `01 · Eventos de la tienda`, la salida `apartado.vencido` del Switch (hoy sin conectar, ver `specs/01-eventos-tienda.md`) envía al cliente su vale con `10 · Enviar notificación` (Execute Workflow, Mode Run once for each item, Workflow Inputs de una línea, como el flujo 1 en #95). Sin email: decide qué hacer (mira cómo lo resuelve el flujo 1) y justifícalo.
+
+## Fuentes
+
+- README (HU-06, HU-07, flujo 6), `AGENTS.md`, `docs/ontologia.md` (Apartado, Vale), `docs/guia-de-la-app.md` (webhook `apartado.vencido`: `datos.apartado` + `datos.vale`), `tests/payloads/apartado.vencido.json`.
+- `backend/routes/apartados.py`, `backend/controllers/apartados.py` y el modelo/servicio de `vencer`: qué devuelve `POST /api/apartados/{id}/vencer`, qué errores da (no está fuera de plazo, ya vencido, liquidado…) y que envía el webhook.
+- `specs/10-sub-workflows.md` y `workflows/10-*.json` (`Buscar apartado` con `estado` `activo`, `Enviar notificación`, regla Run once for each item, mensaje genérico de error), `~/subflujos/LEEME-95.md` (Workflow Inputs de una línea con `\n`).
+- Patrones ya probados: `specs/11-datafono.md` y `~/hu13/` (Schedule + Form/Manual de prueba, POST con Batching 1 + Never Error, `{ cuerpo: null }`, informe a la tienda con el sub-workflow), `specs/07-informe-mensual.md`.
+- `specs/01-eventos-tienda.md` en esta rama (flujo 1 con el sub-workflow).
+
+## Contenido
+
+1. `specs/06-recordatorios-vencimientos.md` (plantilla), parte A nodo a nodo:
+   - Disparador: Schedule cada mañana (hora y días; justifica respecto al datáfono 22:00 y al cierre) + un disparador manual o formulario para probar.
+   - Leer los activos con `Buscar apartado` (`estado` `activo`) y quedarse con los de `fecha_limite` < hoy (Europe/Madrid). Sin recalcular nada.
+   - `POST /api/apartados/{id}/vencer` uno a uno (Batching 1, Never Error); qué hacer con un error de un apartado (seguir con los demás y ponerlo en la lista) y con `401`/`5xx` (parar → `08`).
+   - Lista a la tienda con `Enviar notificación`: zapatos que vuelven a la venta (producto, talla, cliente, `id`, código y importe del vale) y los que fallaron. Día sin vencidos: decide si se envía «ningún apartado vencido hoy» o nada, y justifícalo.
+   - Casos de error, prueba y criterios.
+2. `specs/01-eventos-tienda.md`: la rama `apartado.vencido` (parte B) nodo a nodo, con los Workflow Inputs listos (texto con código, importe del vale, producto y cómo usarlo; sin recalcular nada), el caso sin email, prueba con `tests/payloads/apartado.vencido.json` y nota de alcance.
+3. **Prueba con datos reales** (las dos partes juntas): con los datos de ejemplo de hoy, los apartados activos fuera de plazo son el 16 (Paula Ramos), 15 (Sergio Delgado), 14 (Marta Molina) y 13 (Pablo Rubio) — compruébalo con `GET /api/apartados?estado=activo` (solo lectura, clave del `.env` sin imprimirla). Resultado esperado: 4 vencidos, 4 vales (código e importe = `abonado` de cada uno), 4 correos a clientes (o lo que toque si falta email), 1 lista a la tienda; segunda ejecución: 0 vencidos. Copia de la base de datos antes y restauración después (como en HU-13).
+4. `AGENTS.md` (sección 5 si hace falta, sección 8 con las decisiones) y `docs/ai-log.md`: entrada «### Spec de vencimientos · HU-07 (`specs/06-recordatorios-vencimientos.md`, `specs/01-eventos-tienda.md`)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación: no toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. Solo `GET` a la API, nunca `POST`; no escribas la clave en ningún fichero ni en la salida.
+- Usa solo campos de `docs/ontologia.md`.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué decisiones has tomado.
+```
+
+</details>
+
+### Código de los nodos Code · HU-07 (`specs/06-recordatorios-vencimientos.md`)
+
+- **Autora:** Esra
+- **Tarea:** escribir el JavaScript de los 2 nodos Code de la rama de vencimientos del `06` (`Elegir los fuera de plazo`, `Preparar lista`) y un `LEEME.md` con la configuración de los demás nodos del `06` y los pasos de la rama `apartado.vencido` del `01`. **Reparto:** la pareja construye los nodos en n8n y pega el código; el agente solo escribe el código.
+- **Resultado:**
+  - **`~/hu07/`** (fuera del repo): `1-elegir-los-fuera-de-plazo.js`, `2-preparar-lista.js` y `LEEME.md`.
+    - El `LEEME.md` lleva qué recibe y qué devuelve cada Code, la configuración de los demás nodos del `06` (disparadores, `Leer apartados activos`, el IF, `Vencer apartado`, `Enviar lista a la tienda`, Settings) y el esquema de conexiones.
+    - Los pasos del `01`, con `para`, `asunto` y `texto` copiados de la spec, cada uno en su bloque (comprobado que son idénticos).
+    - Cómo hacer cada prueba: los `curl` de la rama del `01`, la copia y la restauración de la base de datos y el pin data de la prueba 3, listo para pegar.
+  - Mismos patrones que HU-10 y HU-13:
+    - `{ id: null }` cuando no hay nada que vencer;
+    - respuestas del `POST` con Never Error, emparejadas por orden con Batching 1;
+    - `detail` de la app en los `404` y `422`.
+  - No hace falta `isExecuted`: `Preparar lista` solo se ejecuta por la rama true, después de `Vencer apartado`.
+  - **Prueba en local con node:**
+    - `GET /api/apartados?estado=activo` real, con la clave del `.env` sin imprimirla, pasado por la forma de `Buscar apartado` (`{ total, apartados }`, solo los campos de la lista);
+    - los `POST /vencer` simulados como los hace `backend/models/apartado.py` (vale `VALE-<id con 5 cifras>` con `importe` = `abonado`, `422` y `404` con su `detail`).
+    - **Prueba 1:** 16, 15, 14 y 13 vencidos, con `VALE-00016` 5.00 €, `VALE-00015` 60.00 €, `VALE-00014` 45.00 € y `VALE-00013` 30.00 €. Asunto «Vencimientos del 27/10/2026: 4 pares vuelven a la venta».
+    - **Prueba 2** (con los 16 activos que quedan): `{ id: null }`, sin `POST` ni correo.
+    - **Prueba 3** (pin data con el 22 y el 9999): `404` «Apartado no encontrado» y `422` «El apartado ya está vencido»; «0 pares vuelven a la venta · 2 con error».
+    - **`500` en el 14:** para con «Vencer apartado: la app respondió 500 en el apartado 14: Internal Server Error. Ya vencidos: 16 (VALE-00016), 15 (VALE-00015), 13 (VALE-00013)».
+    - **`401` en todos:** para con «… respondió 401 en el apartado 16: Falta la cabecera X-API-Key o no es válida (y en 3 más: 15, 14, 13). Ya vencidos: ninguno».
+    - **Otros casos:** menos respuestas que apartados, una entrada sin `apartados` (paran con su error) y un solo vencido sin talla («1 par vuelve a la venta», sin «talla»).
+- **Problemas encontrados:**
+  - **Never Error sigue después de un `500`.** La spec decía que el mensaje del `08` lleva «los que ya se vencieron». Con Never Error, `Vencer apartado` intenta todos los `POST`, así que también se pueden vencer los de después del que falla. El código los incluye todos, y se corrigió la spec (paso 8) con los mensajes exactos.
+  - **Mensajes que no estaban en la spec.** Se añadieron a la sección 4 el de las respuestas que no cuadran (paso 7) y el de una entrada sin `{ total, apartados }` (paso 4). Sin este último, un Execute Workflow mal configurado parecería un día sin vencidos.
+  - **Singular en el asunto** («1 par vuelve a la venta»): añadido a la sección 5.
+  - **Comprobado al construir:** el `POST` sin cuerpo funciona y las 4 respuestas llegaron en orden (cada vale emparejado con su apartado); el pin data de `Leer apartados activos` no se probó, porque la prueba 3 no se hizo en n8n (ver «Construcción de los vencimientos · HU-07»).
+- **Decisión:** aceptado. Los 2 Code del JSON exportado son idénticos a `~/hu07/*.js`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`, siguiendo `specs/06-recordatorios-vencimientos.md` y `specs/01-eventos-tienda.md`. Tú escribes solo el JavaScript de los 2 nodos Code del `06` (`Elegir los fuera de plazo`, `Preparar lista`); la pareja crea los demás nodos y pega tu código. Usa exactamente los nombres de nodo de la spec.
+
+## Fuentes
+
+- `specs/06-recordatorios-vencimientos.md` (secciones 3, 4, 5, 6 y 7), `specs/01-eventos-tienda.md` (rama HU-07), `AGENTS.md`.
+- Estilo y patrones ya probados: `~/hu13/` (Code, `LEEME.md`, emparejar respuestas por orden con Batching 1 + Never Error, `isExecuted`), `~/subflujos/LEEME.md` y `~/subflujos/LEEME-95.md` (Execute Workflow a los sub-workflows, Workflow Inputs de una línea).
+- `backend/models/apartado.py` (`vencer`) y las rutas: forma de la respuesta de `POST /vencer` y los `detail`.
+- `workflows/10-buscar-apartado.json` (qué devuelve `{ total, apartados }`).
+
+## Contenido
+
+1. En `~/hu07/` (fuera del repo, no se sube):
+   - `1-elegir-los-fuera-de-plazo.js` y `2-preparar-lista.js`. Comentarios cortos en español, sin librerías externas, mensajes de error exactamente como en la spec, sin recalcular importes.
+   - `LEEME.md`:
+     - qué recibe y qué devuelve cada Code (con un ejemplo corto);
+     - la configuración exacta de los demás nodos del `06` (2 disparadores, `Leer apartados activos` con sus Workflow Inputs, el IF, `Vencer apartado`, `Enviar lista a la tienda`, Settings con Error workflow `08` y zona horaria), con un dibujo de las conexiones;
+     - los pasos en el `01` para la rama `apartado.vencido`: conectar la salida del Switch, el IF `¿Tiene email? (vencido)` y los 2 Execute Workflow, con `para`, `asunto` y `texto` **copiados de la spec**, cada valor en su propio bloque para copiarlo de uno en uno;
+     - cómo hacer cada prueba de la sección 7 (con los `curl` de la rama del `01`, la copia de la base de datos y la restauración).
+2. Comprueba la lógica en local con node: `GET /api/apartados?estado=activo` real (clave del `.env`, sin imprimirla), simula la salida de `Buscar apartado` y las respuestas de `/vencer` (200 con el vale como lo genera la app, un 422 y un 404), y ejecuta los 2 Code. Prueba 1 (4 vencidos: 16, 15, 14, 13), prueba 2 (`{ id: null }`), prueba 3 (422 + 404) y un `500` (para con el mensaje de la spec). Dime los resultados y el texto completo de la lista de la prueba 1.
+3. `specs/06-recordatorios-vencimientos.md`: solo si algo de la sección 4 no cuadra con lo que has visto, corrígelo y dime qué.
+4. `docs/ai-log.md`: entrada «### Código de los nodos Code · HU-07 (`specs/06-recordatorios-vencimientos.md`)» con el formato habitual (reparto: la pareja construye los nodos, el agente escribe el código) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/` ni `docker-compose.yml`.
+- Solo `GET` a la API, nunca `POST`. No escribas la clave en ningún fichero ni en la salida.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción de los vencimientos · HU-07 (`workflows/06-recordatorios-y-vencimientos.json`, `workflows/01-eventos-tienda.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n la rama de vencimientos de `06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`, según `specs/06-recordatorios-vencimientos.md` y `specs/01-eventos-tienda.md`, y exportarlas.
+- **Resultado:**
+  - La pareja construyó a mano en n8n los nodos que no son Code y pegó el código de los 2 Code.
+    - El `06` tiene 8 nodos con los nombres de la spec, Error workflow `08` y zona horaria `Europe/Madrid`. Los 2 Code del JSON son idénticos a `~/hu07/*.js`.
+    - En el `01` hay 3 nodos nuevos (`¿Tiene email? (vencido)`, `Enviar vale al cliente` y `Avisar a la tienda: vencido sin email`), conectados a la salida `apartado.vencido` del Switch. Sus Workflow Inputs son idénticos a los de la spec. El resto del `01` no cambia: solo se movieron nodos en el canvas y en Settings se añadió la zona horaria `Europe/Madrid`.
+  - Los dos JSON pasan `validate_workflow` de n8n-mcp sin errores ni avisos (8 y 17 nodos).
+  - El `06` está **sin publicar** (`"active": false`) a propósito. Publicado, vencería de verdad a las 9:00 los apartados fuera de plazo, entre ellos el 16, que la prueba de HU-03 (correo `06_bizum_paula`) necesita `activo` y fuera de plazo. Se publicará cuando terminen las pruebas de HU-03.
+  - **Pruebas** (copia de la base de datos en `~/tienda-antes-hu07.db`, restaurada al terminar):
+    - **Rama del `01`** (Test URL):
+      - con `apartado.vencido.json` llega a `paula16@example.com` el vale `VALE-00016` de 5.00 €;
+      - con `apartado.vencido-sin-email.json` llega a la tienda el aviso con el teléfono y el vale.
+    - **Prueba 1 del `06`** (Probar a mano, con el `01` publicado):
+      - total 20; 4 elegidos (16, 15, 14 y 13); 4 respuestas `200`;
+      - en Mailpit, 5 correos: la lista «4 pares vuelven a la venta» y los 4 vales (5.00, 60.00, 45.00 y 30.00 €);
+      - en la app, `resumen` 16 / 9 / 5 y 5 vales. El del apartado 15 (60,00 €) es la suma de sus abonos (10 + 20 + 20 + 10).
+    - **Prueba 2:** `{ id: null }`, el IF va por false, sin `POST` ni correo.
+    - **Prueba 3** (pin data con `422` y `404`): no se hizo en n8n. Sus caminos están comprobados en local («Código de los nodos Code · HU-07»).
+    - **Prueba 4** (programada): no se hizo, porque el `06` está sin publicar.
+  - Evidencias: los 6 `docs/evidencias/06-hu07-*.png`, enlazados en la sección 7 de las dos specs.
+- **Problemas encontrados:**
+  - **Mode de `Enviar lista a la tienda`.** Al principio se quedó con el Mode por defecto (Run once with all items). Con un solo item funcionaba, pero incumplía la regla de `AGENTS.md`. Se cambió a Run once for each item y se volvió a exportar.
+  - **Nombre del archivo.** El export lo llama `06-recordatorios-y-vencimientos.json`: `scripts/flujos.py` quita «de», «la» y «del», pero no «y». La spec decía `06-recordatorios-vencimientos.json`; se cambió en la spec. La spec mantiene su nombre (`specs/06-recordatorios-vencimientos.md`): `AGENTS.md` solo pide el mismo `NN`, y renombrarla rompería los enlaces de las otras specs y de los prompts literales.
+  - **«Execute Sub-workflow».** En n8n, el nodo Execute Workflow aparece con ese nombre. Se anotó en las dos specs.
+  - **Sin página de vales.** La app no tiene página de vales: cada vale se ve en la página de su apartado. Se corrigió en la spec del `06`.
+- **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
+- No hay prompt: los flujos los construyó la pareja a mano.
+
+### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)
+
+- **Autora:** Esra
+- **Tarea:** documentar cómo instalar todo desde cero (#142), completar la tabla «Workflow → credenciales» con todos los workflows (#143) y revisar los secretos de todos los JSON (#140). Solo documentación, en la rama `docs/entregables-instalacion`; los workflows se leyeron de `dev` y de las ramas de los PR con `git show`.
+- **Resultado:**
+  - **`docs/instalacion.md`** (nuevo), en 11 pasos:
+    - requisitos y `.env`, `docker compose up -d` y URLs;
+    - las 3 credenciales (`Mailpit`, `API Tienda`, `Groq`) y `Google Sheets` para el `05`;
+    - la Data table `Configuración` y la carpeta del datáfono;
+    - el orden de importación con `flujos.py importar` y por qué (ids de los Execute Workflow y del Error workflow), y qué revisar en cada workflow;
+    - qué publicar y por qué;
+    - una prueba de humo por workflow, enlazada a la sección 7 de su spec;
+    - la copia y restauración de la base de datos y cómo recargar los datos de ejemplo sin perder n8n;
+    - los problemas frecuentes.
+  - **README:** una línea con el enlace al principio de «Cómo empezar»; el enunciado no cambia.
+  - **`docs/credenciales.md`:**
+    - la credencial `Google Sheets` y el nodo IMAP del `03` (deshabilitado, sin credencial);
+    - la tabla «Workflow → credenciales» con los 10 workflows y estas columnas: credenciales en sus nodos, las que usa a través de los `10`, Data tables y archivos, variables del `.env` y Error workflow.
+  - **`docs/revision-secretos.md`** (nuevo): los comandos (`git grep` sobre 11 ramas: `dev`, #172, #173, la rama de HU-03 y los 7 PR parciales de HU-03) y el resultado.
+    - No hay ningún secreto: ni claves, ni cabeceras con valor, ni URLs con credenciales, ni `shared`/`pinData`. El único email es `tienda@pasofirme.example`.
+    - Hay un punto a revisar, sin arreglar: el `documentId` de un Google Sheets real en `workflows/05-cierre-diario.json`, línea 175 (PR #173).
+- **Problemas encontrados:**
+  - **#171 ya está fusionado.** El prompt lo daba como abierto; el `11` ya está en `dev`.
+  - **La rama de HU-03 no tiene PR.** `feature/39-hu03-prueba-correos` tiene el `03` integrado. Los PR abiertos #158–#169 tienen exports parciales (`03-abonos-distancia-entrada.json`…), que su propia guía dice que no se importen. Se revisaron igual en #140.
+  - **Una cuarta credencial.** El prompt hablaba de 3 credenciales, pero el `05` (#173) necesita `Google Sheets` (OAuth2). Se documenta como opcional, solo para el `05`.
+  - **El `03` y el `05` no traen `id`** y sus credenciales tienen `id` `null`: n8n les da un id nuevo y hay que elegir las credenciales a mano. No afecta a nadie, porque ningún workflow los llama.
+  - **El problema del worktree no estaba documentado** en el repo. Se explica a partir de cómo Docker Compose nombra el proyecto (`docker compose ls` da `paso-firme`): desde otra carpeta, otro proyecto sin `.env`. La solución propuesta (`COMPOSE_PROJECT_NAME=paso-firme`) no se ha probado.
+  - **Recargar los datos de ejemplo sin perder n8n** (`rm /data/tienda.db` y reiniciar) sale de `backend/main.py` (el seed se carga si la base de datos está vacía) y no se ha probado, para no tocar la base de datos.
+  - **Conflicto previsible con #173.** Su rama también añade a `docs/credenciales.md` la fila de `Google Sheets` y la del `05`; al fusionar, habrá que quedarse con una.
+- **Decisión:** pendiente de revisión de la pareja. Que Beste revise el punto del `documentId` y las filas del `03` y el `05`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Entregables finales #142, #143 y #140 (los tres en esta rama `docs/entregables-instalacion`, que sale de `dev`). Solo documentación y una revisión de solo lectura.
+
+Ten en cuenta que hay PR abiertos que añaden workflows y todavía no están en `dev`: #171 (`11 · Datáfono`), #172 (`06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`), #173 de Beste (`05 · Cierre diario`, rama `feature/hu04-cierre-diario`) y la rama de HU-03 de Beste (`03 · Abonos a distancia`, rama `feature/39-hu03-prueba-correos`). #170 (flujo 1 con `Enviar notificación`) ya está en `dev`. Léelos con `git show origin/<rama>:<ruta>` o `gh pr diff <n>` y documenta el estado final, con todos los workflows.
+
+## Fuentes
+
+- README (Entregables, Requisitos técnicos, Cómo empezar), `AGENTS.md` (secciones 3, 5, 7 y 8), `docs/credenciales.md`, `docs/guia-de-la-app.md`, `.env.example`, `docker-compose.yml`, `scripts/flujos.py`, `scripts/datos_demo.py`.
+- `workflows/*.json` de `dev` y de las ramas de los PR abiertos (credenciales por nodo, Data tables, Error workflow, sub-workflows que llama cada uno, disparadores).
+- Las specs de cada flujo (sección 1: credenciales; sección 7: pruebas).
+
+## Contenido
+
+1. **#142 · `docs/instalacion.md`** (y un enlace corto desde el README, en «Cómo empezar» o justo antes, sin cambiar el enunciado): cómo poner en marcha todo desde cero en otro ordenador, paso a paso y en orden:
+   - requisitos y `.env` (desde `.env.example`, sin valores reales); `docker compose up -d`; URLs;
+   - crear las 3 credenciales en n8n (nombres exactos);
+   - crear las Data tables (`Configuración` con su fila) y la carpeta del datáfono (`docker compose exec n8n mkdir -p ...`);
+   - **importar en este orden** con `python3 scripts/flujos.py importar ...`: primero los sub-workflows `10`, luego el `08`, luego el `01` y el resto; por qué el orden (los Execute Workflow y el Error workflow apuntan por id; `flujos.py importar` conserva el id). Qué hay que revisar después de importar en cada workflow (credencial en cada nodo, tabla en el nodo de Data table, Error workflow);
+   - qué publicar y qué no (y por qué: el `01` y los `10` sí; los que tienen Schedule, según la decisión de cada spec);
+   - una prueba rápida de humo por flujo (un `curl` o un formulario y qué debe llegar a Mailpit), enlazando a la sección 7 de su spec;
+   - copia y restauración de la base de datos para las pruebas que cambian datos; cómo volver a cargar los datos de ejemplo;
+   - problemas frecuentes que nos han pasado (Test URL vs Production URL, formulario de prueba de un solo uso, Execute step vs Execute workflow con varios disparadores, `docker compose` desde un worktree, Workflow Inputs de una línea, `git restore` del `01` al exportar desde otra rama).
+2. **#143 · `docs/credenciales.md`:** completa la tabla «Workflow → credenciales» con **todos** los workflows (01, 03, 05, 06, 07, 08, 09, 10 ×2, 11), incluidas las credenciales que usan a través de los sub-workflows, las Data tables y las variables del `.env`. Sin valores.
+3. **#140 · Revisión de secretos** en todos los `workflows/*.json` (de `dev` y de las ramas de los PR abiertos): busca claves, tokens, contraseñas, cabeceras `X-API-Key` con valor, `apiKey`, URLs con credenciales, emails reales (todo lo que no sea `@example.com` / `@pasofirme.example` / `@bancoejemplo.example`), nombres y emails del propietario (`shared`, `pinData`), e ids de credencial que delaten algo. Pon el resultado (comandos usados y qué se encontró) en `docs/revision-secretos.md`. Si encuentras algo, **no lo arregles**: dímelo con archivo y línea.
+4. `docs/ai-log.md`: entrada «### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación: no toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Ningún secreto en ningún fichero ni en la salida (si encuentras uno, nombra el archivo y la línea, no el valor).
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Reintentos en los HTTP Request · #56
+
+- **Autora:** Esra
+- **Tarea:** documentar la decisión de #56 (HU-05) para el commit `feat:`, en la rama `feature/56-reintentos`. **Reparto:** la pareja activó a mano en n8n **Retry On Fail** (Max Tries 3, Wait Between Tries 2000 ms) en los 11 HTTP Request `GET` de los workflows 07, 09, 10 y 11, y los exportó. El agente documentó y comprobó.
+- **Resultado:**
+  - **Comprobación con un script** sobre todos los `workflows/*.json`: tienen `retryOnFail: true` y `waitBetweenTries: 2000` exactamente esos 11 nodos, y solo ellos:
+    - los 4 `Leer …` del `07`;
+    - los 3 `Leer … de la app` y `Comprobar pendientes` del `09`;
+    - los 2 `GET` de `10 · Buscar apartado`;
+    - `Leer ventas de esos días` del `11`.
+  - Ningún `POST` tiene reintentos. El diff de los 4 JSON solo añade esas 2 claves en los 11 nodos y cambia el `versionId`.
+  - **`validate_workflow`:** los 4 válidos, 0 errores.
+    - `10`: 0 avisos.
+    - `07`, `09` y `11`: solo los avisos de **Execute Once**, que es lo que piden sus specs.
+    - Para no enviar 80 KB, el `09` y el `11` se validaron con el cuerpo de sus Code sustituido por `return $input.all();`, y el `07` con `Preparar informe` simplificado. Los Code no cambian en esta rama.
+  - **`AGENTS.md`**, sección 8: la decisión.
+  - **`specs/08-error-workflow.md`:**
+    - sección «Reintentos» con la tabla de nodos con y sin reintento, y cómo encaja con el `08` (primero los 3 intentos, después un solo aviso);
+    - el criterio de #56, marcado.
+  - **Specs `07`, `09`, `10` y `11`:**
+    - una línea «Settings → Retry On Fail: 3 intentos, 2000 ms» en la configuración de esos nodos;
+    - los casos de error de «la app no responde» y del `401`, corregidos: ahora dicen que primero se reintenta.
+    - Ninguna spec decía nada contrario.
+- **Problemas encontrados:**
+  - **Never Error en `10 · Buscar apartado`.** Sus dos `GET` tienen Never Error: un `401` o un `5xx` no hacen fallar el nodo y no se reintentan. Solo se reintentan los errores sin respuesta (app parada, tiempo agotado). El `401` «inofensivo» del prompt vale para el `07`, el `09` y el `11`, no para el `10`. Se documentó así; no hace falta cambiar el flujo.
+  - **`maxTries` no se pudo comprobar en n8n-mcp.** n8n-mcp no documenta los ajustes del nodo (Retry On Fail, Max Tries, Wait Between Tries):
+    - en `get_node` del HTTP Request no salen, ni en las propiedades ni en la documentación;
+    - `validate_workflow` no dice el valor por defecto (solo avisa si `maxTries` es alto: probado con 20).
+    - Que `3` es el valor por defecto sale de la interfaz de n8n: el JSON exportado sí guarda `waitBetweenTries: 2000`, que no es el valor por defecto, y no guarda `maxTries`.
+  - **Cuándo reintenta n8n:** solo cuando el nodo falla; con Never Error u On Error → Continue, no. Tampoco está en n8n-mcp. Coincide con lo que ya decía la spec del `10` («Never Error no cubre los errores de red»).
+  - **Sin prueba en n8n.** Los reintentos no se han provocado (por ejemplo, con `docker compose stop tienda` durante una ejecución). Las pruebas del `401` de las specs siguen valiendo; el aviso del `08` llega unos 4 s más tarde.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#56 (HU-05) · Reintentos (Retry On Fail) en los nodos HTTP Request. La pareja ya ha activado **Retry On Fail** a mano en n8n (Max Tries 3, Wait Between Tries 2000 ms) **solo en los HTTP Request de lectura (`GET`)** y lo ha exportado. Documenta la decisión para el commit `feat:`. Rama `feature/56-reintentos`.
+
+Nodos cambiados (11):
+- `07 · Informe mensual`: `Leer ventas del mes`, `Leer abonos desde el día 1`, `Leer apartados`, `Leer vales`.
+- `09 · Migración del Excel`: `Leer apartados de la app`, `Leer abonos de la app`, `Leer ventas de la app`, `Comprobar pendientes`.
+- `10 · Buscar apartado`: `Leer apartado por número`, `Buscar apartados por texto`.
+- `11 · Datáfono`: `Leer ventas de esos días`.
+
+Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apartados`, `Registrar abonos`, `Registrar ventas` del `09`; `Registrar ventas` del `11`). `05` (PR #173) y `03` (HU-03) son de Beste y no se tocan en esta rama.
+
+## Fuentes
+
+- `workflows/07-informe-mensual.json`, `workflows/09-migracion-excel.json`, `workflows/10-buscar-apartado.json`, `workflows/11-datafono.json` (léelos, no los modifiques). Comprueba con un script que esos 11 nodos, y solo esos, tienen `retryOnFail: true` y `waitBetweenTries: 2000` (`maxTries` no aparece en el JSON porque 3 es el valor por defecto y n8n no lo exporta; compruébalo en la documentación del nodo), y valida los 4 con `validate_workflow` de n8n-mcp.
+- `specs/03-abonos-distancia.md` (líneas 37 y 57: «no reintentar un POST a ciegas»), `specs/08-error-workflow.md`, `specs/07-...`, `specs/09-...`, `specs/10-sub-workflows.md`, `specs/11-datafono.md`, `AGENTS.md`, `docs/instalacion.md` si ya está en `dev`.
+- Documentación de n8n (n8n-mcp) sobre Retry On Fail: cuándo reintenta (solo si el nodo falla; con **Never Error** o **On Error → Continue** el nodo no falla y no reintenta).
+
+## Contenido
+
+1. `AGENTS.md`, sección 8: una fila «Retry On Fail (3 intentos, 2 s) solo en los HTTP Request `GET`; nunca en los `POST`». Motivo: un `GET` repetido no cambia nada; un `POST` que llegó a la app pero cuya respuesta se perdió crearía un abono, una venta o un apartado duplicado. Si los 3 intentos fallan, el nodo falla y avisa el `08`. Un `401` también se reintenta (inofensivo: 2 × 2 s).
+2. `specs/08-error-workflow.md`: sección corta «Reintentos» con la tabla de nodos (con y sin reintento y por qué), y cómo encaja con el `08` (primero reintentos, después el aviso). Criterio de #56 marcado.
+3. En la spec de cada workflow cambiado (`07`, `09`, `10`, `11`), una línea en la configuración de esos nodos: «Settings → Retry On Fail: 3 intentos, 2000 ms». Si la spec dice algo contrario, corrígelo.
+4. Una nota para Beste (en tu respuesta, no en un archivo): qué nodos de lectura del `05` y del `03` deberían llevar lo mismo (`Leer ventas del día`, `Leer abonos del día`, `Buscar apartado`) y cuáles no.
+5. `docs/ai-log.md`: entrada «### Reintentos en los HTTP Request · #56» con el formato habitual (la pareja configuró los nodos; el agente documentó y comprobó) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y el resultado de la comprobación y de `validate_workflow`.
+```
+
+</details>
+
+### Agente, modelos y n8n-mcp · #8
+
+- **Autora:** Esra
+- **Tarea:** #8 [Base del proyecto]: dejar documentados y justificados el agente, el modelo gratuito y n8n-mcp, en la sección 1 de este documento. Rama `docs/8-agente-ia`. Solo documentación.
+- **Resultado:** sección 1 reescrita.
+  - **Tabla:**
+    - un agente de desarrollo por persona: Esra con Claude Code; Beste con Codex, cuyo modelo no consta en el repo;
+    - el modelo de n8n: Groq con `openai/gpt-oss-20b`, sacado del nodo `Extraer datos con Groq` del JSON del `03`, en uso en el flujo 3;
+    - n8n-mcp en modo solo documentación.
+  - **Por qué Claude Code y Codex, y no OpenCode:** cada una usa el agente que ya tenía. El alcance se delimita con hechos del repo:
+    - una rama y una tarea por persona;
+    - el mismo `AGENTS.md` para los dos agentes;
+    - la sección 9 de AGENTS.md;
+    - la pareja construye los nodos y el agente escribe specs, código y documentación;
+    - todo pasa por una PR revisada.
+  - **Modelo gratuito:** por qué Groq y ese modelo, y que la IA solo extrae y el flujo decide. Qué datos recibe Groq: solo `{ ordenante, importe, concepto }`, recortados antes en `Preparar correo`, y por qué son los imprescindibles. Enlace a la comparativa pendiente (#96, #98).
+  - **Por qué n8n-mcp sin API key**, y cómo se configura.
+- **Problemas encontrados:**
+  - **Error nuestro en la sección 1.** Decía que usábamos Claude Code «porque ya lo tenemos las dos». No era así: Esra usa Claude Code y Beste usa Codex, como dice su entrada de HU-04 en `origin/feature/hu04-cierre-diario` («Autora: Beste, con Codex»). Se corrigió.
+  - **La sección 1 estaba desactualizada.** El modelo de Groq seguía «Por decidir / Pendiente de configurar», aunque el flujo 3 ya usa `openai/gpt-oss-20b` («Extracción estructurada HU-03 (#34)», prueba real del 26/10/2026).
+  - **No se puede comprobar en el repo:**
+    - el modelo que usa Codex;
+    - el límite de la capa gratuita de Groq;
+    - que el código del `03` siga igual al fusionarse, porque solo está en la rama de HU-03.
+    - No se afirma nada de eso: la tabla dice «No consta en el repo» para el modelo de Codex y que el `03` está «todavía sin fusionar».
+- **Decisión:** pendiente de revisión de la pareja. Que Beste confirme la fila de Codex y lo que se dice del flujo 3.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#8 [Base del proyecto] «Agente de IA elegido y configurado + modelo gratuito + n8n-mcp (justificar la elección en ai-log)». Todo está ya en uso; falta dejarlo documentado y justificado en `docs/ai-log.md`, sección «1. Herramientas y modelos», que está desactualizada (dice que el modelo de Groq está «Por decidir / Pendiente de configurar»). Rama `docs/8-agente-ia`. Solo documentación.
+
+## Fuentes
+
+- README, sección «🤖 Desarrollo Agéntico con IA» (Herramientas) y requisito técnico 10.
+- `docs/ai-log.md` (sección 1 y las entradas: qué se ha hecho con el agente, qué errores se detectaron), `AGENTS.md` (sección 6 «Herramientas del agente» y sección 9), `.mcp.json`.
+- El modelo de Groq que usa el flujo 3: `git show origin/feature/39-hu03-prueba-correos:workflows/03-abonos-distancia.json` (nodo `Extraer datos con Groq`) y `specs/03-abonos-distancia.md`.
+- Issues #96 y #98 (comparativa de modelos, de Beste): solo para enlazarla, no la hagas.
+
+## Contenido
+
+1. `docs/ai-log.md`, sección 1, actualizada:
+   - **Corrección:** el párrafo actual dice que usamos Claude Code «porque ya lo tenemos las dos». No es así: **Esra usa Claude Code y Beste usa Codex** (OpenAI; ver su entrada de HU-04 en `origin/feature/hu04-cierre-diario`, «Autora: Beste, con Codex»). Corrígelo y deja constancia en la entrada nueva de que era un error nuestro.
+   - Tabla: un agente de desarrollo por persona (Esra: Claude Code y su modelo; Beste: Codex, sin inventar el modelo si no está en el repo), modelo de IA dentro de n8n (Groq, capa gratuita, el modelo exacto del JSON del `03`, «En uso» en el flujo 3), n8n-mcp (modo solo documentación, «En uso»).
+   - **Por qué Claude Code y Codex y no OpenCode** (sustituye el párrafo actual): cada una usa el agente que ya tenía. El README admite IAs de pago si se delimita el alcance; di cuál es ese alcance y cómo lo delimitamos, con hechos del repo: cada una en su rama y su tarea, así dos agentes distintos no se pisan; los dos leen el mismo `AGENTS.md` (Claude Code lo carga con `CLAUDE.md` → `@AGENTS.md`; Codex lee `AGENTS.md` directamente); el agente no toca n8n ni publica (AGENTS.md, sección 9); la pareja construye los nodos a mano y el agente escribe specs, código de los nodos Code y documentación; todo pasa por PR revisada.
+   - **Modelo gratuito:** por qué Groq y ese modelo para el flujo 3 (capa gratuita, compatible con OpenAI, solo extrae ordenante, importe y concepto; las decisiones las toma el flujo). Qué datos personales se le envían y por qué son los imprescindibles. Enlace a la comparativa de modelos (#96) como pendiente.
+   - **Por qué n8n-mcp sin API key:** sin conexión a la instancia, el agente no puede crear ni publicar flujos; lo usamos para consultar nodos y para `validate_workflow` antes de cada PR. Cómo se configura (`.mcp.json`, aprobar el servidor al abrir el proyecto).
+2. `docs/ai-log.md`: entrada «### Agente, modelos y n8n-mcp · #8» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo `docs/ai-log.md`. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No escribas ninguna clave. Solo hechos que estén en el repo; si algo no lo puedes comprobar, dilo en tu respuesta en lugar de inventarlo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué has cambiado.
+```
+
+</details>
+
+### Mapa del proceso · #141
+
+- **Autora:** Esra
+- **Tarea:** entregable 1 del README: el mapa del proceso de apartado, hoy y automatizado, con diagramas Mermaid en `docs/mapa-proceso.md`.
+- **Resultado:**
+  - `docs/mapa-proceso.md`, con cuatro partes:
+    - **Hoy:** `flowchart` con carriles para el cliente, la dependienta, el banco y Marisa. Los 5 problemas del README van marcados en rojo y se repiten en una lista debajo.
+    - **Automatizado:** los mismos carriles más la app y n8n.
+      - Cada paso de n8n lleva el nombre real del flujo y su disparador, que salen de las specs y de los JSON: `01` por evento, `06` cada mañana a las 9:00, `11` de lunes a sábado a las 22:00, `05` a las 00:05, `07` el día 1 a las 8:00 y `08` si falla un flujo.
+      - El `03` va como un subgrafo, con sus decisiones en rombos.
+      - Lo humano va en amarillo.
+    - **Ciclo de vida del apartado:** `stateDiagram-v2` con `activo`, `liquidado` y `vencido`, y qué provoca cada paso.
+    - **Antes → después:** tabla que enlaza cada problema del README con la spec del flujo que lo resuelve.
+  - Se dibuja el proceso final, también lo que todavía se está terminando:
+    - el `03`, tomado de `origin/feature/39-hu03-prueba-correos`;
+    - el `05`, de `origin/feature/hu04-cierre-diario` (#173);
+    - los recordatorios del `06`, solo con lo que dicen el README y la sección 4.2 de su spec: nombre, «cada mañana» y aviso al cliente. Sin hora, porque la spec solo dice que «puede usar» el disparador de las 9:00.
+  - Enlace al mapa en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Validación de Mermaid.** No se pudo validar con `npx -y @mermaid-js/mermaid-cli`: el modo automático de Claude Code bloqueó la descarga del paquete. Se revisó la sintaxis a mano (etiquetas entre comillas y sin HTML). Queda pendiente comprobarlo en GitHub o con mermaid-cli.
+  - **Enlaces de specs que no están en `dev`.** `specs/05-cierre-diario.md` solo existe en la rama de #173, así que el enlace no funciona hasta que se fusione.
+  - **IMAP desactivado.** En el JSON del `03`, el nodo `Correo bancario IMAP` está desactivado, y el flujo se prueba con `Formulario de desarrollo`. El mapa dibuja el disparador final (el correo del banco) y lo indica en el texto.
+  - **Pendiente de cobro.** El README dice que Marisa no lo sabe «en ningún momento». Ningún flujo lo envía a diario: va en el informe mensual, y con su formulario se puede pedir cuando se quiera. La tabla lo dice así.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#141 [Entregables finales] «Mapa del proceso: hoy vs automatizado». Entregable 1 del README: «Mapa del proceso de apartado: cómo se hace hoy y cómo queda automatizado (diagrama BPMN, Miro, Excalidraw o similar)». Lo hacemos con diagramas **Mermaid** dentro de un Markdown, porque GitHub los dibuja directamente y quedan versionados con el repo. Rama `docs/141-mapa-proceso`. Solo documentación.
+
+## Fuentes
+
+- README: «Planteamiento» (cómo se trabaja hoy: libreta, Excel, calculadora, avisos del banco), «Reglas del negocio», «Automatizaciones a construir» y las historias de usuario.
+- `docs/ontologia.md` (entidades y estados del apartado), `AGENTS.md` (secciones 2, 5 y 8), `docs/guia-de-la-app.md` (eventos del webhook).
+- Las specs de cada flujo y los `workflows/*.json` de `dev` y de las ramas abiertas (`origin/feature/hu04-cierre-diario` para el `05`, `origin/feature/39-hu03-prueba-correos` para el `03`): disparadores, horas, a quién avisa cada flujo.
+- `data/excel_actual_apartados.csv`, `data/excel_actual_ventas.csv` (cómo se lleva hoy).
+
+## Contenido
+
+1. `docs/mapa-proceso.md`, en español:
+   - **Hoy (a mano):** un diagrama Mermaid (`flowchart`, con carriles o `subgraph` por actor: cliente, dependienta, Marisa, banco) del ciclo de un apartado: alta en la libreta, abonos en la tienda y desde casa (Bizum o transferencia → Marisa revisa el banco y apunta a mano), comprobar cuánto falta, liquidar y recoger, plazo vencido (nadie avisa; zapatos olvidados en el almacén), cierre diario y suma mensual con calculadora. Marca con un estilo los puntos de dolor del README, y debajo una lista corta de esos problemas.
+   - **Automatizado:** el mismo ciclo con la app y n8n, con los mismos carriles más «App» y «n8n». Cada paso automático dice qué flujo lo hace con su nombre real (`01 · Eventos de la tienda`, `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow`, `11 · Datáfono`; los `10` como sub-workflows) y su disparador (evento del webhook u hora). Las decisiones del flujo 3 (registrar o preguntar a Marisa) como rombos. Lo que sigue siendo humano (alta y abonos en la tienda, revisar los casos dudosos) debe verse claro.
+   - Un segundo diagrama, pequeño, del **ciclo de vida del apartado** (`stateDiagram-v2`: `activo` → `liquidado` / `vencido` + vale), con qué lo provoca en cada caso.
+   - Una tabla «Antes → después» que enlace cada problema del README con el flujo que lo resuelve (enlace a su spec).
+   - Dibuja el proceso **final**, también lo que aún se está terminando y vamos a entregar: el `03` (HU-03, rama `feature/39-hu03-prueba-correos`), el `05` (HU-04, PR #173) y los recordatorios de 7 y 1 días en el `06` (HU-06, Beste; si no hay spec ni JSON todavía, usa el README y la sección reservada en `specs/06-recordatorios-vencimientos.md`, y no inventes detalles: nombre del flujo, disparador y a quién avisa). No los marques como pendientes. Lo que **no** vamos a hacer (Telegram HU-11/12, HU-14 y el resto del nivel Avanzado salvo HU-13) no se dibuja.
+2. Comprueba que los diagramas son Mermaid válido (sintaxis que GitHub soporta: sin HTML en las etiquetas, comillas en las etiquetas con paréntesis o `·`). Si tienes `npx`, valida con `npx -y @mermaid-js/mermaid-cli` a un archivo en `/tmp` (no lo dejes en el repo); si no, dime que no lo has podido validar.
+3. Un enlace corto desde el README a `docs/mapa-proceso.md` en «Cómo empezar», junto al de `docs/instalacion.md` si ya está; no cambies el enunciado.
+4. `docs/ai-log.md`: entrada «### Mapa del proceso · #141» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Usa solo entidades y estados de `docs/ontologia.md`. Nada que no exista en el repo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Evidencias de un apartado completo · #144
+
+- **Autora:** Esra
+- **Tarea:** entregable 5 del README. Documentar con capturas un apartado completo (alta → abonos → liquidación) en `docs/evidencias/apartado-completo.md`.
+- **Resultado:**
+  - **La prueba y las capturas las hizo la pareja**, el 28/10/2026, en la app real y con el `01` publicado:
+    - copia de la base de datos en `~/tienda-antes-hu144.db`, restaurada al terminar;
+    - clienta inventada Irene Navarro y apartado #31 (Botín piel marrón, talla 37, 40,00 €);
+    - alta con 10,00 € en efectivo, abono de 15,00 € por bizum y abono de 15,00 € con tarjeta, que lo liquida;
+    - 3 correos en Mailpit y 3 ejecuciones correctas del `01` (08:24:47, 08:25:43 y 08:27:08).
+  - **El agente la documentó** a partir de las 7 capturas de `docs/evidencias/apartado-completo-*.png`, después de mirarlas una a una:
+    - cada paso con su captura de la app, su correo, el evento y la rama del `01`;
+    - una tabla que compara cada cifra de la app con la del correo (todas coinciden);
+    - los criterios de HU-01 y HU-02 que demuestra la prueba.
+  - Enlace al documento en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Asunto sin «¡».** El prompt da el asunto del tercer correo como «¡Ya puedes recoger tus zapatos! Botín piel marrón». En la captura, y en el Send Email `Avisar de que puede recoger` de `workflows/01-eventos-tienda.json`, es «Ya puedes recoger tus zapatos! …», sin el signo de apertura. Se documentó el asunto real y una nota. El flujo no se toca: es una tarea aparte.
+  - **«Menos de un minuto» (HU-01).** Las capturas muestran la hora de la ejecución (08:24:47) y la del correo (8:24), pero no la hora exacta del alta en la app. Se dice así en el documento.
+  - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
+- **Decisión:** pendiente de revisión de la pareja.
+
+### Filtro de avisos bancarios HU-03 (#33)
+
+- **Autora:** Beste.
+- **Tarea:** añadir el filtro determinista que distingue pagos recibidos, publicidad y entradas inválidas.
+- **Resultado:** `workflows/03-abonos-distancia-filtro.json`, generador reproducible, código del nodo, cinco pruebas y `docs/hu03-filtro.md`. La salida `extraer` prepara el siguiente paso (#34); `ignorar` termina; `revisar` no registra pagos. Esta rama continúa #32.
+- **Verificación local:** `node --test tests/test_hu03_filtro.cjs tests/test_hu03_entrada.cjs` — 11/11 superadas. El JSON se regeneró y `git diff --check` no encontró errores.
+- **Pendiente:** importación y validación n8n-mcp siguen sin realizarse para la exportación específica de #33. Esta PR se mantiene como borrador.
+- **Decisión:** el filtro reconoce las plantillas del repositorio y no autentica el banco. IA, búsqueda, registro y avisos corresponden a tareas posteriores.
+
+### Extracción estructurada HU-03 (#34)
+
+- **Autora:** Beste.
+- **Tarea:** extraer ordenante, importe y concepto de los avisos que el filtro #33 reconoce como pagos.
+- **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-extraccion.json`, generador independiente, Code nodes de preparación/validación, cuatro pruebas y guía `docs/hu03-extraccion.md`. No consulta la API de tienda, no registra abonos ni envía emails. Credencial `Groq`; `08` enlazado por el ID del export del equipo y debe volver a seleccionarse en una instancia donde cambie.
+- **Verificación local:** cuatro pruebas sobre el JSON generado cubren ocho pagos de ejemplo, publicidad, valores inventados, esquemas inválidos, importe negativo, JSON truncado y fallo de Groq.
+- **Prueba real (26/10/2026):** los ocho pagos llegaron a `buscar` y publicidad a `ignorar` usando `openai/gpt-oss-20b`; no hubo escrituras. Se guardan salidas, capturas y los nueve IDs de ejecución (pagos 5–11 y 13; publicidad 12).
+- **Pendiente:** revisar el enlace local de `08` y validar el export final con n8n-mcp. PR en borrador; no cerrar #34 hasta completar la revisión.
+
+### Búsqueda de apartado HU-03 (#35)
+
+- **Tarea:** consultar la API con la URL ya elegida por #34 (ID explícito o búsqueda conservadora) y entregar la respuesta a #36.
+- **Resultado:** se añade `workflows/03-abonos-distancia-busqueda.json`, generador determinista, prueba automatizada y guía. El nodo es un GET autenticado con `API Tienda`; no hay escritura ni SMTP. El 404 explícito conserva su estado para revisión; fallos de red paran la ejecución.
+- **Pendiente:** importar y validar en n8n, asignar credenciales y seleccionar el 08 local. Mantener la PR como borrador y el workflow inactivo.
+
+
+### Decisión de apartado HU-03 (#36)
+
+- **Tarea:** validar candidatos de la API contra ordenante y concepto; exigir un único apartado activo, en plazo y con saldo suficiente antes de pasar a #37.
+- **Resultado:** borrador parcial `workflows/03-abonos-distancia-decision.json`, generado desde #35. La rama válida entrega el apartado a #37; las demás entregan motivo y candidatos a #38. No registra abonos ni envía correos.
+- **Verificación:** pruebas locales cubren coincidencias por nombre/producto, acentos e iniciales, concepto vacío, candidatos cero o múltiples, discrepancias, fecha límite, estado, pendiente, 404 explícito y errores HTTP técnicos.
+- **Pendiente:** revisión y validación en n8n con credenciales locales; workflow inactivo y PR borrador.
+- **Decisión:** 401 y 5xx se mantienen como errores técnicos para 08; un 404 de ID explícito requiere revisión manual y nunca activa una búsqueda alternativa.
+
+
+### Registro de abono HU-03 (#37)
+
+- **Tarea:** registrar mediante POST solo cuando #36 devuelve `decision=registrar`; manejar el 422 de la API como revisión manual.
+- **Resultado:** workflow parcial e inactivo con guard adicional de ID, estado, plazo y saldo; POST a `/api/apartados/{id}/abonos` con `forma_pago: bizum`; 201 deja el recibo al webhook HU-02; 422 y 404 pasan a #38; errores de red, 401 y 5xx llegan al 08. Sin retry automático ni correo duplicado.
+- **Verificación:** pruebas simuladas para autorización, saldo, estado, plazo, 201/422/404/401/5xx y transporte; no se envió POST a la app ni se modificó la base de datos.
+- **Pendiente:** review y prueba de importación en n8n. Para validar escritura real se requiere una base desechable/restaurable; no usar datos de la tienda habitual. Mantener borrador inactivo.
+- **Decisión:** ante timeout no reintentar a ciegas porque el POST pudo haberse aplicado; conciliar antes de cualquier repetición.
+
+
+### Aviso de revisión manual HU-03 (#38)
+
+- **Tarea:** avisar a la tienda cuando un pago no se registra automáticamente.
+- **Resultado:** export parcial e inactivo `workflows/03-abonos-distancia-aviso.json`. Las rutas de revisión por extracción y decisión/registro pasan a un correo plano por Mailpit. Incluye motivo, ordenante, importe, método original si se identifica, concepto, referencia y candidatos disponibles. El mensaje no reenvía el cuerpo original ni ejecuta registros.
+- **Verificación:** suite HU-03 completa — 35/35 pruebas; incluye motivos, candidatos, 422, método Bizum/transferencia y limpieza de saltos de línea/pseudoencabezados. No se envió ningún correo en las pruebas.
+- **Pendiente:** review y validación en n8n/Mailpit. Mantener workflow inactivo y la PR borrador.
+- **Decisión:** mostrar hasta 20 candidatos y advertir si hay más; no poner datos variables en el asunto ni reenviar el correo bancario completo.
+
+### Preparación de cierre y auditoría de pruebas · HU-03
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** retomar el cierre en el worktree feature/39-hu03-prueba-correos sin tocar las modificaciones HU-03 de la carpeta principal.
+- **Resultado:** origin/dev incorporado con conflicto de ai-log resuelto conservando entradas completas de ambas partes; merge preparado sin commit. La rama ya tenía un único JSON 03 y ningún docs/superpowers. Generadores por etapas documentados como históricos/no necesarios; no se vuelven a crear los parciales.
+- **Guía:** `~/hu03-prueba.md`, nueve referencias/asuntos/cuerpos exactos extraídos de .eml, ramas, saldos, correos esperados, capturas y copia/restauración. Se advierte no repetir Carmen/Jorge sobre los saldos actuales.
+- **Auditoría real (28/10/2026):** #34 corresponde a Carmen y #35 a Jorge, ambos Succeeded. Se comprobó la referencia del formulario guardado; los asuntos usados fueron descripciones y no los originales .eml. GET actual: #1 pendiente 9.50 y #2 59.00; Lucía 12 y Silvia 35. La copia antigua está íntegra pero precede a esos dos abonos. No se restaura ni sobrescribe automáticamente.
+- **Evidencia pendiente:** siete casos sin ejecución exitosa en el historial auditado; recibo Carmen no acreditado. No se inventa que estén probados. Auditoría y validación mínimas en docs/evidencias/03-hu03-*.json.
+- **Verificación:** 35/35 tests; validate_workflow válido, 0 errores, 0 avisos (30 nodos, 2 notas; validator cuenta 28). No POST, no reejecución de pagos, no cambios de configuración n8n, no commit/push/cierre de PRs en esta fase.
+- **Decisión:** fase 1 preparada; esperar pruebas manuales y capturas para fase 2 según el prompt de cierre.
+
+### Construcción y prueba del flujo · HU-03 (`workflows/03-abonos-distancia.json`)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** cerrar HU-03 con un único flujo completo, nueve pruebas reales, capturas, restauración y PR consolidada a dev.
+- **Resultado:** un JSON 03, sin los siete parciales ni docs/superpowers; generadores por etapas conservados como históricos/no necesarios. Documentación de etapas resumida y enlazada a spec principal. Nombres de nodo con issue conservados, no se rompen expresiones. Notas y descripción del formulario ya no dicen flujo parcial.
+- **Pruebas reales:** ejecuciones 34,35,60,62,63,64,65,66,67 Succeeded. Abonos reales #84–#87 por 10/20/12/5 € para 1/2/3/24 (47 €). Cuatro avisos sin registro; publicidad sin Groq, POST ni email. Lucía liquidada. Capturas de las nueve ejecuciones y ocho emails; resultados estructurados mínimos sin claves/contactos.
+- **Diferencias:** los asuntos de Carmen/Jorge eran descripciones; cuerpos bancarios correctos. Desconocido tuvo candidatos amplios API, ninguno compatible; no se afirma cero filas. Recibo Carmen comprobado después mediante replay autorizado al 01 del abono existente #84: mismos saldos e IDs antes/después, ningún nuevo POST de abono. No se presenta como envío original observado en ejecución 34.
+- **Restauración:** copia original íntegra y copia adicional de seguridad del estado posterior. Comparación: únicamente cuatro abonos y estado Lucía; original restaurada y tienda reiniciada. GET confirma pendientes originales y conteos. Se conservan emails/ejecuciones de prueba.
+- **Verificación:** suite local 35/35, validación n8n-mcp sin errores/avisos; export inactivo. La comprobación del export detectó que faltaba seleccionar Error workflow 08; se restauró esa referencia y se explicitaron GET, formato IMAP simple y adjuntos desactivados. La referencia Groq conserva su ID válido y usa el nombre documentado. Se importó la configuración corregida sin ejecutar pagos ni publicar el flujo. No backend/frontend/compose/.env modificados ni secreto escrito. IMAP sin credencial/deshabilitado y sus pruebas pendientes; 401/422/5xx solo probados localmente, no inventados como integración. La relectura/deduplicación no está probada ni implementada.
+- **Decisión:** consolidar a dev para revisión humana. No publicar, mergear ni modificar main/dev. PR antiguas se cerrarán como sustituidas solo tras crear la consolidada, conforme a la autorización de Beste.
+
+### Spec y código del panel de Marisa · HU-15
+
+- **Autora:** Esra
+- **Tarea:** HU-15 (#127, nivel Experto) como una web servida por n8n: un workflow nuevo, `12 · Panel de Marisa`. El agente escribe la spec y el Code; la pareja construye los nodos, prueba y exporta.
+- **Resultado:**
+  - `specs/12-panel-marisa.md`, con 6 nodos:
+    - `Abrir el panel`: Webhook `GET /webhook/panel`, Basic Auth `Panel Marisa` y Respond Using 'Respond to Webhook' Node;
+    - 3 `GET` con `API Tienda`, Execute Once, Always Output Data y Retry On Fail;
+    - `Preparar panel`: un Code que devuelve `{ html }`;
+    - `Mostrar el panel`: Respond to Webhook con Text y `Content-Type: text/html; charset=utf-8`.
+  - La spec trae además los casos de error, 6 pruebas con los valores esperados del 28/10/2026 y 3 preguntas para la pareja.
+  - **Cambios respecto al diseño del prompt:**
+    - **Fechas:** el día 1 y hoy van en expresiones de las propias peticiones (`$now.setZone('Europe/Madrid')`), sin un Code `Calcular periodo`.
+    - **Apartados activos:** con un HTTP Request (`estado=activo`) y no con `10 · Buscar apartado`. Es el mismo patrón que el `07`, el sub-workflow devolvería otra forma (`{ total, apartados }`) y crearía una ejecución más en cada visita.
+    - **Importes:** con coma decimal y punto de miles (`1.234,56 €`), como en la app, y no con punto como los correos.
+  - **Paginación:** sin `pagina`, `GET /api/ventas`, `/api/abonos` y `/api/apartados` devuelven todo (guía de la app y `backend/controllers/`), como en el `07`.
+  - `~/panel/` (fuera del repo):
+    - `preparar-panel.js`;
+    - `LEEME.md` en turco, con cada nodo paso a paso, la credencial y las pruebas;
+    - `panel-ejemplo.html`.
+  - **Comprobado en local** con `node` y el Luxon 3.7.2 copiado del contenedor de n8n. Se hicieron `GET` reales con la clave del `.env`, sin imprimirla.
+    - **Cifras:** 63 ventas, 48 abonos y 20 activos. Octubre: `2.552,75 €` (ventas directas `1.854,45 €` y abonos `698,30 €`). Pendiente: `787,05 €`. Hoy: `0,00 €`. 2 apartados vencen hoy y 4 están fuera de plazo.
+    - Coinciden con un cálculo independiente en Python. El pendiente coincide además con la prueba del `07`.
+    - **Casos extra:** listas vacías, textos con `<`, `&` y comillas, `0,10 + 0,20`, miles, y que el HTML no tenga `<script>` ni URLs externas.
+  - `validate_workflow` (n8n-mcp) sobre un borrador del workflow en el scratchpad, no en `workflows/`, y con el Code simplificado: válido, 0 errores. Solo da los 3 avisos esperados de Execute Once.
+  - `AGENTS.md`: el `12` en la sección 5 y 2 decisiones en la sección 8 (web servida por n8n; Basic Auth). `docs/credenciales.md`: la credencial `Panel Marisa`, la fila del `12` y cómo crearla.
+- **Problemas encontrados:**
+  - **Error de la API en el navegador.** Si la API falla, el flujo se para antes de `Respond to Webhook`. Se espera que n8n responda con un error, probablemente `500`, pero no está comprobado: la prueba 6 lo anota.
+  - **Basic Auth sin HTTPS** no cifra la contraseña. Vale en local; queda como pregunta en la spec (HU-16).
+- **Decisión:** pendiente de construir y probar en n8n.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-15 · Panel para Marisa (#127, nivel Experto; sub-issues #128–#130). Lo hacemos como **una web servida por n8n**, la opción «una web o similar» del enunciado: Marisa abre una URL y ve sus cifras. Sin Google Sheets ni Looker Studio (necesitarían OAuth y una cuenta de Google). Rama `feature/hu-15-panel`, desde `dev`.
+
+Criterios (enunciado, `docs/enunciado.md`):
+1. El panel muestra los datos de la app actualizados.
+2. Se entiende sin explicación y se ve bien en el móvil.
+
+Reparto, como siempre: el agente escribe la spec y el código del Code; **la pareja construye los nodos a mano en n8n**, pega el código, prueba y exporta.
+
+## Diseño propuesto (ajústalo si ves algo mejor y dilo)
+
+Workflow nuevo **`12 · Panel de Marisa`** (`specs/12-panel-marisa.md`, `workflows/12-panel-marisa.json`). El `12` está libre porque HU-12 no se hace.
+
+1. **`Abrir el panel`** · Webhook `GET /webhook/panel`:
+   - **Authentication: Basic Auth** con una credencial nueva **`Panel Marisa`** (usuario y contraseña solo en n8n). El navegador pide usuario y contraseña la primera vez. Así las cifras del negocio y los nombres de los clientes no quedan abiertos.
+   - **Respond: Using 'Respond to Webhook' Node.**
+2. Lecturas a la API, cada una con `API Tienda`, Execute Once, Always Output Data y Retry On Fail (3, 2000 ms), como el `07`:
+   - `Leer ventas del mes`: `GET /api/ventas?desde=<día 1>&hasta=<hoy>`;
+   - `Leer abonos del mes`: `GET /api/abonos?desde=<día 1>&hasta=<hoy>`;
+   - `Leer apartados activos`: `GET /api/apartados?estado=activo` (o el sub-workflow `10 · Buscar apartado` con `estado` `activo`; elige y justifica).
+   Comprueba si `GET /api/ventas` y `/api/abonos` paginan y cómo pedirlo todo (el `07` ya lo resuelve: síguelo).
+3. **`Preparar panel`** (Code, Run Once for All Items) → un solo item `{ html }`:
+   - **Hoy:** ventas directas, abonos y total cobrado hoy (por forma de pago si cabe sin recargar).
+   - **Este mes:** ventas directas, abonos y recaudación (mismas reglas que el `07`).
+   - **Pendiente de cobro:** suma del `pendiente` de los apartados `activo` (la suma de varios sí está permitida; el `pendiente` de cada uno es el de la app). Y cuántos apartados activos hay.
+   - **Vencen pronto:** apartados `activo` con `fecha_limite` entre hoy y hoy + 7, ordenados por fecha: cliente, producto y talla, pendiente, fecha límite, días que faltan. Y aparte, si los hay, los que ya están **fuera de plazo** y todavía activos (los vencerá el `06` a las 9:00).
+   - Fecha y hora de la última actualización (Europe/Madrid).
+   - **HTML:** una sola página, en español, con `<meta name="viewport">`, CSS dentro del propio HTML (nada externo: ni CDN ni fuentes), tarjetas grandes con las cifras, legible en un móvil de 360 px, importes con 2 decimales y `€`, fechas `dd/MM/yyyy`. Escapa los textos que vienen de la app (nombres, productos) para que no rompan el HTML. Sin JavaScript.
+   - Sin recalcular `abonado` ni `pendiente` de ningún apartado; solo campos de `docs/ontologia.md`.
+4. **`Mostrar el panel`** · Respond to Webhook: Respond With **Text**, Response Body `{{ $json.html }}`, cabecera `Content-Type: text/html; charset=utf-8`, código 200.
+5. Settings: Error workflow `08`, zona horaria `Europe/Madrid`. Si falla la API, el `08` avisa (en producción) y el navegador ve un error: dilo en los casos de error.
+
+## Fuentes
+
+- `docs/enunciado.md` (HU-15, nivel Experto), `AGENTS.md`, `docs/ontologia.md`, `docs/guia-de-la-app.md` (endpoints, filtros, paginación).
+- `specs/07-informe-mensual.md` y `workflows/07-informe-mensual.json`: reglas de recaudación y cómo lee las listas. Reutiliza su lógica, no la inventes de nuevo.
+- `specs/06-recordatorios-vencimientos.md` (fuera de plazo = `fecha_limite` anterior a hoy), `specs/10-sub-workflows.md`, `docs/credenciales.md`, `docs/instalacion.md`.
+- n8n-mcp: Webhook (Basic Auth, responseMode), Respond to Webhook (Text, cabeceras), Code.
+
+## Contenido
+
+1. `specs/12-panel-marisa.md` (plantilla) con el diseño nodo a nodo, casos de error y la prueba (sección 7):
+   - abrir `http://localhost:5678/webhook/panel` (con el flujo publicado) y `.../webhook-test/panel` (en prueba): pide usuario y contraseña; sin ellos, 401;
+   - cifras del panel = las de la API, calculadas a mano con `GET` para el día de la prueba (pon la tabla con los valores esperados de hoy);
+   - después de registrar una venta de prueba en la app, al recargar el panel cambian las cifras (criterio 1) — con copia de la base de datos antes y restauración después;
+   - vista en móvil: en Chrome, herramientas de desarrollo → modo dispositivo (360 px), y si se puede, en el móvil real dentro de la misma red (`http://<IP del Mac>:5678/webhook/panel`);
+   - capturas previstas: `12-hu15-panel-escritorio.png`, `12-hu15-panel-movil.png`, `12-hu15-canvas.png`, `12-hu15-sin-clave.png`.
+2. `~/panel/` (fuera del repo): `preparar-panel.js` y `LEEME.md` en **turco** para la pareja, con la configuración exacta de cada nodo paso a paso en n8n (dónde se pulsa, cada valor en su propio bloque para copiar), cómo crear la credencial `Panel Marisa` (Basic Auth; la contraseña la elige la pareja y no se escribe en ningún archivo) y los pasos de la prueba.
+3. Comprueba el Code en local con `node`: con `GET` reales a la API (clave del `.env`, sin imprimirla), simula la salida de los 3 nodos de lectura, ejecuta el Code (`DateTime` de luxon: usa el `luxon` del contenedor de n8n o mira cómo se probó en entradas anteriores del ai-log), y guarda el HTML resultante en `~/panel/panel-ejemplo.html` para abrirlo en el navegador. Dime las cifras que salen y compáralas con un cálculo independiente.
+4. `AGENTS.md`: sección 5 (el `12` en la lista de nombres) y sección 8 (decisiones: web servida por n8n en vez de Looker Studio; Basic Auth). `docs/credenciales.md`: credencial `Panel Marisa` y la fila del `12`. `docs/ai-log.md`: entrada «### Spec y código del panel de Marisa · HU-15» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml`, `.env` ni `README.md`. Solo `GET` a la API.
+- Ninguna contraseña ni clave en ningún archivo ni en la salida.
+- No añadas `.DS_Store`. No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del panel · HU-15 (`workflows/12-panel-marisa.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `12 · Panel de Marisa`, según `specs/12-panel-marisa.md`, y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano los 6 nodos, con los nombres de la spec, y pegó el Code. Settings: Error workflow `08` y `Europe/Madrid`. El flujo está exportado y **publicado** (`"active": true`).
+  - **Comprobaciones del agente sobre el JSON:**
+    - el Code `Preparar panel` es **idéntico** byte a byte a `~/panel/preparar-panel.js`;
+    - `validate_workflow` de n8n-mcp: válido, 0 errores, y solo los 3 avisos esperados de Execute Once (para validar se recortó la parte del HTML del Code);
+    - sin claves, emails ni `localhost`: las credenciales van por nombre (`Panel Marisa`, `API Tienda`).
+  - **Pruebas** (28/10/2026; copia de la base de datos en `~/tienda-antes-hu15.db`, restaurada al terminar):
+    - **Pruebas 1 y 3** (Production URL, con clave): las mismas cifras que la spec y que la API: octubre `2.552,75 €` (111 operaciones), pendiente `787,05 €` en 20 activos, 2 vencen hoy y 4 fuera de plazo.
+    - **Prueba 2** (incógnito, sin clave): «Authorization is required!».
+    - **Prueba 4:** después de una venta de `25,00 €` en efectivo, hoy `25,00 €` y octubre `2.577,75 €` (112 operaciones).
+    - **Prueba 5** (modo dispositivo de Chrome): una columna, sin desplazamiento horizontal.
+    - **Prueba 6** (API caída): no se hizo; era opcional.
+  - Evidencias: los 5 `docs/evidencias/12-hu15-*.png`, enlazados en la sección 7 de la spec.
+- **Problemas encontrados:**
+  - **Test URL de un solo uso.** Solo vale después de pulsar Execute workflow, y para una petición. Las pruebas se hicieron con la Production URL y el flujo publicado.
+  - **Max Tries `2` en los 3 `GET`** (la spec dice `3`). Lo encontró el agente al revisar el JSON. Está pendiente de cambiar en n8n y volver a exportar; anotado en la nota de alcance de la spec.
+  - **Salto de línea antes de `}}`** en el `hasta` de `Leer ventas del mes` y `Leer abonos del mes`. Está dentro de la expresión, así que no cambia el valor (las pruebas salieron bien); se puede quitar al volver a exportar.
+  - **Sin comprobar:**
+    - el código HTTP de la respuesta sin clave: la captura no lo muestra;
+    - qué ve el navegador si falla la API (prueba 6);
+    - el panel en un móvil real.
+- **Decisión:** aceptado. Los 2 criterios de HU-15 están marcados en la spec. Las 2 decisiones de HU-15 de `AGENTS.md` (sección 8) siguen como «Propuesta»: la pareja decide si pasan a «Tomada».
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
+### Comandos personalizados de Claude Code · #124
+
+- **Autora:** Esra
+- **Tarea:** comandos de Claude Code para tareas repetitivas (#124, #125, #126), nivel Avanzado del README. Son archivos Markdown en `.claude/commands/`, porque el agente del proyecto es Claude Code y no OpenCode (sección 1).
+- **Resultado:**
+  - `.claude/commands/revisar-flujo.md` (`/revisar-flujo workflows/NN-nombre.json`): revisión de solo lectura con 11 comprobaciones, de los nombres a `git status`. Acaba con un veredicto.
+  - `.claude/commands/generar-spec.md` (`/generar-spec NN nombre HU-xx`): crea la spec desde la plantilla, con preguntas abiertas en vez de suposiciones. No sobrescribe.
+  - `.claude/commands/cerrar-tarea.md` (`/cerrar-tarea [nº de issue]`): repaso antes del commit y propuesta del mensaje y los `Closes #`. No hace commit.
+  - Cada comando tiene frontmatter `description`, `argument-hint` y `allowed-tools`, y usa `$1`, `$2`, `$3` o `$ARGUMENTS`. `generar-spec` es el único que puede escribir (`Write`); los otros dos solo leen y usan comandos `git` de consulta.
+  - Las comprobaciones salen de errores que ya nos han pasado:
+    - el espacio después de `}}` en el IF `¿Tiene email? (abono)`;
+    - el Mode Run once with all items en `Enviar lista a la tienda`;
+    - los Workflow Inputs de una línea en el `08`;
+    - el export que reescribe el `01` de otra rama;
+    - el `precio` usado como total pagado (recálculo).
+  - `AGENTS.md`, sección 6: tabla con los 3 comandos y una nota para Codex (Beste), que puede pegar el texto como prompt.
+  - **Prueba en esta sesión**, siguiendo las instrucciones del comando:
+    - `/revisar-flujo` sobre el `06` y el `01`: «Listo para PR» en los dos, solo con ⚠️. `validate_workflow` da los dos válidos, sin errores ni avisos. Para validar se simplificaron el código de `Preparar lista` en el `06` y el `texto` de los 4 Execute Workflow del `01`.
+    - `/generar-spec 12 asistente-marisa HU-12` en seco: crearía `specs/12-asistente-marisa.md`. No se creó.
+- **Problemas encontrados:**
+  - **Documentación de Claude Code.** No se consultó en esta sesión: el formato (frontmatter, `$ARGUMENTS`, `$1`…) es el que el agente ya conocía. Queda por comprobar lanzando los comandos en una sesión nueva.
+  - **`docs/revision-secretos.md` no está en `dev`** (está en `docs/entregables-instalacion`). Los comandos lo citan como fuente; hasta que se fusione, las búsquedas están descritas dentro de `revisar-flujo.md`.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#124 (#125, #126) · Comandos personalizados del agente para tareas repetitivas. Nivel Avanzado del README: «Comandos, skills o subagentes personalizados en OpenCode para tareas repetitivas (generar specs, revisar flujos…)». Usamos Claude Code (ver `docs/ai-log.md`, sección 1), así que son **comandos de Claude Code**: archivos Markdown en `.claude/commands/` que se lanzan con `/nombre argumentos`. Rama `feature/124-comandos`. Solo archivos de texto.
+
+Mira la documentación de Claude Code sobre *custom slash commands* (frontmatter `description`, `argument-hint`, `allowed-tools`; `$ARGUMENTS`, `$1`, `$2`) y sigue ese formato. Si no la tienes, dímelo y usa el formato básico (Markdown con `$ARGUMENTS`).
+
+## Fuentes
+
+- `AGENTS.md` (todo, sobre todo secciones 3, 5, 6, 7, 8 y 9), `specs/_plantilla.md`, varias specs ya hechas como ejemplo de estilo (`specs/07-informe-mensual.md`, `specs/11-datafono.md`, `specs/10-sub-workflows.md`).
+- `docs/revision-secretos.md` (las búsquedas de secretos), `docs/credenciales.md`, `docs/ontologia.md`, `scripts/flujos.py`.
+- Los errores que ya nos han pasado y están en `docs/ai-log.md` (por ejemplo: espacio después de `}}` en un IF, Execute Workflow sin Mode «Run once for each item», Workflow Inputs de varias líneas, el export que reescribe el `01` de otra rama).
+
+## Contenido
+
+1. **`.claude/commands/revisar-flujo.md`** · `/revisar-flujo workflows/NN-nombre.json`
+   Revisión **de solo lectura** de un JSON exportado antes de abrir la PR. Informe en español con ✅ / ⚠️ / ❌ y, para cada problema, nodo y motivo. Comprueba al menos:
+   - nombre `NN · …` y nombre de archivo según `scripts/flujos.py`; nodos con nombres descriptivos en español;
+   - **secretos**: ninguna clave, token, contraseña ni cabecera con valor; sin `pinData` ni `shared`; emails solo `@example.com` / `@pasofirme.example` / `@bancoejemplo.example` (las búsquedas de `docs/revision-secretos.md`);
+   - credenciales: los HTTP Request a la app con **Header Auth `API Tienda`**, nunca `X-API-Key` escrita; URL `http://tienda:8000`, nunca `localhost`;
+   - **Settings**: Error workflow = `08` (salvo el `08` y los `10`), zona horaria `Europe/Madrid`;
+   - **Execute Workflow**: Mode «Run once for each item» (`"mode": "each"`), sub-workflow por id que existe en `workflows/`;
+   - **Retry On Fail** solo en `GET`, nunca en `POST`;
+   - IF y expresiones: sin espacio después de `}}`; nada de `abonado`/`pendiente` recalculados (AGENTS.md, sección 9);
+   - `"active"`: avisa si el JSON viene publicado y la spec dice que no;
+   - que exista `specs/NN-….md` y que los nombres de nodo de la spec coincidan con los del JSON;
+   - `validate_workflow` de n8n-mcp, si está disponible, con sus errores y avisos.
+   Termina con «Listo para PR» o «Corregir antes de la PR». **No modifica nada.**
+2. **`.claude/commands/generar-spec.md`** · `/generar-spec NN nombre HU-xx`
+   Crea `specs/NN-nombre.md` a partir de `specs/_plantilla.md`, rellenando desde el README (la HU y sus criterios, el flujo), `docs/ontologia.md` (solo campos que existen), `docs/guia-de-la-app.md` (endpoints y eventos) y las decisiones de `AGENTS.md`. Lo que no se pueda saber, como pregunta abierta en la spec, nunca inventado. Si el archivo ya existe, no lo sobrescribe: avisa. No toca n8n ni `workflows/`. Al final, lista las preguntas abiertas para la pareja.
+3. Un tercero, si lo ves útil y es corto: **`.claude/commands/cerrar-tarea.md`** · `/cerrar-tarea` — antes del commit: `git status`, avisar de `.DS_Store`, de JSON de otros flujos cambiados por el export (y del `git restore`), de secretos en el diff, y proponer el mensaje de commit (Conventional Commits en inglés) y la lista de `Closes #`. No hace commit.
+4. `AGENTS.md`, sección 6 «Herramientas del agente»: los comandos, qué hace cada uno y cuándo usarlo (una línea cada uno). Nota: Codex (Beste) no lee `.claude/commands/`; puede usar el mismo texto pegándolo como prompt.
+5. **Prueba** (la haces tú ahora, en esta sesión, siguiendo las instrucciones de cada comando como si te lo hubieran lanzado):
+   - `revisar-flujo` sobre `workflows/06-recordatorios-y-vencimientos.json` y `workflows/01-eventos-tienda.json`: pega el informe en tu respuesta.
+   - `generar-spec` en seco: di qué archivo crearía para `12 asistente-marisa HU-12` y las primeras secciones, **sin crearlo**.
+6. `docs/ai-log.md`: entrada «### Comandos personalizados de Claude Code · #124» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo `.claude/commands/*.md`, `AGENTS.md` y `docs/ai-log.md`. No toques n8n, `workflows/`, `specs/`, `backend/`, `frontend/`, `docker-compose.yml`, `.env` ni `.claude/settings.local.json`.
+- Ningún comando hace commit, push, merge ni publica flujos.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has creado.
+```
+
+</details>
+
+### Spec y código de recordatorios · HU-06
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** especificar la segunda rama del 06 y preparar los Code/guía fuera del repo; la pareja construye a mano, prueba y exporta.
+- **Resultado:** sección 4.2 nodo a nodo, errores, prueba y criterios sin marcar; `~/hu06/` con dos Code, LEEME, suite local y baseline mínimo. Se usa Data table por apartado/dias, lectura de todo el histórico una vez y comparación de todos los candidatos; dos Execute Sub-workflow en Run once for each item y registro después de éxito. Sin email: aviso a tienda con teléfono.
+- **Pruebas locales:** 4/4, primero fallaron antes de implementación; +7/+1, calendario Madrid/DST/año, mensajes con pendiente y fecha de app, sin candidatos, tabla vacía con varios clientes, deduplicación simulada y rechazo de datos inválidos. No son pruebas n8n.
+- **GET real (28/10/2026):** 16 activos; 0 candidatos +7/+1; fuera de plazo 16,15,14,13. Clave leída en memoria, sin imprimirla ni guardarla. No POST.
+- **Problemas/decisiones:** Get por candidato con salida vacía puede perder clientes: se prepara Get sin filtros/Return All/Execute Once/Always Output Data y segundo Code. Se explican fallos SMTP/Insert y concurrencia sin prometer exactly-once transaccional. #63 Sheets se sustituye por Data table sin OAuth.
+- **Estado:** pendiente construcción, pruebas manuales y capturas de la pareja. No se tocó n8n, workflows, backend, frontend, compose ni .env; no commit, push ni PR.
+
+<details><summary>Prompt literal</summary>
+
+```text
+## Tarea
+
+HU-06 · Recordatorios de vencimiento (#57, nivel Medio). Se añade como **segunda rama** del workflow `06 · Recordatorios y vencimientos`, que ya existe en `dev` con la rama de vencimientos (HU-07, de Esra). Rama `feature/hu-06-recordatorios`, desde `dev`.
+
+Criterios (README):
+1. Cada mañana se avisa a los clientes cuyo plazo vence en 7 días y en 1 día.
+2. Cada cliente recibe cada aviso una sola vez.
+3. El mensaje incluye lo que falta por pagar y la fecha límite.
+
+Reparto: el agente escribe la spec y el código de los nodos Code; **la pareja construye los nodos a mano en n8n**, pega el código, prueba y exporta.
+
+## Fuentes
+
+- `specs/06-recordatorios-vencimientos.md`: **sección 4.2** (reservada para HU-06: mismos disparadores, segunda conexión desde `Leer apartados activos`, nombres de nodo distintos, `10 · Enviar notificación` con Mode Run once for each item), 3.1, 4.1, 5 y 7.
+- `workflows/06-recordatorios-y-vencimientos.json` (rama de vencimientos ya hecha: léela, no la cambies), `workflows/10-*.json`, `specs/10-sub-workflows.md`.
+- `specs/01-eventos-tienda.md` (rama HU-01: aviso a la tienda si el cliente no tiene email), `AGENTS.md` (secciones 2, 8 y 9), `docs/ontologia.md`, `docs/credenciales.md` (Data table `Configuración`: así se crea una Data table).
+- `backend/schemas/apartado.py`: `POST /api/apartados` acepta `fecha` (para las pruebas).
+
+## Contenido
+
+1. **Spec**, en `specs/06-recordatorios-vencimientos.md`, sección 4.2 (sustituye «pendiente, Beste»), nodo a nodo:
+   - `Elegir los que vencen pronto` (Code), desde la salida de `Leer apartados activos`: los `activo` con `fecha_limite` = hoy + 7 o hoy + 1 (Europe/Madrid). Un item por recordatorio con `dias` (7 o 1) y los datos para el mensaje, sin recalcular (`pendiente` y `fecha_limite` de la app). Sin ninguno: `{ id: null }` y un IF que corta, como en la rama de vencimientos.
+   - **«Una sola vez»**: una Data table `Recordatorios enviados` (`apartado_id` Number, `dias` Number, `fecha` String). Antes de enviar, se descartan los que ya están (así una segunda ejecución el mismo día no repite); después de enviar, se apunta la fila. Explica por qué no basta con «se ejecuta una vez al día» (Probar a mano, un reinicio, ejecutarlo dos veces). El issue #63 proponía Google Sheets; una Data table de n8n hace lo mismo sin credencial OAuth, igual que `Configuración`: dilo.
+   - Cliente **con email**: `10 · Enviar notificación` con `para`, `asunto` y `texto` (una sola expresión con `\n`, Workflow Inputs de una línea). Asunto propuesto: `Tu apartado vence en 7 días: <producto>` / `…mañana…`. Texto con producto, talla, pendiente y fecha límite (dd/MM/yyyy), y cómo pagar.
+   - Cliente **sin email**: decide (propuesta: aviso a la tienda con el teléfono, como HU-01 y HU-07: el cliente no está delante) y justifícalo.
+   - Casos de error, prueba (sección 7) y criterios (sección 8). Actualiza la nota de alcance del principio y la cabecera (HU-06 deja de estar pendiente).
+2. **Código** de los nodos Code en `~/hu06/` (fuera del repo), con un `LEEME.md`: configuración exacta de cada nodo nuevo (Data table Get/Insert, IF, Execute Workflow con sus Workflow Inputs cada uno en su bloque para copiar), dibujo de las conexiones y pasos de prueba.
+3. **Prueba con datos reales** (la escribe el agente; la ejecuta la pareja): copia de la base de datos antes (`docker compose cp tienda:/data/tienda.db ~/tienda-antes-hu06.db`) y restauración después. Con `POST /api/apartados` y `fecha` = hoy − 83 días se crea un apartado que vence en 7 días, y con hoy − 89 uno que vence mañana (uno con email y otro sin email). Primera ejecución con `Probar a mano`: los recordatorios; segunda: ninguno. Comprueba con `GET /api/apartados?estado=activo` (solo lectura, clave del `.env` sin imprimirla) qué apartados de ejemplo caen hoy en +7 / +1, para contar con ellos. La rama de vencimientos se ejecuta en la misma prueba: tenlo en cuenta (vencerá los fuera de plazo), por eso la copia de la base de datos.
+4. `AGENTS.md`, sección 8: las decisiones nuevas (Data table, sin email). `docs/credenciales.md`: la Data table nueva. `docs/ai-log.md`: entrada «### Spec y código de recordatorios · HU-06» con el formato habitual (Autora: Beste, con Codex) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. Solo `GET` a la API.
+- No cambies la rama de vencimientos ni sus nombres de nodo.
+- **No publiques el `06`.**
+- No añadas `.DS_Store`. No hagas commit, push ni PR. Di qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción y pruebas de recordatorios · HU-06
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** la pareja construyó 9 nodos manualmente y autorizó al agente a terminar ajustes, pruebas reales, capturas, restauración, export y PR.
+- **Resultado:** 06 con 17 nodos, dos ramas, parámetros previos conservados. Correcciones: condición vacía de ¿Hay recordatorios? a Boolean is true con id !== null; referencias API locales de Buscar apartado y Vencer apartado. Sin modificar lógica/nombres de HU-07.
+- **Prueba 1:** Nora #25 (+7, pendiente 40, límite 04/11) y Hugo #26 (+1, sin email, pendiente 40, límite 29/10). Ejecución #45 Succeeded 1.934 s: 2 recordatorios, 2 filas. HU-07 además vence 4 apartados y entrega lista/vales.
+- **Prueba 2:** #58 Succeeded 427 ms, cero correos nuevos, mismas 2 filas. Mailpit 13 antes/después, mismos IDs de recordatorios. Se preservaron correos previos en vez de borrarlos.
+- **Restauración:** copia previa íntegra; tienda.db restaurada y servicio reiniciado. GET: 16 activos, Nora/Hugo ausentes, 16/15/14/13 de nuevo activos fuera de plazo. Solo las 2 filas de prueba eliminadas; tabla vacía.
+- **Evidencias:** docs/evidencias/06-hu06-*.png, resultados y validación JSON. Export con COMPOSE_PROJECT_NAME correcto, solo 06 en el diff de workflows. Code idéntico al probado, 4/4 tests; validator 0 errores/1 aviso intencional Execute Once.
+- **Límite:** 06 sin publicar por petición expresa; programación real 9:00 y errores de producción no comprobados. Criterio de envío cada mañana pendiente; deduplicación y contenido probados.
+- **Decisión:** aceptado para revisión humana mediante PR a dev; sin merge ni cambios en main/dev.
+
 
 ## 4. Decisiones abiertas
 
