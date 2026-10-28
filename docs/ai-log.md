@@ -2382,6 +2382,25 @@ Reparto: el agente escribe la spec y el código de los nodos Code; **la pareja c
 - **Límite:** 06 sin publicar por petición expresa; programación real 9:00 y errores de producción no comprobados. Criterio de envío cada mañana pendiente; deduplicación y contenido probados.
 - **Decisión:** aceptado para revisión humana mediante PR a dev; sin merge ni cambios en main/dev.
 
+### Comparativa de modelos gratuitos (#96–#99)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** comparar dos modelos en la misma extracción HU-03, con calidad, velocidad y errores reales.
+- **Resultado:** `docs/comparativa-modelos.md`, runner estándar Python, cuatro tests y evidencia JSON de 48 llamadas: 20B 24/24 exactas, 120B 21/24; ocho pagos por tres rondas, publicidad descartada sin IA. Medianas 517,65/574,11 ms; p95 1429,31/904,69 ms.
+- **Problemas encontrados:** el cliente HTTP inicial recibió 403; un User-Agent explícito permitió el acceso. El 120B interpretó concepto vacío como null en las tres rondas de Romero; documentada la ambigüedad del prompt, sin cambiar referencia ni ocultar fallos. Pytest local no arrancó por openpyxl ausente; regresión en imagen del proyecto y montaje de backend de solo lectura, con base temporal: 13/13. Runner 4/4 tras reproducir y corregir TypeError en respuestas HTTP 200 malformadas, hallazgo de la revisión independiente.
+- **Privacidad:** credencial existente solo en memoria; no se imprimió ni guardó en disco. Solo se enviaron ordenante/importe/concepto ficticios. No llamadas a tienda, cambios de DB, emails, publicaciones ni modificación del flujo 03.
+- **Decisión:** recomendar 20B solo para estas plantillas; documentar límites del tamaño de muestra, caché/red, mejor p95 del 120B y ausencia de comprobación de facturación. Preparar PR a dev para revisión humana.
+
+<details><summary>Prompt</summary>
+
+```text
+ok continue completing them
+```
+
+El agente eligió como siguiente tarea #96 y la extracción de los fixtures ficticios de HU-03, conforme al README y los sub-issues #97–#99. El prompt de extracción idéntico para ambos modelos está completo en el script y en la evidencia JSON.
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
