@@ -8,7 +8,7 @@ Este documento describe las entidades del negocio de Paso Firme, sus atributos, 
 - **Quién calcula cada dato:**
   - 🏪 **App**: lo calcula o lo genera la app de la tienda. n8n **solo lo lee**, nunca lo recalcula.
   - ⚙️ **n8n**: la app no lo calcula; lo tiene que obtener un flujo de n8n a partir de la API.
-- **Entidades que la app no guarda por separado:** `Cliente` y `Producto` no tienen tabla ni endpoint propios; sus datos viven dentro de cada `Apartado`. `CierreDiario` no existe en la app: lo construye n8n y lo guarda fuera (por ejemplo, en Google Sheets).
+- **Entidades que la app no guarda por separado:** `Cliente` y `Producto` no tienen tabla ni endpoint propios; sus datos viven dentro de cada `Apartado`. `CierreDiario` no existe en la app: lo construye n8n y lo guarda en su Data table local `Cierres`.
 
 | Entidad | ¿Existe en la API? | Dónde se consulta |
 |---|---|---|
@@ -18,7 +18,7 @@ Este documento describe las entidades del negocio de Paso Firme, sus atributos, 
 | Abono | Sí | `GET /api/abonos`, detalle del apartado |
 | Venta | Sí | `GET /api/ventas` |
 | Vale | Sí | `GET /api/vales`, detalle del apartado |
-| CierreDiario | No (lo crea n8n) | Herramienta externa (Google Sheets o similar) |
+| CierreDiario | No (lo crea n8n) | Data table `Cierres` del proyecto n8n |
 
 ---
 

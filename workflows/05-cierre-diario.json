@@ -158,26 +158,30 @@
       }
     },
     {
-      "name": "Guardar cierre en Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "id": "896db24c-4dc2-5260-949f-d874910cdd0a",
+      "name": "Guardar cierre en Cierres",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "id": "400419eb-2b11-5ac7-8786-ff7912b03d56",
       "position": [
         1200,
         0
       ],
       "parameters": {
-        "resource": "sheet",
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "1p4W_chB_73vzmRUOhIY0sZCJM_S1LjM-V9opyAjcj4c"
-        },
-        "sheetName": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
           "__rl": true,
           "mode": "name",
           "value": "Cierres"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "fecha",
+              "keyValue": "={{ $json.fila.fecha }}"
+            }
+          ]
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -200,18 +204,17 @@
             "operaciones": "={{ $json.fila.operaciones }}",
             "sin_movimientos": "={{ $json.fila.sin_movimientos }}"
           },
-          "matchingColumns": [
-            "fecha"
-          ],
+          "matchingColumns": [],
           "schema": [
             {
               "id": "fecha",
               "displayName": "fecha",
               "required": false,
-              "defaultMatch": true,
+              "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "ventas_efectivo",
@@ -220,7 +223,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "ventas_tarjeta",
@@ -229,7 +233,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "ventas_bizum",
@@ -238,7 +243,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "ventas_total",
@@ -247,7 +253,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "ventas_operaciones",
@@ -256,7 +263,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "abonos_efectivo",
@@ -265,7 +273,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "abonos_tarjeta",
@@ -274,7 +283,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "abonos_bizum",
@@ -283,7 +293,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "abonos_total",
@@ -292,7 +303,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "abonos_operaciones",
@@ -301,7 +313,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "total_efectivo",
@@ -310,7 +323,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "total_tarjeta",
@@ -319,7 +333,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "total_bizum",
@@ -328,7 +343,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "total",
@@ -337,7 +353,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "operaciones",
@@ -346,7 +363,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "number",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             },
             {
               "id": "sin_movimientos",
@@ -355,21 +373,14 @@
               "defaultMatch": false,
               "display": true,
               "type": "boolean",
-              "canBeUsedToMatch": true
+              "readOnly": false,
+              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
-        "options": {
-          "cellFormat": "RAW"
-        }
-      },
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": null,
-          "name": "Google Sheets"
-        }
+        "options": {}
       },
       "retryOnFail": false
     },
@@ -461,14 +472,14 @@
       "main": [
         [
           {
-            "node": "Guardar cierre en Sheets",
+            "node": "Guardar cierre en Cierres",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Guardar cierre en Sheets": {
+    "Guardar cierre en Cierres": {
       "main": [
         [
           {

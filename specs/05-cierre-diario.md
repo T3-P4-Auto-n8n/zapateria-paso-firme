@@ -6,13 +6,13 @@
 
 - **Flujo:** `05 · Cierre diario`, `workflows/05-cierre-diario.json`.
 - **HU / nivel / responsable:** HU-04, Esencial, Beste.
-- **Credenciales:** `API Tienda` (Header Auth), `Mailpit` (SMTP), `Google Sheets` (OAuth2).
+- **Credenciales:** `API Tienda` (Header Auth), `Mailpit` (SMTP). El histórico se guarda en la Data table local de n8n `Cierres`.
 - **Error workflow:** seleccionar el `08 · Error Workflow` local en Settings.
 - **Timezone:** `Europe/Madrid`. Export inactivo: la pareja revisa y publica.
 
 ## 2. Objetivo
 
-Enviar cada noche a la tienda el cierre completo del día anterior, con ventas directas, abonos y total por efectivo, tarjeta y Bizum, y guardar una fila por fecha en Google Sheets.
+Enviar cada noche a la tienda el cierre completo del día anterior, con ventas directas, abonos y total por efectivo, tarjeta y Bizum, y guardar una fila por fecha en la Data table local de n8n `Cierres`.
 
 ## 3. Disparador y entradas
 
@@ -29,8 +29,8 @@ Enviar cada noche a la tienda el cierre completo del día anterior, con ventas d
 4. Ambos HTTP: Header Auth `API Tienda`, Execute Once, Always Output Data y timeout 30 s. No Never Error ni Continue On Error: un HTTP fallido impide emitir cifras incompletas.
 5. `Preparar cierre` (Code, Run Once for All Items) lee ambos nodos por nombre. Descarta únicamente el item vacío de Always Output Data. Valida fecha, ID único por colección, importe positivo con hasta dos decimales y forma_pago en efectivo/tarjeta/bizum. Respuesta errónea o de otro día: error, no cierre ficticio. Suma en céntimos enteros y comprueba desbordamiento. No usa IA.
 6. Devuelve un item con `fecha`, desglose numérico de ventas, abonos y total por método, totales, números de operaciones, `sin_movimientos`, `asunto`, `html` y `fila` (registro del histórico). Los euros se muestran con dos decimales.
-7. `Guardar cierre en Sheets`: Google Sheets **Append or Update Row**, pestaña `Cierres`, matching column **fecha**, mapeo explícito de `fila`. Repetir secuencialmente un día actualiza la fila; no suma otra vez. No ejecutar cierres simultáneos para el mismo día: Sheets no ofrece restricción única transaccional. Sin retries automáticos.
-8. `Enviar cierre diario`: From/To `tienda@pasofirme.example`, Mailpit, HTML; asunto y html se leen de `$('Preparar cierre').first().json`, no del resultado de Sheets. Append n8n Attribution desactivado. Solo envía después de guardar correctamente el histórico.
+7. `Guardar cierre en Cierres`: Data Table → Row → **Upsert**, condición `fecha` igual a `fila.fecha`, mapeo explícito de `fila`. Repetir secuencialmente un día actualiza la fila; no suma otra vez. Sin retries automáticos.
+8. `Enviar cierre diario`: From/To `tienda@pasofirme.example`, Mailpit, HTML; asunto y html se leen de `$('Preparar cierre').first().json`, no del resultado de la Data table. Append n8n Attribution desactivado. Solo envía después de guardar correctamente el histórico.
 
 La programación publicada depende de n8n en marcha. Si se pierde una ejecución, recuperar el día con el formulario. Una repetición puede reenviar el correo; el upsert evita duplicar la fila, no garantiza envío exactamente una vez. Las modificaciones retroactivas de la app se reflejan al repetir el cierre.
 
@@ -38,13 +38,13 @@ La programación publicada depende de n8n en marcha. Si se pierde una ejecución
 
 - Correo: `Cierre de <fecha>: <total> € recaudados`; tabla filas Ventas directas, Abonos, Total; columnas Efectivo, Tarjeta, Bizum, Total y Nº. Sin datos personales.
 - Día vacío: «No hubo movimientos el <fecha>», tabla a cero y fila del histórico con ceros; se envía igual.
-- Google Sheets, pestaña **Cierres**, fila 1 con estos encabezados exactos (sin fórmulas ni filas de ejemplo en producción):
+- Data table **Cierres** con estas columnas exactas (sin filas de ejemplo):
 
 ```text
 fecha,ventas_efectivo,ventas_tarjeta,ventas_bizum,ventas_total,ventas_operaciones,abonos_efectivo,abonos_tarjeta,abonos_bizum,abonos_total,abonos_operaciones,total_efectivo,total_tarjeta,total_bizum,total,operaciones,sin_movimientos
 ```
 
-Una fila por fecha ISO, importes numéricos en euros y sin_movimientos booleano. El documento y credencial se seleccionan al importar; sus identificadores son referencias, no secretos. Ver [guía de configuración](../docs/hu04-cierre-diario.md).
+Una fila por fecha ISO, importes numéricos en euros y `sin_movimientos` booleano. La Data table vive en el proyecto n8n local y no requiere credencial externa. Hay que crearla una vez por instancia antes de ejecutar el flujo. Ver [guía de configuración](../docs/hu04-cierre-diario.md).
 
 ## 6. Casos de error
 
@@ -53,7 +53,7 @@ Una fila por fecha ISO, importes numéricos en euros y sin_movimientos booleano.
 | 401, 404, 422, 5xx o red en GET | Parar sin guardar ni enviar un cierre incompleto; 08 en producción. |
 | Respuesta malformada, importe inválido, ID duplicado, método desconocido, fecha incorrecta | Parar en Preparar cierre; no descartar silenciosamente dinero. |
 | Ninguna venta/abono | Siempre se produce un cierre con ceros y mensaje explícito. |
-| Google OAuth/documento/pestaña/encabezados incorrectos | Parar sin correo de cierre; revisar configuración y repetir por formulario. |
+| Data table `Cierres` inexistente o con columnas incorrectas | Parar sin correo de cierre; crear/corregir la tabla y repetir por formulario. |
 | SMTP falla después de guardar | Error; la fila existe. Revisar Mailpit antes de repetir para no duplicar un envío incierto. |
 | n8n parado de noche | Recuperar fecha manualmente; no inventar que se ejecutó el horario. |
 
@@ -69,9 +69,9 @@ Suite `node --test tests/test_hu04.cjs`: datos mixtos, céntimos, abonos inicial
 | Método desconocido, negativo, null, 3 decimales, otra fecha o ID duplicado | Error; no guardar ni enviar. |
 | 2026-01-01 a las 00:05 Madrid | Cierra 2025-12-31. |
 | Cambio de horario marzo/octubre | Ayer según calendario Madrid; sin restar 24 horas al instante. |
-| Repetir una fecha en Sheets | Una fila actualizada; correo puede repetirse. Verificado con ejecuciones 32 y 38 y readback de Sheets: una fila para 2026-10-26. |
+| Repetir una fecha en `Cierres` | Upsert actualiza la fila existente; el correo puede repetirse. Probar en secuencia, no en ejecuciones simultáneas. |
 
-Los resultados ejecutados y sus límites se recogen en [evidencias](../docs/evidencias/05-hu04-resultados.md). Las pruebas automáticas no demuestran entrega programada ni OAuth de Google.
+Los resultados ejecutados y sus límites se recogen en [evidencias](../docs/evidencias/05-hu04-resultados.md). Las pruebas automáticas no demuestran entrega programada ni escritura en la Data table local.
 
 ## 8. Criterios de aceptación
 
@@ -79,4 +79,4 @@ Los resultados ejecutados y sus límites se recogen en [evidencias](../docs/evid
 - [x] Los importes coinciden con los de la app.
 - [x] Si ese día no hubo movimientos, el resumen lo dice en vez de fallar.
 
-No marcar la entrega nocturna ni Sheets sin ejecución real. El estado final de cada requisito se documenta con evidencia en la sección 7 y su enlace.
+No marcar la entrega nocturna ni el guardado en `Cierres` sin ejecución real de la versión actual del flujo. Las pruebas anteriores con Google Sheets son evidencia histórica y no prueban esta nueva integración con Data Table.

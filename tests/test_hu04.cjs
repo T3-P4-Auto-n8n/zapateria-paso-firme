@@ -41,7 +41,7 @@ test('manual date is preserved and invalid form input never silently runs a diff
  assert.deepEqual(day({fecha:'2024-02-29'}),[{json:{fecha:'2024-02-29',desde:'2024-02-29',hasta:'2024-02-29'}}]);
  for(const fecha of ['','2026-02-29','2026-13-01','27/10/2026',null,'<script>'])assert.throws(()=>day({fecha}),/fecha/i);
 });
-test('export keeps both GETs on the same full day and persists before sending the original report',()=>{
+test('export keeps both GETs on the same full day and persists to the local Cierres table before email',()=>{
  const file=path.join(root,'workflows/05-cierre-diario.json');assert.ok(fs.existsSync(file),'workflow export missing');
  const w=JSON.parse(fs.readFileSync(file));const n=name=>w.nodes.find(x=>x.name===name);
  assert.equal(w.active,false);assert.equal(w.settings.timezone,'Europe/Madrid');
@@ -49,10 +49,24 @@ test('export keeps both GETs on the same full day and persists before sending th
   const http=n(name);assert.equal(http.parameters.method,'GET');assert.equal(http.executeOnce,true);assert.equal(http.alwaysOutputData,true);
   assert.deepEqual(http.parameters.queryParameters.parameters.map(x=>x.name),['desde','hasta']);assert.equal(http.onError,undefined);
  }
- assert.equal(n('Guardar cierre en Sheets').parameters.operation,'appendOrUpdate');
- assert.deepEqual(n('Guardar cierre en Sheets').parameters.columns.matchingColumns,['fecha']);
- assert.deepEqual(w.connections['Preparar cierre'].main[0].map(x=>x.node),['Guardar cierre en Sheets']);
- assert.deepEqual(w.connections['Guardar cierre en Sheets'].main[0].map(x=>x.node),['Enviar cierre diario']);
+ const save=n('Guardar cierre en Cierres');
+ assert.equal(save.type,'n8n-nodes-base.dataTable');
+ assert.equal(save.parameters.resource,'row');
+ assert.equal(save.parameters.operation,'upsert');
+ assert.equal(save.parameters.dataTableId.mode,'name');
+ assert.equal(save.parameters.dataTableId.value,'Cierres');
+ assert.deepEqual(save.parameters.filters.conditions,[{keyName:'fecha',keyValue:'={{ $json.fila.fecha }}'}]);
+ const fila=report()[0].json.fila;
+ assert.deepEqual(Object.keys(save.parameters.columns.value),Object.keys(fila));
+ for(const key of Object.keys(fila))assert.equal(save.parameters.columns.value[key],`={{ $json.fila.${key} }}`);
+ assert.deepEqual(save.parameters.columns.schema.map(({id,type})=>[id,type]),Object.keys(fila).map(key=>[key,key==='fecha'?'string':key==='sin_movimientos'?'boolean':'number']));
+ assert.deepEqual(w.connections['Preparar cierre'].main[0].map(x=>x.node),['Guardar cierre en Cierres']);
+ assert.deepEqual(w.connections['Guardar cierre en Cierres'].main[0].map(x=>x.node),['Enviar cierre diario']);
+ const exportText=JSON.stringify(w);
+ assert.equal(exportText.includes('googleSheetsOAuth2Api'),false);
+ assert.equal(exportText.includes('googleSheets'),false);
+ assert.equal(exportText.includes('documentId'),false);
+ assert.equal(exportText.includes('1p4W_chB_73vzmRUOhIY0sZCJM_S1LjM-V9opyAjcj4c'),false);
  assert.match(n('Enviar cierre diario').parameters.html,/Preparar cierre/);
  for(const [name,source] of [['Calcular día','calcular-dia'],['Preparar cierre','preparar-cierre']])assert.equal(n(name).parameters.jsCode,code(source));
 });

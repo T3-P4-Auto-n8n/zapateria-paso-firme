@@ -1317,3 +1317,10 @@ Ninguna por ahora.
 ## 2026-10-28 · HU-04: cierre de pruebas manuales y capturas
 
 Petición: terminar pruebas y guardar capturas. La pareja conectó OAuth; el agente corrigió la referencia del nodo Sheets. Flujo completo: ejecución 32 (213.65 €), 37 (día vacío) y 38 (repetición). GET independientes y readback de Sheets confirman cifras y una fila por fecha. Cinco capturas obligatorias más repetición en docs/evidencias. Suite HU-04: 8/8. No se escribieron claves ni se modificó la tienda. Publicación, entrega nocturna y aviso del 08 en producción pendientes: AGENTS.md reserva publicación a la pareja después de revisión humana.
+
+## 2026-10-28 · HU-04: quitar dependencia de Google Sheets
+
+- **Petición:** sustituir el nodo `Guardar cierre en Sheets` por una Data table de n8n llamada `Cierres`, similar al histórico de HU-06. Motivo: no depender de OAuth ni de un ID de documento Google real para importar y probar el flujo.
+- **Cambios:** el export y `scripts/generar_hu04.py` ahora usan `Data Table → Row → Upsert`, buscando por `fecha` y mapeando las 17 columnas. La tabla se referencia por nombre; se elimina del JSON el ID real del documento y la credencial Google Sheets. Se actualizan spec, guía HU-04, catálogo de credenciales y ontología.
+- **Verificación local:** se amplió el contrato de export para comprobar nodo, operación, nombre de tabla, condición de upsert, esquema/tipos, mapeos y ausencia de credencial/ID Google. `node --test tests/test_hu04.cjs`: 8/8 superadas; `git diff --check` sin errores.
+- **Pendiente:** crear la Data table `Cierres` en la instancia n8n local y ejecutar la versión actual con días de prueba; las ejecuciones y capturas históricas de Sheets no verifican este cambio. El flujo queda inactivo y sin publicar. Actualizar la rama con `dev` y retirar el borrador de la PR después de la sincronización.
