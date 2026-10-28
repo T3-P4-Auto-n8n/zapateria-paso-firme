@@ -1,0 +1,279 @@
+{
+  "audit": {
+    "table": {
+      "id": "tt5qn1tepLhNwyJk",
+      "name": "Cierres",
+      "rows": [
+        {
+          "id": 2,
+          "fecha": "1900-01-01",
+          "ventas_efectivo": 0,
+          "ventas_tarjeta": 0,
+          "ventas_bizum": 0,
+          "ventas_total": 0,
+          "ventas_operaciones": 0,
+          "abonos_efectivo": 0,
+          "abonos_tarjeta": 0,
+          "abonos_bizum": 0,
+          "abonos_total": 0,
+          "abonos_operaciones": 0,
+          "total_efectivo": 0,
+          "total_tarjeta": 0,
+          "total_bizum": 0,
+          "total": 0,
+          "operaciones": 0,
+          "sin_movimientos": 1,
+          "createdAt": "2026-10-28 22:47:17.504",
+          "updatedAt": "2026-10-28 22:47:17.504"
+        },
+        {
+          "id": 1,
+          "fecha": "2026-10-26",
+          "ventas_efectivo": 14.9,
+          "ventas_tarjeta": 98.85,
+          "ventas_bizum": 79.9,
+          "ventas_total": 193.65,
+          "ventas_operaciones": 4,
+          "abonos_efectivo": 0,
+          "abonos_tarjeta": 20,
+          "abonos_bizum": 0,
+          "abonos_total": 20,
+          "abonos_operaciones": 1,
+          "total_efectivo": 14.9,
+          "total_tarjeta": 118.85,
+          "total_bizum": 79.9,
+          "total": 213.65,
+          "operaciones": 5,
+          "sin_movimientos": 0,
+          "createdAt": "2026-10-28 22:46:53.244",
+          "updatedAt": "2026-10-28 22:47:35.456"
+        }
+      ]
+    },
+    "executions": [
+      {
+        "id": 78,
+        "status": "success",
+        "startedAt": "2026-10-28 22:47:34.905",
+        "nodes": [
+          "Elegir día",
+          "Calcular día",
+          "Leer ventas del día",
+          "Leer abonos del día",
+          "Preparar cierre",
+          "Guardar cierre en Cierres",
+          "Enviar cierre diario"
+        ],
+        "fecha": "2026-10-26",
+        "fila": {
+          "fecha": "2026-10-26",
+          "ventas_efectivo": 14.9,
+          "ventas_tarjeta": 98.85,
+          "ventas_bizum": 79.9,
+          "ventas_total": 193.65,
+          "ventas_operaciones": 4,
+          "abonos_efectivo": 0,
+          "abonos_tarjeta": 20,
+          "abonos_bizum": 0,
+          "abonos_total": 20,
+          "abonos_operaciones": 1,
+          "total_efectivo": 14.9,
+          "total_tarjeta": 118.85,
+          "total_bizum": 79.9,
+          "total": 213.65,
+          "operaciones": 5,
+          "sin_movimientos": false
+        },
+        "saved": [
+          {
+            "fecha": "2026-10-26",
+            "ventas_efectivo": 14.9,
+            "ventas_tarjeta": 98.85,
+            "ventas_bizum": 79.9,
+            "ventas_total": 193.65,
+            "ventas_operaciones": 4,
+            "abonos_efectivo": 0,
+            "abonos_tarjeta": 20,
+            "abonos_bizum": 0,
+            "abonos_total": 20,
+            "abonos_operaciones": 1,
+            "total_efectivo": 14.9,
+            "total_tarjeta": 118.85,
+            "total_bizum": 79.9,
+            "total": 213.65,
+            "operaciones": 5,
+            "sin_movimientos": false,
+            "id": 1,
+            "createdAt": "2026-10-28T22:46:53.244Z",
+            "updatedAt": "2026-10-28T22:47:35.456Z"
+          }
+        ],
+        "email_node_executed": true
+      },
+      {
+        "id": 77,
+        "status": "success",
+        "startedAt": "2026-10-28 22:47:16.996",
+        "nodes": [
+          "Elegir día",
+          "Calcular día",
+          "Leer ventas del día",
+          "Leer abonos del día",
+          "Preparar cierre",
+          "Guardar cierre en Cierres",
+          "Enviar cierre diario"
+        ],
+        "fecha": "1900-01-01",
+        "fila": {
+          "fecha": "1900-01-01",
+          "ventas_efectivo": 0,
+          "ventas_tarjeta": 0,
+          "ventas_bizum": 0,
+          "ventas_total": 0,
+          "ventas_operaciones": 0,
+          "abonos_efectivo": 0,
+          "abonos_tarjeta": 0,
+          "abonos_bizum": 0,
+          "abonos_total": 0,
+          "abonos_operaciones": 0,
+          "total_efectivo": 0,
+          "total_tarjeta": 0,
+          "total_bizum": 0,
+          "total": 0,
+          "operaciones": 0,
+          "sin_movimientos": true
+        },
+        "saved": [
+          {
+            "fecha": "1900-01-01",
+            "ventas_efectivo": 0,
+            "ventas_tarjeta": 0,
+            "ventas_bizum": 0,
+            "ventas_total": 0,
+            "ventas_operaciones": 0,
+            "abonos_efectivo": 0,
+            "abonos_tarjeta": 0,
+            "abonos_bizum": 0,
+            "abonos_total": 0,
+            "abonos_operaciones": 0,
+            "total_efectivo": 0,
+            "total_tarjeta": 0,
+            "total_bizum": 0,
+            "total": 0,
+            "operaciones": 0,
+            "sin_movimientos": true,
+            "id": 2,
+            "createdAt": "2026-10-28T22:47:17.504Z",
+            "updatedAt": "2026-10-28T22:47:17.504Z"
+          }
+        ],
+        "email_node_executed": true
+      },
+      {
+        "id": 76,
+        "status": "success",
+        "startedAt": "2026-10-28 22:46:52.517",
+        "nodes": [
+          "Elegir día",
+          "Calcular día",
+          "Leer ventas del día",
+          "Leer abonos del día",
+          "Preparar cierre",
+          "Guardar cierre en Cierres",
+          "Enviar cierre diario"
+        ],
+        "fecha": "2026-10-26",
+        "fila": {
+          "fecha": "2026-10-26",
+          "ventas_efectivo": 14.9,
+          "ventas_tarjeta": 98.85,
+          "ventas_bizum": 79.9,
+          "ventas_total": 193.65,
+          "ventas_operaciones": 4,
+          "abonos_efectivo": 0,
+          "abonos_tarjeta": 20,
+          "abonos_bizum": 0,
+          "abonos_total": 20,
+          "abonos_operaciones": 1,
+          "total_efectivo": 14.9,
+          "total_tarjeta": 118.85,
+          "total_bizum": 79.9,
+          "total": 213.65,
+          "operaciones": 5,
+          "sin_movimientos": false
+        },
+        "saved": [
+          {
+            "fecha": "2026-10-26",
+            "ventas_efectivo": 14.9,
+            "ventas_tarjeta": 98.85,
+            "ventas_bizum": 79.9,
+            "ventas_total": 193.65,
+            "ventas_operaciones": 4,
+            "abonos_efectivo": 0,
+            "abonos_tarjeta": 20,
+            "abonos_bizum": 0,
+            "abonos_total": 20,
+            "abonos_operaciones": 1,
+            "total_efectivo": 14.9,
+            "total_tarjeta": 118.85,
+            "total_bizum": 79.9,
+            "total": 213.65,
+            "operaciones": 5,
+            "sin_movimientos": false,
+            "id": 1,
+            "createdAt": "2026-10-28T22:46:53.244Z",
+            "updatedAt": "2026-10-28T22:46:53.244Z"
+          }
+        ],
+        "email_node_executed": true
+      }
+    ]
+  },
+  "api_references": {
+    "2026-10-26": {
+      "ventas": {
+        "efectivo": 14.9,
+        "tarjeta": 98.85,
+        "bizum": 79.9,
+        "total": 193.65,
+        "operaciones": 4
+      },
+      "abonos": {
+        "efectivo": 0.0,
+        "tarjeta": 20.0,
+        "bizum": 0.0,
+        "total": 20.0,
+        "operaciones": 1
+      },
+      "total": 213.65
+    },
+    "1900-01-01": {
+      "ventas": {
+        "efectivo": 0.0,
+        "tarjeta": 0.0,
+        "bizum": 0.0,
+        "total": 0.0,
+        "operaciones": 0
+      },
+      "abonos": {
+        "efectivo": 0.0,
+        "tarjeta": 0.0,
+        "bizum": 0.0,
+        "total": 0.0,
+        "operaciones": 0
+      },
+      "total": 0.0
+    }
+  },
+  "mailpit": {
+    "76": "7iu3GZjM4pGfkEdGLrx3bC",
+    "77": "39re26dl78wcrL3HcaJb3U",
+    "78": "7M1v189jMtmpC5BuQXzKjB"
+  },
+  "limits": [
+    "Manual full-form executions only; daily schedule and production error notification not tested",
+    "No shop POST/database changes; Cierres has two test/reference dates",
+    "Sequential repeat verified; concurrent upserts not tested"
+  ]
+}

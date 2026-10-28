@@ -69,3 +69,25 @@ GET actuales confirmaron de nuevo 213.65 € y cero para el día vacío. [Readba
 ### Pendiente de producción
 
 El flujo 05 sigue sin publicar. AGENTS.md prohíbe al agente activar/publicar y exige revisión humana en PR. Por ello siguen pendientes la entrega automática real a las 00:05 y una prueba del aviso de error del 08 desde una ejecución de producción. Una ejecución manual exitosa no acredita esas dos pruebas. La regla de fecha programada sí está cubierta por la suite (Madrid, cambio de año y horario de verano). No se modificaron datos de la app durante estas pruebas HU-04.
+
+## Versión actual Data Table · 28/10/2026
+
+La nueva integración se probó completa desde Form Trigger, sin modificar la tienda. Se creó Cierres con 17 columnas tipadas; el lookup By Name funciona en esta versión n8n. La CLI no pudo ejecutar el helper Data Table (“module is disabled”), por lo que se creó desde el editor del servidor activo; no se presenta ese intento CLI como éxito.
+
+| Caso | Ejecución completa | Resultado real |
+|---|---|---|
+| 2026-10-26 | [76](http://localhost:5678/workflow/HU04CierreDiario1/executions/76) | Success; 213.65 €, cinco operaciones; upsert y SMTP ejecutados |
+| 1900-01-01 | [77](http://localhost:5678/workflow/HU04CierreDiario1/executions/77) | Success; cero importes/operaciones, mensaje explícito, fila guardada |
+| Repetir 2026-10-26 | [78](http://localhost:5678/workflow/HU04CierreDiario1/executions/78) | Success; sigue una fila por fecha; correo se reenvía según contrato |
+
+GET independientes actuales y Python Decimal confirman 193.65 € ventas + 20 € abonos = 213.65 €; efectivo 14.90 €, tarjeta 118.85 €, Bizum 79.90 €. El día vacío devuelve cero. Auditoría de solo lectura de n8n confirma las tres ejecuciones y dos filas, fechas únicas, en Cierres (`tt5qn1tepLhNwyJk`). La tabla conserva la fecha de referencia 26/10 y el caso vacío 01/01/1900; no son cambios en tienda.db.
+
+- [Resultados estructurados, filas y referencias API](05-hu04-datatable-resultados.json).
+- [Canvas primera ejecución](05-hu04-datatable-primera.png), [día vacío](05-hu04-datatable-vacio.png), [repetición](05-hu04-datatable-repeticion.png).
+- [Dos filas, sin duplicado por fecha](05-hu04-datatable-filas.png).
+- [Email con movimientos](05-hu04-datatable-mailpit.png), Mailpit 7iu3GZjM4pGfkEdGLrx3bC.
+- [Email vacío abierto](05-hu04-datatable-mailpit-vacio.png), Mailpit 39re26dl78wcrL3HcaJb3U.
+- Repetición: Mailpit 7M1v189jMtmpC5BuQXzKjB.
+- [Validación actual](05-hu04-datatable-validacion.json): 0 errores, dos avisos intencionales Execute Once en GET. Suite HU-04 8/8. Export real inactivo y credenciales API Tienda/Mailpit seleccionadas.
+
+Sigue pendiente entrega automática 00:05 y error 08 en producción; no se publicó el flujo. Las capturas Sheets de arriba se conservan como históricas, no como evidencia de la Data Table.

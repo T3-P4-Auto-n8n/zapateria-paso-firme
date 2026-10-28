@@ -98,7 +98,7 @@
       "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
-          "id": null,
+          "id": "HU04ApiTienda01",
           "name": "API Tienda"
         }
       }
@@ -138,7 +138,7 @@
       "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
-          "id": null,
+          "id": "HU04ApiTienda01",
           "name": "API Tienda"
         }
       }
@@ -405,7 +405,7 @@
       },
       "credentials": {
         "smtp": {
-          "id": null,
+          "id": "xnRT8CIPuSs3AlBd",
           "name": "Mailpit"
         }
       },
@@ -499,6 +499,9 @@
     "saveDataSuccessExecution": "all",
     "saveDataErrorExecution": "all"
   },
+  "meta": null,
+  "tags": [],
   "active": false,
-  "tags": []
+  "id": "HU04CierreDiario1",
+  "versionId": "2d087b77-9569-45ff-8d0e-aff807a83577"
 }

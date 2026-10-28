@@ -2449,3 +2449,12 @@ Petición: terminar pruebas y guardar capturas. La pareja conectó OAuth; el age
 - **Cambios:** el export y `scripts/generar_hu04.py` ahora usan `Data Table → Row → Upsert`, buscando por `fecha` y mapeando las 17 columnas. La tabla se referencia por nombre; se elimina del JSON el ID real del documento y la credencial Google Sheets. Se actualizan spec, guía HU-04, catálogo de credenciales y ontología.
 - **Verificación local:** se amplió el contrato de export para comprobar nodo, operación, nombre de tabla, condición de upsert, esquema/tipos, mapeos y ausencia de credencial/ID Google. `node --test tests/test_hu04.cjs`: 8/8 superadas; `git diff --check` sin errores.
 - **Pendiente:** crear la Data table `Cierres` en la instancia n8n local y ejecutar la versión actual con días de prueba; las ejecuciones y capturas históricas de Sheets no verifican este cambio. El flujo queda inactivo y sin publicar. Actualizar la rama con `dev` y retirar el borrador de la PR después de la sincronización.
+
+## 2026-10-28 · HU-04: integración Data Table probada
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** verificar la nueva versión Cierres antes de afirmar que HU-04 está probada.
+- **Resultado:** tabla Cierres creada con 17 columnas. Tres formularios completos, ejecuciones 76/77/78 Success: día 26/10 con 213.65 €, día vacío con 0 y repetición con una fila por fecha. SMTP entregó tres correos, seis capturas nuevas y auditoría JSON mínima. API/Decimal independientes coinciden.
+- **Problemas:** la CLI no inicializa el módulo Data Table en ejecución; helper creado/ejecutado desde editor del servidor, sin modificar el cálculo ni saltar el guardado. Confirmado soporte real By Name. La documentación antigua aún decía API Tienda HU04 y pruebas Data Table pendientes; actualizada con el estado real.
+- **Verificación:** suite HU-04 8/8, MCP 0 errores/dos avisos intencionales Execute Once, export real inactivo con API Tienda/Mailpit. No POST a tienda ni cambios en DB; tabla local contiene las dos fechas de referencia.
+- **Decisión:** actualizar PR173 para revisión; ninguna publicación/merge. Entrega nocturna y 08 producción siguen pendientes de la pareja.

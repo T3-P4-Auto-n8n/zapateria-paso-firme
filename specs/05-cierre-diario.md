@@ -79,4 +79,4 @@ Los resultados ejecutados y sus límites se recogen en [evidencias](../docs/evid
 - [x] Los importes coinciden con los de la app.
 - [x] Si ese día no hubo movimientos, el resumen lo dice en vez de fallar.
 
-No marcar la entrega nocturna ni el guardado en `Cierres` sin ejecución real de la versión actual del flujo. Las pruebas anteriores con Google Sheets son evidencia histórica y no prueban esta nueva integración con Data Table.
+Guardado en Cierres probado en ejecuciones completas 76/77/78: 213.65 €, día vacío y repetición sin duplicados; referencias API y seis capturas en el documento de resultados. La entrega nocturna y el aviso 08 de producción siguen pendientes: no se publicó el flujo. Las pruebas anteriores con Sheets son históricas.
