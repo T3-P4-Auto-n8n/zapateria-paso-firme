@@ -112,6 +112,10 @@ En n8n: **Overview → Credentials → Create credential**, buscar el tipo y gua
 
 **Verificado HU-06 (28/10/2026):** tabla local `recordatorios enviados`, columnas Number/Number/String, dos filas tras ejecución #45 y ninguna adicional tras #58. Tras restaurar la tienda, se eliminaron solo las dos filas de prueba; tabla vacía. Las credenciales importadas de otro ordenador se reasignaron a la credencial local existente sin guardar valores secretos.
 
+### Extensión IA de recordatorios (#121)
+
+`06 · Recordatorios y vencimientos` añade la credencial **Groq** (Groq API) al HTTP `Redactar con Groq`. Solo se envían instrucciones de tono genéricas; ningún dato de cliente, importe o fecha. API Tienda, sub-workflow 10, Data table y Error workflow 08 conservan su configuración anterior. El flujo permanece inactivo.
+
 ### Servidor MCP de personal (#136)
 
 `13 · Servidor MCP` usa **API Tienda** (Header Auth, `X-API-Key`) tanto para la entrada autenticada como para su único GET a tienda. Es una integración local para agentes de confianza del equipo que ya disponen de esta clave, nunca clientes Telegram. Versión 2 del trigger evita propagar cabeceras al input de herramienta. El resultado permite únicamente id, estado, pendiente, abonado y fecha_limite. Sin activar MCP global ni publicar el flujo. Configuración y pruebas: [spec 13](../specs/13-servidor-mcp.md). No guardar valores del header en configuración versionada.
