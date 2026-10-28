@@ -2048,6 +2048,129 @@ Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apa
   - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
 - **Decisión:** pendiente de revisión de la pareja.
 
+### Spec y código del panel de Marisa · HU-15
+
+- **Autora:** Esra
+- **Tarea:** HU-15 (#127, nivel Experto) como una web servida por n8n: un workflow nuevo, `12 · Panel de Marisa`. El agente escribe la spec y el Code; la pareja construye los nodos, prueba y exporta.
+- **Resultado:**
+  - `specs/12-panel-marisa.md`, con 6 nodos:
+    - `Abrir el panel`: Webhook `GET /webhook/panel`, Basic Auth `Panel Marisa` y Respond Using 'Respond to Webhook' Node;
+    - 3 `GET` con `API Tienda`, Execute Once, Always Output Data y Retry On Fail;
+    - `Preparar panel`: un Code que devuelve `{ html }`;
+    - `Mostrar el panel`: Respond to Webhook con Text y `Content-Type: text/html; charset=utf-8`.
+  - La spec trae además los casos de error, 6 pruebas con los valores esperados del 28/10/2026 y 3 preguntas para la pareja.
+  - **Cambios respecto al diseño del prompt:**
+    - **Fechas:** el día 1 y hoy van en expresiones de las propias peticiones (`$now.setZone('Europe/Madrid')`), sin un Code `Calcular periodo`.
+    - **Apartados activos:** con un HTTP Request (`estado=activo`) y no con `10 · Buscar apartado`. Es el mismo patrón que el `07`, el sub-workflow devolvería otra forma (`{ total, apartados }`) y crearía una ejecución más en cada visita.
+    - **Importes:** con coma decimal y punto de miles (`1.234,56 €`), como en la app, y no con punto como los correos.
+  - **Paginación:** sin `pagina`, `GET /api/ventas`, `/api/abonos` y `/api/apartados` devuelven todo (guía de la app y `backend/controllers/`), como en el `07`.
+  - `~/panel/` (fuera del repo):
+    - `preparar-panel.js`;
+    - `LEEME.md` en turco, con cada nodo paso a paso, la credencial y las pruebas;
+    - `panel-ejemplo.html`.
+  - **Comprobado en local** con `node` y el Luxon 3.7.2 copiado del contenedor de n8n. Se hicieron `GET` reales con la clave del `.env`, sin imprimirla.
+    - **Cifras:** 63 ventas, 48 abonos y 20 activos. Octubre: `2.552,75 €` (ventas directas `1.854,45 €` y abonos `698,30 €`). Pendiente: `787,05 €`. Hoy: `0,00 €`. 2 apartados vencen hoy y 4 están fuera de plazo.
+    - Coinciden con un cálculo independiente en Python. El pendiente coincide además con la prueba del `07`.
+    - **Casos extra:** listas vacías, textos con `<`, `&` y comillas, `0,10 + 0,20`, miles, y que el HTML no tenga `<script>` ni URLs externas.
+  - `validate_workflow` (n8n-mcp) sobre un borrador del workflow en el scratchpad, no en `workflows/`, y con el Code simplificado: válido, 0 errores. Solo da los 3 avisos esperados de Execute Once.
+  - `AGENTS.md`: el `12` en la sección 5 y 2 decisiones en la sección 8 (web servida por n8n; Basic Auth). `docs/credenciales.md`: la credencial `Panel Marisa`, la fila del `12` y cómo crearla.
+- **Problemas encontrados:**
+  - **Error de la API en el navegador.** Si la API falla, el flujo se para antes de `Respond to Webhook`. Se espera que n8n responda con un error, probablemente `500`, pero no está comprobado: la prueba 6 lo anota.
+  - **Basic Auth sin HTTPS** no cifra la contraseña. Vale en local; queda como pregunta en la spec (HU-16).
+- **Decisión:** pendiente de construir y probar en n8n.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+HU-15 · Panel para Marisa (#127, nivel Experto; sub-issues #128–#130). Lo hacemos como **una web servida por n8n**, la opción «una web o similar» del enunciado: Marisa abre una URL y ve sus cifras. Sin Google Sheets ni Looker Studio (necesitarían OAuth y una cuenta de Google). Rama `feature/hu-15-panel`, desde `dev`.
+
+Criterios (enunciado, `docs/enunciado.md`):
+1. El panel muestra los datos de la app actualizados.
+2. Se entiende sin explicación y se ve bien en el móvil.
+
+Reparto, como siempre: el agente escribe la spec y el código del Code; **la pareja construye los nodos a mano en n8n**, pega el código, prueba y exporta.
+
+## Diseño propuesto (ajústalo si ves algo mejor y dilo)
+
+Workflow nuevo **`12 · Panel de Marisa`** (`specs/12-panel-marisa.md`, `workflows/12-panel-marisa.json`). El `12` está libre porque HU-12 no se hace.
+
+1. **`Abrir el panel`** · Webhook `GET /webhook/panel`:
+   - **Authentication: Basic Auth** con una credencial nueva **`Panel Marisa`** (usuario y contraseña solo en n8n). El navegador pide usuario y contraseña la primera vez. Así las cifras del negocio y los nombres de los clientes no quedan abiertos.
+   - **Respond: Using 'Respond to Webhook' Node.**
+2. Lecturas a la API, cada una con `API Tienda`, Execute Once, Always Output Data y Retry On Fail (3, 2000 ms), como el `07`:
+   - `Leer ventas del mes`: `GET /api/ventas?desde=<día 1>&hasta=<hoy>`;
+   - `Leer abonos del mes`: `GET /api/abonos?desde=<día 1>&hasta=<hoy>`;
+   - `Leer apartados activos`: `GET /api/apartados?estado=activo` (o el sub-workflow `10 · Buscar apartado` con `estado` `activo`; elige y justifica).
+   Comprueba si `GET /api/ventas` y `/api/abonos` paginan y cómo pedirlo todo (el `07` ya lo resuelve: síguelo).
+3. **`Preparar panel`** (Code, Run Once for All Items) → un solo item `{ html }`:
+   - **Hoy:** ventas directas, abonos y total cobrado hoy (por forma de pago si cabe sin recargar).
+   - **Este mes:** ventas directas, abonos y recaudación (mismas reglas que el `07`).
+   - **Pendiente de cobro:** suma del `pendiente` de los apartados `activo` (la suma de varios sí está permitida; el `pendiente` de cada uno es el de la app). Y cuántos apartados activos hay.
+   - **Vencen pronto:** apartados `activo` con `fecha_limite` entre hoy y hoy + 7, ordenados por fecha: cliente, producto y talla, pendiente, fecha límite, días que faltan. Y aparte, si los hay, los que ya están **fuera de plazo** y todavía activos (los vencerá el `06` a las 9:00).
+   - Fecha y hora de la última actualización (Europe/Madrid).
+   - **HTML:** una sola página, en español, con `<meta name="viewport">`, CSS dentro del propio HTML (nada externo: ni CDN ni fuentes), tarjetas grandes con las cifras, legible en un móvil de 360 px, importes con 2 decimales y `€`, fechas `dd/MM/yyyy`. Escapa los textos que vienen de la app (nombres, productos) para que no rompan el HTML. Sin JavaScript.
+   - Sin recalcular `abonado` ni `pendiente` de ningún apartado; solo campos de `docs/ontologia.md`.
+4. **`Mostrar el panel`** · Respond to Webhook: Respond With **Text**, Response Body `{{ $json.html }}`, cabecera `Content-Type: text/html; charset=utf-8`, código 200.
+5. Settings: Error workflow `08`, zona horaria `Europe/Madrid`. Si falla la API, el `08` avisa (en producción) y el navegador ve un error: dilo en los casos de error.
+
+## Fuentes
+
+- `docs/enunciado.md` (HU-15, nivel Experto), `AGENTS.md`, `docs/ontologia.md`, `docs/guia-de-la-app.md` (endpoints, filtros, paginación).
+- `specs/07-informe-mensual.md` y `workflows/07-informe-mensual.json`: reglas de recaudación y cómo lee las listas. Reutiliza su lógica, no la inventes de nuevo.
+- `specs/06-recordatorios-vencimientos.md` (fuera de plazo = `fecha_limite` anterior a hoy), `specs/10-sub-workflows.md`, `docs/credenciales.md`, `docs/instalacion.md`.
+- n8n-mcp: Webhook (Basic Auth, responseMode), Respond to Webhook (Text, cabeceras), Code.
+
+## Contenido
+
+1. `specs/12-panel-marisa.md` (plantilla) con el diseño nodo a nodo, casos de error y la prueba (sección 7):
+   - abrir `http://localhost:5678/webhook/panel` (con el flujo publicado) y `.../webhook-test/panel` (en prueba): pide usuario y contraseña; sin ellos, 401;
+   - cifras del panel = las de la API, calculadas a mano con `GET` para el día de la prueba (pon la tabla con los valores esperados de hoy);
+   - después de registrar una venta de prueba en la app, al recargar el panel cambian las cifras (criterio 1) — con copia de la base de datos antes y restauración después;
+   - vista en móvil: en Chrome, herramientas de desarrollo → modo dispositivo (360 px), y si se puede, en el móvil real dentro de la misma red (`http://<IP del Mac>:5678/webhook/panel`);
+   - capturas previstas: `12-hu15-panel-escritorio.png`, `12-hu15-panel-movil.png`, `12-hu15-canvas.png`, `12-hu15-sin-clave.png`.
+2. `~/panel/` (fuera del repo): `preparar-panel.js` y `LEEME.md` en **turco** para la pareja, con la configuración exacta de cada nodo paso a paso en n8n (dónde se pulsa, cada valor en su propio bloque para copiar), cómo crear la credencial `Panel Marisa` (Basic Auth; la contraseña la elige la pareja y no se escribe en ningún archivo) y los pasos de la prueba.
+3. Comprueba el Code en local con `node`: con `GET` reales a la API (clave del `.env`, sin imprimirla), simula la salida de los 3 nodos de lectura, ejecuta el Code (`DateTime` de luxon: usa el `luxon` del contenedor de n8n o mira cómo se probó en entradas anteriores del ai-log), y guarda el HTML resultante en `~/panel/panel-ejemplo.html` para abrirlo en el navegador. Dime las cifras que salen y compáralas con un cálculo independiente.
+4. `AGENTS.md`: sección 5 (el `12` en la lista de nombres) y sección 8 (decisiones: web servida por n8n en vez de Looker Studio; Basic Auth). `docs/credenciales.md`: credencial `Panel Marisa` y la fila del `12`. `docs/ai-log.md`: entrada «### Spec y código del panel de Marisa · HU-15» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml`, `.env` ni `README.md`. Solo `GET` a la API.
+- Ninguna contraseña ni clave en ningún archivo ni en la salida.
+- No añadas `.DS_Store`. No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción del panel · HU-15 (`workflows/12-panel-marisa.json`)
+
+- **Autora:** Esra
+- **Tarea:** construir y probar en n8n `12 · Panel de Marisa`, según `specs/12-panel-marisa.md`, y exportarlo.
+- **Resultado:**
+  - La pareja construyó a mano los 6 nodos, con los nombres de la spec, y pegó el Code. Settings: Error workflow `08` y `Europe/Madrid`. El flujo está exportado y **publicado** (`"active": true`).
+  - **Comprobaciones del agente sobre el JSON:**
+    - el Code `Preparar panel` es **idéntico** byte a byte a `~/panel/preparar-panel.js`;
+    - `validate_workflow` de n8n-mcp: válido, 0 errores, y solo los 3 avisos esperados de Execute Once (para validar se recortó la parte del HTML del Code);
+    - sin claves, emails ni `localhost`: las credenciales van por nombre (`Panel Marisa`, `API Tienda`).
+  - **Pruebas** (28/10/2026; copia de la base de datos en `~/tienda-antes-hu15.db`, restaurada al terminar):
+    - **Pruebas 1 y 3** (Production URL, con clave): las mismas cifras que la spec y que la API: octubre `2.552,75 €` (111 operaciones), pendiente `787,05 €` en 20 activos, 2 vencen hoy y 4 fuera de plazo.
+    - **Prueba 2** (incógnito, sin clave): «Authorization is required!».
+    - **Prueba 4:** después de una venta de `25,00 €` en efectivo, hoy `25,00 €` y octubre `2.577,75 €` (112 operaciones).
+    - **Prueba 5** (modo dispositivo de Chrome): una columna, sin desplazamiento horizontal.
+    - **Prueba 6** (API caída): no se hizo; era opcional.
+  - Evidencias: los 5 `docs/evidencias/12-hu15-*.png`, enlazados en la sección 7 de la spec.
+- **Problemas encontrados:**
+  - **Test URL de un solo uso.** Solo vale después de pulsar Execute workflow, y para una petición. Las pruebas se hicieron con la Production URL y el flujo publicado.
+  - **Max Tries `2` en los 3 `GET`** (la spec dice `3`). Lo encontró el agente al revisar el JSON. Está pendiente de cambiar en n8n y volver a exportar; anotado en la nota de alcance de la spec.
+  - **Salto de línea antes de `}}`** en el `hasta` de `Leer ventas del mes` y `Leer abonos del mes`. Está dentro de la expresión, así que no cambia el valor (las pruebas salieron bien); se puede quitar al volver a exportar.
+  - **Sin comprobar:**
+    - el código HTTP de la respuesta sin clave: la captura no lo muestra;
+    - qué ve el navegador si falla la API (prueba 6);
+    - el panel en un móvil real.
+- **Decisión:** aceptado. Los 2 criterios de HU-15 están marcados en la spec. Las 2 decisiones de HU-15 de `AGENTS.md` (sección 8) siguen como «Propuesta»: la pareja decide si pasan a «Tomada».
+- No hay prompt: el flujo lo construyó la pareja a mano.
+
 ### Comandos personalizados de Claude Code · #124
 
 - **Autora:** Esra
