@@ -63,6 +63,8 @@ Para probarlos, enviad estos correos (asunto y cuerpo) a la cuenta que lea n8n. 
 
 ## 🚀 Cómo empezar
 
+> **Instalar nuestro proyecto terminado en otro ordenador** (credenciales, Data tables, importar los workflows en orden, qué publicar y pruebas de humo): [docs/instalacion.md](docs/instalacion.md).
+
 Necesitáis [Git](https://git-scm.com/) y [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalados y abiertos.
 
 **1. Una persona de la pareja clona el proyecto:**
