@@ -49,7 +49,7 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
 ## 5. Convenciones de nombres
 
 - **Ramas:** `feature/`, `docs/`, `fix/` o `chore/`, siempre creadas desde `dev`. Las PR van **siempre a `dev`**. A `main` solo se llega desde `dev` al cerrar un nivel.
-- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow` y `09 · Migración del Excel`. Los sub-workflows reutilizables (no son flujos del README) llevan el `10`: `10 · Buscar apartado` y `10 · Enviar notificación` ([specs/10-sub-workflows.md](specs/10-sub-workflows.md)). El datáfono de HU-13 (tampoco es un flujo del README) lleva el `11`: `11 · Datáfono` ([specs/11-datafono.md](specs/11-datafono.md)).
+- **Flujos en n8n:** cada workflow se numera por el flujo más bajo que contiene: `01 · Eventos de la tienda` (webhook + Switch; flujos 1, 2, 4 y aviso de vencido), `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow` y `09 · Migración del Excel`. Los sub-workflows reutilizables (no son flujos del README) llevan el `10`: `10 · Buscar apartado` y `10 · Enviar notificación` ([specs/10-sub-workflows.md](specs/10-sub-workflows.md)). El datáfono de HU-13 (tampoco es un flujo del README) lleva el `11`: `11 · Datáfono` ([specs/11-datafono.md](specs/11-datafono.md)). El panel de HU-15 lleva el `12`, libre porque HU-12 no se hace: `12 · Panel de Marisa` ([specs/12-panel-marisa.md](specs/12-panel-marisa.md)).
 - **Nodos:** nombres descriptivos en español, por ejemplo `Buscar apartado por id`.
 - **Specs:** `specs/NN-nombre.md` · **Workflows:** `workflows/NN-nombre.json` (mismo `NN` que el flujo).
 - **Commits y PRs:** en inglés, con Conventional Commits (`docs: ...`, `feat: ...`, `fix: ...`, `chore: ...`). La documentación del proyecto (specs, `docs/`, `AGENTS.md`) sigue en español.
@@ -68,6 +68,16 @@ Automatizamos con **n8n** todo lo que pasa alrededor de la app de la tienda Paso
   - consultar nodos y parámetros antes de escribir una spec;
   - validar los JSON de `workflows/` con `validate_workflow` antes de abrir una PR.
 - Al abrir el proyecto, Claude Code pide aprobar el servidor.
+
+**Comandos de Claude Code** (`.claude/commands/`, se lanzan con `/nombre argumentos`). Ninguno hace commit, push ni merge, ni publica flujos:
+
+| Comando | Qué hace | Cuándo |
+|---|---|---|
+| `/generar-spec NN nombre HU-xx` | Crea `specs/NN-nombre.md` desde la plantilla con el README, la ontología, la guía y las decisiones de la sección 8; lo que no se sabe va como pregunta abierta. No sobrescribe una spec existente | Al empezar un flujo, antes de construirlo |
+| `/revisar-flujo workflows/NN-nombre.json` | Revisión de solo lectura del JSON exportado: nombres, secretos, credenciales, Settings, Mode de los Execute Workflow, Retry On Fail, expresiones, `active`, spec y `validate_workflow`. Acaba con «Listo para PR» o «Corregir antes de la PR» | Después de exportar, antes de abrir la PR |
+| `/cerrar-tarea [nº de issue]` | Repasa `git status` y el diff (`.DS_Store`, JSON de otros flujos reescritos por el export, secretos) y propone el mensaje de commit y los `Closes #` | Justo antes del commit |
+
+Codex (Beste) no lee `.claude/commands/`: puede usar el mismo texto de cada archivo pegándolo como prompt, cambiando `$1`, `$2`, `$3` o `$ARGUMENTS` por los argumentos.
 
 ## 7. Importar y exportar flujos
 
@@ -118,6 +128,8 @@ Antes de subir un JSON, revisar el diff: sin claves ni datos personales reales.
 | Un apartado vencido de un cliente sin email avisa a la tienda con el teléfono y el vale (como HU-01, no como HU-02) | Un vencimiento ocurre sin el cliente delante; si nadie le avisa, no sabe que tiene un vale | Tomada |
 | HU-06 registra cada aviso en la Data table `recordatorios enviados` por `(apartado_id, dias)` y consulta todo el histórico antes del envío | Evita repetir una ejecución manual o reiniciada. Sustituye Sheets propuesto en #63 sin OAuth; registrar después del envío, sin concurrencia. SMTP+Insert no es una transacción: reconciliar si Insert falla | Tomada (Beste); pruebas manuales #45/#58 |
 | HU-06 sin email avisa a la tienda con teléfono y pendiente/fecha de la app | Como HU-01/HU-07, el cliente no está delante; si tampoco tiene teléfono, pide revisar ficha. No afirmar entrega al cliente | Tomada (Beste); pruebas manuales #45/#58 |
+| HU-15 (panel para Marisa) es una página web que devuelve el propio n8n (`12 · Panel de Marisa`: Webhook `GET /webhook/panel` + Respond to Webhook), no Looker Studio | El enunciado admite «una web o similar». Looker Studio necesitaría volcar las cifras a Google Sheets, con OAuth y una cuenta de Google. La página pide los datos a la API en cada visita, así que siempre está al día, y no usa JavaScript ni recursos externos | Propuesta (HU-15, pendiente de construir) |
+| El panel se protege con Basic Auth en el Webhook (credencial `Panel Marisa`) | Muestra las cifras del negocio y los nombres de los clientes. Sin usuario y contraseña, n8n responde `401` y no ejecuta el flujo. Sin HTTPS, la contraseña no viaja cifrada: vale en local, no en internet (HU-16) | Propuesta (HU-15, pendiente de construir) |
 
 ## 9. Lo que el agente NO debe hacer
 

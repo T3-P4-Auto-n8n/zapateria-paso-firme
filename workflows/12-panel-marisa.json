@@ -1,0 +1,255 @@
+{
+  "name": "12 · Panel de Marisa",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "panel",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -544,
+        -80
+      ],
+      "id": "8d5156c5-6fda-41f5-9401-c0ace2c1bae7",
+      "name": "Abrir el panel",
+      "webhookId": "195c9200-c431-41cc-86ce-ec37d91cc332",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "hPBlun1ssyYqtL0T",
+          "name": "Panel Marisa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $now.setZone('Europe/Madrid').startOf('month').toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd')\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -320,
+        -80
+      ],
+      "id": "8932ae88-bcc7-4e01-a41d-5c5883e41c03",
+      "name": "Leer ventas del mes",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/abonos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $now.setZone('Europe/Madrid').startOf('month').toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd')\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "26ab6f93-d44f-47b9-8c5b-aec69003de1a",
+      "name": "Leer abonos del mes",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "estado",
+              "value": "activo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        -80
+      ],
+      "id": "fc56c57d-c68a-468f-b095-f14fb1facb60",
+      "name": "Leer apartados activos",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar panel» (12 · Panel de Marisa) · Run Once for All Items\n// Lee las tres listas de la API y devuelve un item { html } con el panel.\n// No recalcula `abonado` ni `pendiente` de ningún apartado: suma el `pendiente` que da la app.\n\nconst ZONA = 'Europe/Madrid';\nconst FORMAS = ['efectivo', 'tarjeta', 'bizum'];\nconst NOMBRE_FORMA = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', bizum: 'Bizum' };\nconst MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',\n  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];\nconst DIAS_AVISO = 7;\n\n// Hoy y día 1 en la zona de la tienda; son los mismos que usan las URL de los tres GET\nconst ahora = DateTime.now().setZone(ZONA);\nconst hoyDia = ahora.startOf('day');\nconst hoy = hoyDia.toFormat('yyyy-MM-dd');\nconst desde = hoyDia.startOf('month').toFormat('yyyy-MM-dd');\nconst limiteAviso = hoyDia.plus({ days: DIAS_AVISO }).toFormat('yyyy-MM-dd');\n\n// Items de un GET sin el item vacío de Always Output Data (no tiene `id`)\nconst leer = nombre => $(nombre).all().map(i => i.json).filter(j => j && j.id != null);\n\nconst ventasMes = leer('Leer ventas del mes').filter(v => v.fecha >= desde && v.fecha <= hoy);\nconst abonosMes = leer('Leer abonos del mes').filter(b => b.fecha >= desde && b.fecha <= hoy);\nconst activos = leer('Leer apartados activos').filter(a => a.estado === 'activo');\n\n// Importes en céntimos para sumar sin decimales raros; se muestran como 1.234,56 €\nconst cent = x => Math.round(Number(x) * 100);\nfunction eur(c) {\n  const signo = c < 0 ? '-' : '';\n  const abs = Math.abs(c);\n  const enteros = String(Math.floor(abs / 100)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');\n  return `${signo}${enteros},${String(abs % 100).padStart(2, '0')} €`;\n}\nconst fecha = f => (f ? String(f).split('-').reverse().join('/') : '');\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\n\n// Suma total y por forma de pago\nfunction sumar(lista) {\n  const r = { n: lista.length, total: 0 };\n  for (const f of FORMAS) r[f] = 0;\n  for (const x of lista) {\n    const c = cent(x.importe);\n    r.total += c;\n    if (FORMAS.includes(x.forma_pago)) r[x.forma_pago] += c;\n  }\n  return r;\n}\nfunction juntar(a, b) {\n  const r = { n: a.n + b.n, total: a.total + b.total };\n  for (const f of FORMAS) r[f] = a[f] + b[f];\n  return r;\n}\n\nconst hoyV = sumar(ventasMes.filter(v => v.fecha === hoy));\nconst hoyA = sumar(abonosMes.filter(b => b.fecha === hoy));\nconst hoyT = juntar(hoyV, hoyA);\nconst mesV = sumar(ventasMes);\nconst mesA = sumar(abonosMes);\nconst mesT = juntar(mesV, mesA);\n\n// Pendiente de cobro: suma del `pendiente` de la app de los apartados activos\nconst pendiente = activos.reduce((s, a) => s + cent(a.pendiente), 0);\n\n// Días entre hoy y la fecha límite (0 = vence hoy; negativo = fuera de plazo)\nconst dias = f => Math.round(DateTime.fromISO(String(f), { zone: ZONA }).startOf('day').diff(hoyDia, 'days').days);\nconst porLimite = (a, b) => (a.fecha_limite < b.fecha_limite ? -1 : a.fecha_limite > b.fecha_limite ? 1 : a.id - b.id);\n\n// Vencen pronto: fecha_limite entre hoy y hoy + 7. Fuera de plazo: fecha_limite anterior a hoy (los vence el 06)\nconst pronto = activos.filter(a => a.fecha_limite >= hoy && a.fecha_limite <= limiteAviso).sort(porLimite);\nconst fuera = activos.filter(a => a.fecha_limite < hoy).sort(porLimite);\n\n// ---------- HTML ----------\n\nconst tarjeta = (titulo, cifra, detalle, clase = '') =>\n  `<section class=\"tarjeta ${clase}\"><h2>${titulo}</h2><p class=\"cifra\">${cifra}</p>${detalle}</section>`;\n\nconst desglose = s => `<ul class=\"desglose\">${FORMAS.map(f =>\n  `<li><span>${NOMBRE_FORMA[f]}</span><span>${eur(s[f])}</span></li>`).join('')}</ul>`;\n\nconst lineas = (filas) => `<ul class=\"desglose\">${filas.map(([t, v]) =>\n  `<li><span>${t}</span><span>${v}</span></li>`).join('')}</ul>`;\n\nconst operaciones = n => `${n} ${n === 1 ? 'operación' : 'operaciones'}`;\n\nfunction cuandoVence(d) {\n  if (d === 0) return 'Vence hoy';\n  if (d === 1) return 'Vence mañana';\n  if (d > 1) return `Faltan ${d} días`;\n  return `Venció hace ${-d} ${d === -1 ? 'día' : 'días'}`;\n}\n\nconst apartado = (a, clase) => {\n  const d = dias(a.fecha_limite);\n  const talla = a.talla ? `, talla ${esc(a.talla)}` : '';\n  return `<li class=\"apartado ${clase}\">`\n    + `<div class=\"fila\"><strong>${esc(a.cliente)}</strong><span class=\"etiqueta\">${cuandoVence(d)}</span></div>`\n    + `<div>${esc(a.producto)}${talla} · nº ${esc(a.id)}</div>`\n    + `<div class=\"fila\"><span>Pendiente: <strong>${eur(cent(a.pendiente))}</strong></span>`\n    + `<span>Hasta el ${fecha(a.fecha_limite)}</span></div></li>`;\n};\n\nconst lista = (items, clase, vacio) => (items.length\n  ? `<ul class=\"apartados\">${items.map(a => apartado(a, clase)).join('')}</ul>`\n  : `<p class=\"vacio\">${vacio}</p>`);\n\nconst nombreMes = `${MESES[hoyDia.month - 1]} de ${hoyDia.year}`;\nconst hoyTexto = hoyT.n ? `${operaciones(hoyT.n)}` : 'Hoy todavía no hay cobros';\n\nconst css = `\n*{box-sizing:border-box}\nbody{margin:0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;\nbackground:#f4f3ef;color:#1f2a24;font-size:16px;line-height:1.4}\nheader{background:#2f6f5e;color:#fff;padding:16px}\nheader h1{margin:0;font-size:22px}\nheader p{margin:4px 0 0;font-size:14px;opacity:.9}\nmain{max-width:960px;margin:0 auto;padding:16px}\n.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}\n.tarjeta{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}\n.tarjeta h2{margin:0;font-size:15px;font-weight:600;color:#55605a;text-transform:uppercase;letter-spacing:.03em}\n.cifra{margin:6px 0 8px;font-size:34px;font-weight:700;white-space:nowrap}\n.destacada{border-left:6px solid #2f6f5e}\n.aviso{border-left:6px solid #c27c0e}\n.desglose{list-style:none;margin:0;padding:0;font-size:15px}\n.desglose li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid #eee}\n.nota{margin:6px 0 0;font-size:13px;color:#66706a}\nh2.seccion{margin:24px 0 8px;font-size:19px}\n.apartados{list-style:none;margin:0;padding:0;display:grid;gap:8px}\n.apartado{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:6px solid #c27c0e}\n.apartado.fuera{border-left-color:#b23b2e}\n.fila{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px}\n.etiqueta{font-size:14px;font-weight:600;color:#8a5a08}\n.fuera .etiqueta{color:#b23b2e}\n.vacio{background:#fff;border-radius:10px;padding:12px;color:#66706a}\nfooter{max-width:960px;margin:0 auto;padding:8px 16px 24px;font-size:13px;color:#66706a}\n`;\n\nconst html = `<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"robots\" content=\"noindex\">\n<title>Panel · Paso Firme</title>\n<style>${css}</style>\n</head>\n<body>\n<header>\n<h1>Paso Firme · Panel de Marisa</h1>\n<p>Actualizado el ${ahora.toFormat('dd/MM/yyyy')} a las ${ahora.toFormat('HH:mm')}. Recarga la página para ver los datos al momento.</p>\n</header>\n<main>\n<div class=\"tarjetas\">\n${tarjeta(`Cobrado hoy · ${fecha(hoy)}`, eur(hoyT.total),\n    lineas([['Ventas directas', eur(hoyV.total)], ['Abonos', eur(hoyA.total)]]) + desglose(hoyT)\n    + `<p class=\"nota\">${hoyTexto}</p>`, 'destacada')}\n${tarjeta(`Recaudado en ${nombreMes}`, eur(mesT.total),\n    lineas([['Ventas directas', eur(mesV.total)], ['Abonos', eur(mesA.total)]]) + desglose(mesT)\n    + `<p class=\"nota\">Del ${fecha(desde)} al ${fecha(hoy)} · ${operaciones(mesT.n)}. Los abonos incluyen los iniciales.</p>`)}\n${tarjeta('Pendiente de cobro', eur(pendiente),\n    `<p class=\"nota\">En ${activos.length} ${activos.length === 1 ? 'apartado activo' : 'apartados activos'}.</p>`, 'aviso')}\n</div>\n<h2 class=\"seccion\">Vencen en los próximos ${DIAS_AVISO} días (${pronto.length})</h2>\n${lista(pronto, 'pronto', `Ningún apartado vence hasta el ${fecha(limiteAviso)}.`)}\n<h2 class=\"seccion\">Fuera de plazo, todavía activos (${fuera.length})</h2>\n${fuera.length ? '<p class=\"nota\">Se vencen solos cada mañana a las 9:00 y el cliente recibe su vale.</p>' : ''}\n${lista(fuera, 'fuera', 'Ninguno.')}\n</main>\n<footer>Cifras de la app de la tienda. Los importes pendientes son los que calcula la app.</footer>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -80
+      ],
+      "id": "59ec6df6-74a8-48dd-bebe-2fd07cd38424",
+      "name": "Preparar panel"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        464,
+        -80
+      ],
+      "id": "acf4c285-8e50-4420-9fdc-727038e10ba8",
+      "name": "Mostrar el panel"
+    }
+  ],
+  "connections": {
+    "Abrir el panel": {
+      "main": [
+        [
+          {
+            "node": "Leer ventas del mes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer ventas del mes": {
+      "main": [
+        [
+          {
+            "node": "Leer abonos del mes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer abonos del mes": {
+      "main": [
+        [
+          {
+            "node": "Leer apartados activos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer apartados activos": {
+      "main": [
+        [
+          {
+            "node": "Preparar panel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar panel": {
+      "main": [
+        [
+          {
+            "node": "Mostrar el panel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": true,
+  "id": "36MrVnn6lvZV3Kx3",
+  "versionId": "994f93e8-da0d-4523-83d9-59a86296ecb8"
+}
