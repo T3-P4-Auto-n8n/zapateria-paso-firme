@@ -1,0 +1,74 @@
+[
+  {
+    "file": "01_bizum_carmen",
+    "reference": "01_bizum_carmen-live-3",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n01_bizum_carmen-live-3\tHas recibido un Bizum de 10,00 €\tCARMEN RUIZ GARCIA\t10\tzuecos\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=CA\tbuscar\t",
+    "executionId": 5
+  },
+  {
+    "file": "02_bizum_jorge",
+    "reference": "02_bizum_jorge-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n02_bizum_jorge-live-1\tHas recibido un Bizum de 20,00 €\tJORGE M.\t20\tapartado 2 bota\t2\thttp://tienda:8000/api/apartados/2\tbuscar\t",
+    "executionId": 6
+  },
+  {
+    "file": "03_transferencia_lucia",
+    "reference": "03_transferencia_lucia-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n03_transferencia_lucia-live-1\tAviso de transferencia recibida\tLUCIA GOMEZ PEREZ\t12\tLiquidar mocasines\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=LU\tbuscar\t",
+    "executionId": 7
+  },
+  {
+    "file": "04_bizum_laura",
+    "reference": "04_bizum_laura-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n04_bizum_laura-live-1\tHas recibido un Bizum de 15,00 €\tLAURA O.\t15\tdeportivas\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=LA\tbuscar\t",
+    "executionId": 8
+  },
+  {
+    "file": "05_bizum_romero",
+    "reference": "05_bizum_romero-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n05_bizum_romero-live-1\tHas recibido un Bizum de 10,00 €\tROMERO D\t10\tempty\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=RO\tbuscar\t",
+    "executionId": 9
+  },
+  {
+    "file": "06_bizum_paula",
+    "reference": "06_bizum_paula-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n06_bizum_paula-live-1\tHas recibido un Bizum de 20,00 €\tPAULA RAMOS LEON\t20\tzapatillas running perdón por el retraso\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=PA\tbuscar\t",
+    "executionId": 10
+  },
+  {
+    "file": "07_transferencia_desconocido",
+    "reference": "07_transferencia_desconocido-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n07_transferencia_desconocido-live-1\tAviso de transferencia recibida\tANTONIO FERNANDEZ SOTO\t25\tbotas\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=AN\tbuscar\t",
+    "executionId": 11
+  },
+  {
+    "file": "08_publicidad_banco",
+    "reference": "08_publicidad_banco-live-1",
+    "model": null,
+    "result": "ignorar",
+    "output": "origen\n\t\nreferencia\n\t\nasunto\n\t\ncuerpo\n\t\nentrada_valida\n\t\nmotivo\n\t\nes_pago\n\t\nruta\n\t\nformulario\t08_publicidad_banco-live-1\tHasta 150 € por domiciliar tus cobros con tarjeta\tHola, ZAPATERIA PASO FIRME:\\n\\nEste mes, si domicilias los cobros de tu datáfono con nosotros, te devolvemos hasta 150 €.\\nConsulta las condiciones en tu oficina.\\n\\nBanco Ejemplo\\n\ttrue\tNo es un aviso de pago recibido reconocido\tfalse\tignorar\t",
+    "executionId": 12
+  },
+  {
+    "file": "09_bizum_silvia",
+    "reference": "09_bizum_silvia-live-1",
+    "model": "openai/gpt-oss-20b",
+    "result": "buscar",
+    "output": "referencia\n\t\nasunto\n\t\nordenante\n\t\nimporte\n\t\nconcepto\n\t\napartado_id\n\t\nurl_busqueda\n\t\nruta\n\t\n09_bizum_silvia-live-1\tHas recibido un Bizum de 5,00 €\tSILVIA CORTES\t5\tabono sandalias\tnull\thttp://tienda:8000/api/apartados?estado=activo&q=SI\tbuscar\t",
+    "executionId": 13
+  }
+]
