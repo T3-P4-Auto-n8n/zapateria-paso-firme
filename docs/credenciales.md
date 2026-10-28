@@ -63,7 +63,7 @@ Configuración que cambia Marisa sin editar los flujos. Usamos Data tables porqu
 
 > **Las Data tables no se exportan con el JSON del workflow.** Al importar `workflows/01-eventos-tienda.json` en otra instancia (por ejemplo, la de la pareja), hay que crear antes la tabla `Configuración` con su fila y volver a elegirla en el nodo `Leer umbral de venta grande`. Si no, el nodo da error y lo avisa el `08`.
 
-### Recordatorios enviados (HU-06)
+### recordatorios enviados (HU-06)
 
 Overview → Data tables → Create data table → nombre exacto **recordatorios enviados**. Columnas:
 
