@@ -91,6 +91,8 @@
       "name": "Leer ventas de esos días",
       "executeOnce": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "4VXOVN2q1Qb0tPy6",
@@ -578,5 +580,5 @@
   "tags": [],
   "active": true,
   "id": "H0dzfmkSvZHcFDsv",
-  "versionId": "e8e81db9-a7f1-4471-bb94-92e3a99fb6a8"
+  "versionId": "e158f120-6104-4a7a-af43-458ba7a73711"
 }

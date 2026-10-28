@@ -1763,6 +1763,291 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)
+
+- **Autora:** Esra
+- **Tarea:** documentar cómo instalar todo desde cero (#142), completar la tabla «Workflow → credenciales» con todos los workflows (#143) y revisar los secretos de todos los JSON (#140). Solo documentación, en la rama `docs/entregables-instalacion`; los workflows se leyeron de `dev` y de las ramas de los PR con `git show`.
+- **Resultado:**
+  - **`docs/instalacion.md`** (nuevo), en 11 pasos:
+    - requisitos y `.env`, `docker compose up -d` y URLs;
+    - las 3 credenciales (`Mailpit`, `API Tienda`, `Groq`) y `Google Sheets` para el `05`;
+    - la Data table `Configuración` y la carpeta del datáfono;
+    - el orden de importación con `flujos.py importar` y por qué (ids de los Execute Workflow y del Error workflow), y qué revisar en cada workflow;
+    - qué publicar y por qué;
+    - una prueba de humo por workflow, enlazada a la sección 7 de su spec;
+    - la copia y restauración de la base de datos y cómo recargar los datos de ejemplo sin perder n8n;
+    - los problemas frecuentes.
+  - **README:** una línea con el enlace al principio de «Cómo empezar»; el enunciado no cambia.
+  - **`docs/credenciales.md`:**
+    - la credencial `Google Sheets` y el nodo IMAP del `03` (deshabilitado, sin credencial);
+    - la tabla «Workflow → credenciales» con los 10 workflows y estas columnas: credenciales en sus nodos, las que usa a través de los `10`, Data tables y archivos, variables del `.env` y Error workflow.
+  - **`docs/revision-secretos.md`** (nuevo): los comandos (`git grep` sobre 11 ramas: `dev`, #172, #173, la rama de HU-03 y los 7 PR parciales de HU-03) y el resultado.
+    - No hay ningún secreto: ni claves, ni cabeceras con valor, ni URLs con credenciales, ni `shared`/`pinData`. El único email es `tienda@pasofirme.example`.
+    - Hay un punto a revisar, sin arreglar: el `documentId` de un Google Sheets real en `workflows/05-cierre-diario.json`, línea 175 (PR #173).
+- **Problemas encontrados:**
+  - **#171 ya está fusionado.** El prompt lo daba como abierto; el `11` ya está en `dev`.
+  - **La rama de HU-03 no tiene PR.** `feature/39-hu03-prueba-correos` tiene el `03` integrado. Los PR abiertos #158–#169 tienen exports parciales (`03-abonos-distancia-entrada.json`…), que su propia guía dice que no se importen. Se revisaron igual en #140.
+  - **Una cuarta credencial.** El prompt hablaba de 3 credenciales, pero el `05` (#173) necesita `Google Sheets` (OAuth2). Se documenta como opcional, solo para el `05`.
+  - **El `03` y el `05` no traen `id`** y sus credenciales tienen `id` `null`: n8n les da un id nuevo y hay que elegir las credenciales a mano. No afecta a nadie, porque ningún workflow los llama.
+  - **El problema del worktree no estaba documentado** en el repo. Se explica a partir de cómo Docker Compose nombra el proyecto (`docker compose ls` da `paso-firme`): desde otra carpeta, otro proyecto sin `.env`. La solución propuesta (`COMPOSE_PROJECT_NAME=paso-firme`) no se ha probado.
+  - **Recargar los datos de ejemplo sin perder n8n** (`rm /data/tienda.db` y reiniciar) sale de `backend/main.py` (el seed se carga si la base de datos está vacía) y no se ha probado, para no tocar la base de datos.
+  - **Conflicto previsible con #173.** Su rama también añade a `docs/credenciales.md` la fila de `Google Sheets` y la del `05`; al fusionar, habrá que quedarse con una.
+- **Decisión:** pendiente de revisión de la pareja. Que Beste revise el punto del `documentId` y las filas del `03` y el `05`.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+Entregables finales #142, #143 y #140 (los tres en esta rama `docs/entregables-instalacion`, que sale de `dev`). Solo documentación y una revisión de solo lectura.
+
+Ten en cuenta que hay PR abiertos que añaden workflows y todavía no están en `dev`: #171 (`11 · Datáfono`), #172 (`06 · Recordatorios y vencimientos` y la rama `apartado.vencido` del `01`), #173 de Beste (`05 · Cierre diario`, rama `feature/hu04-cierre-diario`) y la rama de HU-03 de Beste (`03 · Abonos a distancia`, rama `feature/39-hu03-prueba-correos`). #170 (flujo 1 con `Enviar notificación`) ya está en `dev`. Léelos con `git show origin/<rama>:<ruta>` o `gh pr diff <n>` y documenta el estado final, con todos los workflows.
+
+## Fuentes
+
+- README (Entregables, Requisitos técnicos, Cómo empezar), `AGENTS.md` (secciones 3, 5, 7 y 8), `docs/credenciales.md`, `docs/guia-de-la-app.md`, `.env.example`, `docker-compose.yml`, `scripts/flujos.py`, `scripts/datos_demo.py`.
+- `workflows/*.json` de `dev` y de las ramas de los PR abiertos (credenciales por nodo, Data tables, Error workflow, sub-workflows que llama cada uno, disparadores).
+- Las specs de cada flujo (sección 1: credenciales; sección 7: pruebas).
+
+## Contenido
+
+1. **#142 · `docs/instalacion.md`** (y un enlace corto desde el README, en «Cómo empezar» o justo antes, sin cambiar el enunciado): cómo poner en marcha todo desde cero en otro ordenador, paso a paso y en orden:
+   - requisitos y `.env` (desde `.env.example`, sin valores reales); `docker compose up -d`; URLs;
+   - crear las 3 credenciales en n8n (nombres exactos);
+   - crear las Data tables (`Configuración` con su fila) y la carpeta del datáfono (`docker compose exec n8n mkdir -p ...`);
+   - **importar en este orden** con `python3 scripts/flujos.py importar ...`: primero los sub-workflows `10`, luego el `08`, luego el `01` y el resto; por qué el orden (los Execute Workflow y el Error workflow apuntan por id; `flujos.py importar` conserva el id). Qué hay que revisar después de importar en cada workflow (credencial en cada nodo, tabla en el nodo de Data table, Error workflow);
+   - qué publicar y qué no (y por qué: el `01` y los `10` sí; los que tienen Schedule, según la decisión de cada spec);
+   - una prueba rápida de humo por flujo (un `curl` o un formulario y qué debe llegar a Mailpit), enlazando a la sección 7 de su spec;
+   - copia y restauración de la base de datos para las pruebas que cambian datos; cómo volver a cargar los datos de ejemplo;
+   - problemas frecuentes que nos han pasado (Test URL vs Production URL, formulario de prueba de un solo uso, Execute step vs Execute workflow con varios disparadores, `docker compose` desde un worktree, Workflow Inputs de una línea, `git restore` del `01` al exportar desde otra rama).
+2. **#143 · `docs/credenciales.md`:** completa la tabla «Workflow → credenciales» con **todos** los workflows (01, 03, 05, 06, 07, 08, 09, 10 ×2, 11), incluidas las credenciales que usan a través de los sub-workflows, las Data tables y las variables del `.env`. Sin valores.
+3. **#140 · Revisión de secretos** en todos los `workflows/*.json` (de `dev` y de las ramas de los PR abiertos): busca claves, tokens, contraseñas, cabeceras `X-API-Key` con valor, `apiKey`, URLs con credenciales, emails reales (todo lo que no sea `@example.com` / `@pasofirme.example` / `@bancoejemplo.example`), nombres y emails del propietario (`shared`, `pinData`), e ids de credencial que delaten algo. Pon el resultado (comandos usados y qué se encontró) en `docs/revision-secretos.md`. Si encuentras algo, **no lo arregles**: dímelo con archivo y línea.
+4. `docs/ai-log.md`: entrada «### Entregables: instalación, credenciales y revisión de secretos (#142, #143, #140)» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación: no toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Ningún secreto en ningún fichero ni en la salida (si encuentras uno, nombra el archivo y la línea, no el valor).
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Reintentos en los HTTP Request · #56
+
+- **Autora:** Esra
+- **Tarea:** documentar la decisión de #56 (HU-05) para el commit `feat:`, en la rama `feature/56-reintentos`. **Reparto:** la pareja activó a mano en n8n **Retry On Fail** (Max Tries 3, Wait Between Tries 2000 ms) en los 11 HTTP Request `GET` de los workflows 07, 09, 10 y 11, y los exportó. El agente documentó y comprobó.
+- **Resultado:**
+  - **Comprobación con un script** sobre todos los `workflows/*.json`: tienen `retryOnFail: true` y `waitBetweenTries: 2000` exactamente esos 11 nodos, y solo ellos:
+    - los 4 `Leer …` del `07`;
+    - los 3 `Leer … de la app` y `Comprobar pendientes` del `09`;
+    - los 2 `GET` de `10 · Buscar apartado`;
+    - `Leer ventas de esos días` del `11`.
+  - Ningún `POST` tiene reintentos. El diff de los 4 JSON solo añade esas 2 claves en los 11 nodos y cambia el `versionId`.
+  - **`validate_workflow`:** los 4 válidos, 0 errores.
+    - `10`: 0 avisos.
+    - `07`, `09` y `11`: solo los avisos de **Execute Once**, que es lo que piden sus specs.
+    - Para no enviar 80 KB, el `09` y el `11` se validaron con el cuerpo de sus Code sustituido por `return $input.all();`, y el `07` con `Preparar informe` simplificado. Los Code no cambian en esta rama.
+  - **`AGENTS.md`**, sección 8: la decisión.
+  - **`specs/08-error-workflow.md`:**
+    - sección «Reintentos» con la tabla de nodos con y sin reintento, y cómo encaja con el `08` (primero los 3 intentos, después un solo aviso);
+    - el criterio de #56, marcado.
+  - **Specs `07`, `09`, `10` y `11`:**
+    - una línea «Settings → Retry On Fail: 3 intentos, 2000 ms» en la configuración de esos nodos;
+    - los casos de error de «la app no responde» y del `401`, corregidos: ahora dicen que primero se reintenta.
+    - Ninguna spec decía nada contrario.
+- **Problemas encontrados:**
+  - **Never Error en `10 · Buscar apartado`.** Sus dos `GET` tienen Never Error: un `401` o un `5xx` no hacen fallar el nodo y no se reintentan. Solo se reintentan los errores sin respuesta (app parada, tiempo agotado). El `401` «inofensivo» del prompt vale para el `07`, el `09` y el `11`, no para el `10`. Se documentó así; no hace falta cambiar el flujo.
+  - **`maxTries` no se pudo comprobar en n8n-mcp.** n8n-mcp no documenta los ajustes del nodo (Retry On Fail, Max Tries, Wait Between Tries):
+    - en `get_node` del HTTP Request no salen, ni en las propiedades ni en la documentación;
+    - `validate_workflow` no dice el valor por defecto (solo avisa si `maxTries` es alto: probado con 20).
+    - Que `3` es el valor por defecto sale de la interfaz de n8n: el JSON exportado sí guarda `waitBetweenTries: 2000`, que no es el valor por defecto, y no guarda `maxTries`.
+  - **Cuándo reintenta n8n:** solo cuando el nodo falla; con Never Error u On Error → Continue, no. Tampoco está en n8n-mcp. Coincide con lo que ya decía la spec del `10` («Never Error no cubre los errores de red»).
+  - **Sin prueba en n8n.** Los reintentos no se han provocado (por ejemplo, con `docker compose stop tienda` durante una ejecución). Las pruebas del `401` de las specs siguen valiendo; el aviso del `08` llega unos 4 s más tarde.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#56 (HU-05) · Reintentos (Retry On Fail) en los nodos HTTP Request. La pareja ya ha activado **Retry On Fail** a mano en n8n (Max Tries 3, Wait Between Tries 2000 ms) **solo en los HTTP Request de lectura (`GET`)** y lo ha exportado. Documenta la decisión para el commit `feat:`. Rama `feature/56-reintentos`.
+
+Nodos cambiados (11):
+- `07 · Informe mensual`: `Leer ventas del mes`, `Leer abonos desde el día 1`, `Leer apartados`, `Leer vales`.
+- `09 · Migración del Excel`: `Leer apartados de la app`, `Leer abonos de la app`, `Leer ventas de la app`, `Comprobar pendientes`.
+- `10 · Buscar apartado`: `Leer apartado por número`, `Buscar apartados por texto`.
+- `11 · Datáfono`: `Leer ventas de esos días`.
+
+Sin reintentos, a propósito: los `POST` (`Vencer apartado` del `06`; `Crear apartados`, `Registrar abonos`, `Registrar ventas` del `09`; `Registrar ventas` del `11`). `05` (PR #173) y `03` (HU-03) son de Beste y no se tocan en esta rama.
+
+## Fuentes
+
+- `workflows/07-informe-mensual.json`, `workflows/09-migracion-excel.json`, `workflows/10-buscar-apartado.json`, `workflows/11-datafono.json` (léelos, no los modifiques). Comprueba con un script que esos 11 nodos, y solo esos, tienen `retryOnFail: true` y `waitBetweenTries: 2000` (`maxTries` no aparece en el JSON porque 3 es el valor por defecto y n8n no lo exporta; compruébalo en la documentación del nodo), y valida los 4 con `validate_workflow` de n8n-mcp.
+- `specs/03-abonos-distancia.md` (líneas 37 y 57: «no reintentar un POST a ciegas»), `specs/08-error-workflow.md`, `specs/07-...`, `specs/09-...`, `specs/10-sub-workflows.md`, `specs/11-datafono.md`, `AGENTS.md`, `docs/instalacion.md` si ya está en `dev`.
+- Documentación de n8n (n8n-mcp) sobre Retry On Fail: cuándo reintenta (solo si el nodo falla; con **Never Error** o **On Error → Continue** el nodo no falla y no reintenta).
+
+## Contenido
+
+1. `AGENTS.md`, sección 8: una fila «Retry On Fail (3 intentos, 2 s) solo en los HTTP Request `GET`; nunca en los `POST`». Motivo: un `GET` repetido no cambia nada; un `POST` que llegó a la app pero cuya respuesta se perdió crearía un abono, una venta o un apartado duplicado. Si los 3 intentos fallan, el nodo falla y avisa el `08`. Un `401` también se reintenta (inofensivo: 2 × 2 s).
+2. `specs/08-error-workflow.md`: sección corta «Reintentos» con la tabla de nodos (con y sin reintento y por qué), y cómo encaja con el `08` (primero reintentos, después el aviso). Criterio de #56 marcado.
+3. En la spec de cada workflow cambiado (`07`, `09`, `10`, `11`), una línea en la configuración de esos nodos: «Settings → Retry On Fail: 3 intentos, 2000 ms». Si la spec dice algo contrario, corrígelo.
+4. Una nota para Beste (en tu respuesta, no en un archivo): qué nodos de lectura del `05` y del `03` deberían llevar lo mismo (`Leer ventas del día`, `Leer abonos del día`, `Buscar apartado`) y cuáles no.
+5. `docs/ai-log.md`: entrada «### Reintentos en los HTTP Request · #56» con el formato habitual (la pareja configuró los nodos; el agente documentó y comprobó) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y el resultado de la comprobación y de `validate_workflow`.
+```
+
+</details>
+
+### Agente, modelos y n8n-mcp · #8
+
+- **Autora:** Esra
+- **Tarea:** #8 [Base del proyecto]: dejar documentados y justificados el agente, el modelo gratuito y n8n-mcp, en la sección 1 de este documento. Rama `docs/8-agente-ia`. Solo documentación.
+- **Resultado:** sección 1 reescrita.
+  - **Tabla:**
+    - un agente de desarrollo por persona: Esra con Claude Code; Beste con Codex, cuyo modelo no consta en el repo;
+    - el modelo de n8n: Groq con `openai/gpt-oss-20b`, sacado del nodo `Extraer datos con Groq` del JSON del `03`, en uso en el flujo 3;
+    - n8n-mcp en modo solo documentación.
+  - **Por qué Claude Code y Codex, y no OpenCode:** cada una usa el agente que ya tenía. El alcance se delimita con hechos del repo:
+    - una rama y una tarea por persona;
+    - el mismo `AGENTS.md` para los dos agentes;
+    - la sección 9 de AGENTS.md;
+    - la pareja construye los nodos y el agente escribe specs, código y documentación;
+    - todo pasa por una PR revisada.
+  - **Modelo gratuito:** por qué Groq y ese modelo, y que la IA solo extrae y el flujo decide. Qué datos recibe Groq: solo `{ ordenante, importe, concepto }`, recortados antes en `Preparar correo`, y por qué son los imprescindibles. Enlace a la comparativa pendiente (#96, #98).
+  - **Por qué n8n-mcp sin API key**, y cómo se configura.
+- **Problemas encontrados:**
+  - **Error nuestro en la sección 1.** Decía que usábamos Claude Code «porque ya lo tenemos las dos». No era así: Esra usa Claude Code y Beste usa Codex, como dice su entrada de HU-04 en `origin/feature/hu04-cierre-diario` («Autora: Beste, con Codex»). Se corrigió.
+  - **La sección 1 estaba desactualizada.** El modelo de Groq seguía «Por decidir / Pendiente de configurar», aunque el flujo 3 ya usa `openai/gpt-oss-20b` («Extracción estructurada HU-03 (#34)», prueba real del 26/10/2026).
+  - **No se puede comprobar en el repo:**
+    - el modelo que usa Codex;
+    - el límite de la capa gratuita de Groq;
+    - que el código del `03` siga igual al fusionarse, porque solo está en la rama de HU-03.
+    - No se afirma nada de eso: la tabla dice «No consta en el repo» para el modelo de Codex y que el `03` está «todavía sin fusionar».
+- **Decisión:** pendiente de revisión de la pareja. Que Beste confirme la fila de Codex y lo que se dice del flujo 3.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#8 [Base del proyecto] «Agente de IA elegido y configurado + modelo gratuito + n8n-mcp (justificar la elección en ai-log)». Todo está ya en uso; falta dejarlo documentado y justificado en `docs/ai-log.md`, sección «1. Herramientas y modelos», que está desactualizada (dice que el modelo de Groq está «Por decidir / Pendiente de configurar»). Rama `docs/8-agente-ia`. Solo documentación.
+
+## Fuentes
+
+- README, sección «🤖 Desarrollo Agéntico con IA» (Herramientas) y requisito técnico 10.
+- `docs/ai-log.md` (sección 1 y las entradas: qué se ha hecho con el agente, qué errores se detectaron), `AGENTS.md` (sección 6 «Herramientas del agente» y sección 9), `.mcp.json`.
+- El modelo de Groq que usa el flujo 3: `git show origin/feature/39-hu03-prueba-correos:workflows/03-abonos-distancia.json` (nodo `Extraer datos con Groq`) y `specs/03-abonos-distancia.md`.
+- Issues #96 y #98 (comparativa de modelos, de Beste): solo para enlazarla, no la hagas.
+
+## Contenido
+
+1. `docs/ai-log.md`, sección 1, actualizada:
+   - **Corrección:** el párrafo actual dice que usamos Claude Code «porque ya lo tenemos las dos». No es así: **Esra usa Claude Code y Beste usa Codex** (OpenAI; ver su entrada de HU-04 en `origin/feature/hu04-cierre-diario`, «Autora: Beste, con Codex»). Corrígelo y deja constancia en la entrada nueva de que era un error nuestro.
+   - Tabla: un agente de desarrollo por persona (Esra: Claude Code y su modelo; Beste: Codex, sin inventar el modelo si no está en el repo), modelo de IA dentro de n8n (Groq, capa gratuita, el modelo exacto del JSON del `03`, «En uso» en el flujo 3), n8n-mcp (modo solo documentación, «En uso»).
+   - **Por qué Claude Code y Codex y no OpenCode** (sustituye el párrafo actual): cada una usa el agente que ya tenía. El README admite IAs de pago si se delimita el alcance; di cuál es ese alcance y cómo lo delimitamos, con hechos del repo: cada una en su rama y su tarea, así dos agentes distintos no se pisan; los dos leen el mismo `AGENTS.md` (Claude Code lo carga con `CLAUDE.md` → `@AGENTS.md`; Codex lee `AGENTS.md` directamente); el agente no toca n8n ni publica (AGENTS.md, sección 9); la pareja construye los nodos a mano y el agente escribe specs, código de los nodos Code y documentación; todo pasa por PR revisada.
+   - **Modelo gratuito:** por qué Groq y ese modelo para el flujo 3 (capa gratuita, compatible con OpenAI, solo extrae ordenante, importe y concepto; las decisiones las toma el flujo). Qué datos personales se le envían y por qué son los imprescindibles. Enlace a la comparativa de modelos (#96) como pendiente.
+   - **Por qué n8n-mcp sin API key:** sin conexión a la instancia, el agente no puede crear ni publicar flujos; lo usamos para consultar nodos y para `validate_workflow` antes de cada PR. Cómo se configura (`.mcp.json`, aprobar el servidor al abrir el proyecto).
+2. `docs/ai-log.md`: entrada «### Agente, modelos y n8n-mcp · #8» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo `docs/ai-log.md`. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- No escribas ninguna clave. Solo hechos que estén en el repo; si algo no lo puedes comprobar, dilo en tu respuesta en lugar de inventarlo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué has cambiado.
+```
+
+</details>
+
+### Mapa del proceso · #141
+
+- **Autora:** Esra
+- **Tarea:** entregable 1 del README: el mapa del proceso de apartado, hoy y automatizado, con diagramas Mermaid en `docs/mapa-proceso.md`.
+- **Resultado:**
+  - `docs/mapa-proceso.md`, con cuatro partes:
+    - **Hoy:** `flowchart` con carriles para el cliente, la dependienta, el banco y Marisa. Los 5 problemas del README van marcados en rojo y se repiten en una lista debajo.
+    - **Automatizado:** los mismos carriles más la app y n8n.
+      - Cada paso de n8n lleva el nombre real del flujo y su disparador, que salen de las specs y de los JSON: `01` por evento, `06` cada mañana a las 9:00, `11` de lunes a sábado a las 22:00, `05` a las 00:05, `07` el día 1 a las 8:00 y `08` si falla un flujo.
+      - El `03` va como un subgrafo, con sus decisiones en rombos.
+      - Lo humano va en amarillo.
+    - **Ciclo de vida del apartado:** `stateDiagram-v2` con `activo`, `liquidado` y `vencido`, y qué provoca cada paso.
+    - **Antes → después:** tabla que enlaza cada problema del README con la spec del flujo que lo resuelve.
+  - Se dibuja el proceso final, también lo que todavía se está terminando:
+    - el `03`, tomado de `origin/feature/39-hu03-prueba-correos`;
+    - el `05`, de `origin/feature/hu04-cierre-diario` (#173);
+    - los recordatorios del `06`, solo con lo que dicen el README y la sección 4.2 de su spec: nombre, «cada mañana» y aviso al cliente. Sin hora, porque la spec solo dice que «puede usar» el disparador de las 9:00.
+  - Enlace al mapa en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Validación de Mermaid.** No se pudo validar con `npx -y @mermaid-js/mermaid-cli`: el modo automático de Claude Code bloqueó la descarga del paquete. Se revisó la sintaxis a mano (etiquetas entre comillas y sin HTML). Queda pendiente comprobarlo en GitHub o con mermaid-cli.
+  - **Enlaces de specs que no están en `dev`.** `specs/05-cierre-diario.md` solo existe en la rama de #173, así que el enlace no funciona hasta que se fusione.
+  - **IMAP desactivado.** En el JSON del `03`, el nodo `Correo bancario IMAP` está desactivado, y el flujo se prueba con `Formulario de desarrollo`. El mapa dibuja el disparador final (el correo del banco) y lo indica en el texto.
+  - **Pendiente de cobro.** El README dice que Marisa no lo sabe «en ningún momento». Ningún flujo lo envía a diario: va en el informe mensual, y con su formulario se puede pedir cuando se quiera. La tabla lo dice así.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#141 [Entregables finales] «Mapa del proceso: hoy vs automatizado». Entregable 1 del README: «Mapa del proceso de apartado: cómo se hace hoy y cómo queda automatizado (diagrama BPMN, Miro, Excalidraw o similar)». Lo hacemos con diagramas **Mermaid** dentro de un Markdown, porque GitHub los dibuja directamente y quedan versionados con el repo. Rama `docs/141-mapa-proceso`. Solo documentación.
+
+## Fuentes
+
+- README: «Planteamiento» (cómo se trabaja hoy: libreta, Excel, calculadora, avisos del banco), «Reglas del negocio», «Automatizaciones a construir» y las historias de usuario.
+- `docs/ontologia.md` (entidades y estados del apartado), `AGENTS.md` (secciones 2, 5 y 8), `docs/guia-de-la-app.md` (eventos del webhook).
+- Las specs de cada flujo y los `workflows/*.json` de `dev` y de las ramas abiertas (`origin/feature/hu04-cierre-diario` para el `05`, `origin/feature/39-hu03-prueba-correos` para el `03`): disparadores, horas, a quién avisa cada flujo.
+- `data/excel_actual_apartados.csv`, `data/excel_actual_ventas.csv` (cómo se lleva hoy).
+
+## Contenido
+
+1. `docs/mapa-proceso.md`, en español:
+   - **Hoy (a mano):** un diagrama Mermaid (`flowchart`, con carriles o `subgraph` por actor: cliente, dependienta, Marisa, banco) del ciclo de un apartado: alta en la libreta, abonos en la tienda y desde casa (Bizum o transferencia → Marisa revisa el banco y apunta a mano), comprobar cuánto falta, liquidar y recoger, plazo vencido (nadie avisa; zapatos olvidados en el almacén), cierre diario y suma mensual con calculadora. Marca con un estilo los puntos de dolor del README, y debajo una lista corta de esos problemas.
+   - **Automatizado:** el mismo ciclo con la app y n8n, con los mismos carriles más «App» y «n8n». Cada paso automático dice qué flujo lo hace con su nombre real (`01 · Eventos de la tienda`, `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow`, `11 · Datáfono`; los `10` como sub-workflows) y su disparador (evento del webhook u hora). Las decisiones del flujo 3 (registrar o preguntar a Marisa) como rombos. Lo que sigue siendo humano (alta y abonos en la tienda, revisar los casos dudosos) debe verse claro.
+   - Un segundo diagrama, pequeño, del **ciclo de vida del apartado** (`stateDiagram-v2`: `activo` → `liquidado` / `vencido` + vale), con qué lo provoca en cada caso.
+   - Una tabla «Antes → después» que enlace cada problema del README con el flujo que lo resuelve (enlace a su spec).
+   - Dibuja el proceso **final**, también lo que aún se está terminando y vamos a entregar: el `03` (HU-03, rama `feature/39-hu03-prueba-correos`), el `05` (HU-04, PR #173) y los recordatorios de 7 y 1 días en el `06` (HU-06, Beste; si no hay spec ni JSON todavía, usa el README y la sección reservada en `specs/06-recordatorios-vencimientos.md`, y no inventes detalles: nombre del flujo, disparador y a quién avisa). No los marques como pendientes. Lo que **no** vamos a hacer (Telegram HU-11/12, HU-14 y el resto del nivel Avanzado salvo HU-13) no se dibuja.
+2. Comprueba que los diagramas son Mermaid válido (sintaxis que GitHub soporta: sin HTML en las etiquetas, comillas en las etiquetas con paréntesis o `·`). Si tienes `npx`, valida con `npx -y @mermaid-js/mermaid-cli` a un archivo en `/tmp` (no lo dejes en el repo); si no, dime que no lo has podido validar.
+3. Un enlace corto desde el README a `docs/mapa-proceso.md` en «Cómo empezar», junto al de `docs/instalacion.md` si ya está; no cambies el enunciado.
+4. `docs/ai-log.md`: entrada «### Mapa del proceso · #141» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Usa solo entidades y estados de `docs/ontologia.md`. Nada que no exista en el repo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
+### Evidencias de un apartado completo · #144
+
+- **Autora:** Esra
+- **Tarea:** entregable 5 del README. Documentar con capturas un apartado completo (alta → abonos → liquidación) en `docs/evidencias/apartado-completo.md`.
+- **Resultado:**
+  - **La prueba y las capturas las hizo la pareja**, el 28/10/2026, en la app real y con el `01` publicado:
+    - copia de la base de datos en `~/tienda-antes-hu144.db`, restaurada al terminar;
+    - clienta inventada Irene Navarro y apartado #31 (Botín piel marrón, talla 37, 40,00 €);
+    - alta con 10,00 € en efectivo, abono de 15,00 € por bizum y abono de 15,00 € con tarjeta, que lo liquida;
+    - 3 correos en Mailpit y 3 ejecuciones correctas del `01` (08:24:47, 08:25:43 y 08:27:08).
+  - **El agente la documentó** a partir de las 7 capturas de `docs/evidencias/apartado-completo-*.png`, después de mirarlas una a una:
+    - cada paso con su captura de la app, su correo, el evento y la rama del `01`;
+    - una tabla que compara cada cifra de la app con la del correo (todas coinciden);
+    - los criterios de HU-01 y HU-02 que demuestra la prueba.
+  - Enlace al documento en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Asunto sin «¡».** El prompt da el asunto del tercer correo como «¡Ya puedes recoger tus zapatos! Botín piel marrón». En la captura, y en el Send Email `Avisar de que puede recoger` de `workflows/01-eventos-tienda.json`, es «Ya puedes recoger tus zapatos! …», sin el signo de apertura. Se documentó el asunto real y una nota. El flujo no se toca: es una tarea aparte.
+  - **«Menos de un minuto» (HU-01).** Las capturas muestran la hora de la ejecución (08:24:47) y la del correo (8:24), pero no la hora exacta del alta en la app. Se dice así en el documento.
+  - **Sin email (HU-01, criterio 3).** Esta prueba no lo cubre; se remite a las pruebas de la spec del `01`.
+- **Decisión:** pendiente de revisión de la pareja.
+
 ### Comandos personalizados de Claude Code · #124
 
 - **Autora:** Esra
