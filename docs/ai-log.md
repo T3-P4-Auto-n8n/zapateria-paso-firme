@@ -1763,6 +1763,67 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Mapa del proceso · #141
+
+- **Autora:** Esra
+- **Tarea:** entregable 1 del README: el mapa del proceso de apartado, hoy y automatizado, con diagramas Mermaid en `docs/mapa-proceso.md`.
+- **Resultado:**
+  - `docs/mapa-proceso.md`, con cuatro partes:
+    - **Hoy:** `flowchart` con carriles para el cliente, la dependienta, el banco y Marisa. Los 5 problemas del README van marcados en rojo y se repiten en una lista debajo.
+    - **Automatizado:** los mismos carriles más la app y n8n.
+      - Cada paso de n8n lleva el nombre real del flujo y su disparador, que salen de las specs y de los JSON: `01` por evento, `06` cada mañana a las 9:00, `11` de lunes a sábado a las 22:00, `05` a las 00:05, `07` el día 1 a las 8:00 y `08` si falla un flujo.
+      - El `03` va como un subgrafo, con sus decisiones en rombos.
+      - Lo humano va en amarillo.
+    - **Ciclo de vida del apartado:** `stateDiagram-v2` con `activo`, `liquidado` y `vencido`, y qué provoca cada paso.
+    - **Antes → después:** tabla que enlaza cada problema del README con la spec del flujo que lo resuelve.
+  - Se dibuja el proceso final, también lo que todavía se está terminando:
+    - el `03`, tomado de `origin/feature/39-hu03-prueba-correos`;
+    - el `05`, de `origin/feature/hu04-cierre-diario` (#173);
+    - los recordatorios del `06`, solo con lo que dicen el README y la sección 4.2 de su spec: nombre, «cada mañana» y aviso al cliente. Sin hora, porque la spec solo dice que «puede usar» el disparador de las 9:00.
+  - Enlace al mapa en «Cómo empezar» del README.
+- **Problemas encontrados:**
+  - **Validación de Mermaid.** No se pudo validar con `npx -y @mermaid-js/mermaid-cli`: el modo automático de Claude Code bloqueó la descarga del paquete. Se revisó la sintaxis a mano (etiquetas entre comillas y sin HTML). Queda pendiente comprobarlo en GitHub o con mermaid-cli.
+  - **Enlaces de specs que no están en `dev`.** `specs/05-cierre-diario.md` solo existe en la rama de #173, así que el enlace no funciona hasta que se fusione.
+  - **IMAP desactivado.** En el JSON del `03`, el nodo `Correo bancario IMAP` está desactivado, y el flujo se prueba con `Formulario de desarrollo`. El mapa dibuja el disparador final (el correo del banco) y lo indica en el texto.
+  - **Pendiente de cobro.** El README dice que Marisa no lo sabe «en ningún momento». Ningún flujo lo envía a diario: va en el informe mensual, y con su formulario se puede pedir cuando se quiera. La tabla lo dice así.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+#141 [Entregables finales] «Mapa del proceso: hoy vs automatizado». Entregable 1 del README: «Mapa del proceso de apartado: cómo se hace hoy y cómo queda automatizado (diagrama BPMN, Miro, Excalidraw o similar)». Lo hacemos con diagramas **Mermaid** dentro de un Markdown, porque GitHub los dibuja directamente y quedan versionados con el repo. Rama `docs/141-mapa-proceso`. Solo documentación.
+
+## Fuentes
+
+- README: «Planteamiento» (cómo se trabaja hoy: libreta, Excel, calculadora, avisos del banco), «Reglas del negocio», «Automatizaciones a construir» y las historias de usuario.
+- `docs/ontologia.md` (entidades y estados del apartado), `AGENTS.md` (secciones 2, 5 y 8), `docs/guia-de-la-app.md` (eventos del webhook).
+- Las specs de cada flujo y los `workflows/*.json` de `dev` y de las ramas abiertas (`origin/feature/hu04-cierre-diario` para el `05`, `origin/feature/39-hu03-prueba-correos` para el `03`): disparadores, horas, a quién avisa cada flujo.
+- `data/excel_actual_apartados.csv`, `data/excel_actual_ventas.csv` (cómo se lleva hoy).
+
+## Contenido
+
+1. `docs/mapa-proceso.md`, en español:
+   - **Hoy (a mano):** un diagrama Mermaid (`flowchart`, con carriles o `subgraph` por actor: cliente, dependienta, Marisa, banco) del ciclo de un apartado: alta en la libreta, abonos en la tienda y desde casa (Bizum o transferencia → Marisa revisa el banco y apunta a mano), comprobar cuánto falta, liquidar y recoger, plazo vencido (nadie avisa; zapatos olvidados en el almacén), cierre diario y suma mensual con calculadora. Marca con un estilo los puntos de dolor del README, y debajo una lista corta de esos problemas.
+   - **Automatizado:** el mismo ciclo con la app y n8n, con los mismos carriles más «App» y «n8n». Cada paso automático dice qué flujo lo hace con su nombre real (`01 · Eventos de la tienda`, `03 · Abonos a distancia`, `05 · Cierre diario`, `06 · Recordatorios y vencimientos`, `07 · Informe mensual`, `08 · Error Workflow`, `11 · Datáfono`; los `10` como sub-workflows) y su disparador (evento del webhook u hora). Las decisiones del flujo 3 (registrar o preguntar a Marisa) como rombos. Lo que sigue siendo humano (alta y abonos en la tienda, revisar los casos dudosos) debe verse claro.
+   - Un segundo diagrama, pequeño, del **ciclo de vida del apartado** (`stateDiagram-v2`: `activo` → `liquidado` / `vencido` + vale), con qué lo provoca en cada caso.
+   - Una tabla «Antes → después» que enlace cada problema del README con el flujo que lo resuelve (enlace a su spec).
+   - Dibuja el proceso **final**, también lo que aún se está terminando y vamos a entregar: el `03` (HU-03, rama `feature/39-hu03-prueba-correos`), el `05` (HU-04, PR #173) y los recordatorios de 7 y 1 días en el `06` (HU-06, Beste; si no hay spec ni JSON todavía, usa el README y la sección reservada en `specs/06-recordatorios-vencimientos.md`, y no inventes detalles: nombre del flujo, disparador y a quién avisa). No los marques como pendientes. Lo que **no** vamos a hacer (Telegram HU-11/12, HU-14 y el resto del nivel Avanzado salvo HU-13) no se dibuja.
+2. Comprueba que los diagramas son Mermaid válido (sintaxis que GitHub soporta: sin HTML en las etiquetas, comillas en las etiquetas con paréntesis o `·`). Si tienes `npx`, valida con `npx -y @mermaid-js/mermaid-cli` a un archivo en `/tmp` (no lo dejes en el repo); si no, dime que no lo has podido validar.
+3. Un enlace corto desde el README a `docs/mapa-proceso.md` en «Cómo empezar», junto al de `docs/instalacion.md` si ya está; no cambies el enunciado.
+4. `docs/ai-log.md`: entrada «### Mapa del proceso · #141» con el formato habitual y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- Solo documentación. No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API.
+- Usa solo entidades y estados de `docs/ontologia.md`. Nada que no exista en el repo.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado.
+```
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
