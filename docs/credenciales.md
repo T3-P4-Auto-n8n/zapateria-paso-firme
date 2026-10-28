@@ -17,7 +17,7 @@ Qué credenciales y variables necesita cada workflow. **Aquí nunca se escriben 
 | `01 · Eventos de la tienda` | `Mailpit` | Usa la Data table `Configuración` (rama HU-09), ver [Data tables de n8n](#data-tables-de-n8n) |
 | `03 · Abonos a distancia` | por completar | |
 | `05 · Cierre diario` | por completar | |
-| `06 · Recordatorios y vencimientos` | por completar | |
+| `06 · Recordatorios y vencimientos` | API Tienda; Mailpit a través de los sub-workflows 10 | HU-06 usa `Recordatorios enviados`; crear tabla local, no necesita OAuth |
 | `07 · Informe mensual` | por completar | |
 | `08 · Error Workflow` | por completar | |
 
@@ -50,6 +50,18 @@ Configuración que cambia Marisa sin editar los flujos. Usamos Data tables porqu
 
 > **Las Data tables no se exportan con el JSON del workflow.** Al importar `workflows/01-eventos-tienda.json` en otra instancia (por ejemplo, la de la pareja), hay que crear antes la tabla `Configuración` con su fila y volver a elegirla en el nodo `Leer umbral de venta grande`. Si no, el nodo da error y lo avisa el `08`.
 
+### Recordatorios enviados (HU-06)
+
+Overview → Data tables → Create data table → nombre exacto **recordatorios enviados**. Columnas:
+
+| Columna | Tipo | Uso |
+|---|---|---|
+| `apartado_id` | Number | ID de la app |
+| `dias` | Number | 7 o 1 |
+| `fecha` | String | Día del envío AAAA-MM-DD en Europe/Madrid |
+
+Dejar vacía al crearla. n8n añade sus columnas internas, no crearlas manualmente. No guardar nombres, teléfonos ni emails. `Leer recordatorios enviados`: Row Get, sin filtros, Return All ON, Execute Once ON, Always Output Data ON. `Registrar recordatorio enviado`: Row Insert, tras envío exitoso, Execute Once OFF. La pareja debe volver a seleccionar la tabla en ambos nodos al importar: los datos y la tabla no se exportan con el workflow. Es persistencia local de n8n, sin credencial Google OAuth; sustituye el Sheets propuesto en #63. Conservar histórico real; borrar solo filas de prueba identificadas. Restaurar tienda.db no limpia esta tabla.
+
 ## Cómo crear cada credencial en n8n
 
 En n8n: **Overview → Credentials → Create credential**, buscar el tipo y guardar con el nombre exacto de la tabla (así las dos de la pareja usan los mismos nombres y es fácil reasignarlas al importar un workflow).
@@ -75,3 +87,5 @@ En n8n: **Overview → Credentials → Create credential**, buscar el tipo y gua
 1. Tipo: **Groq API**.
 2. API Key: la clave de vuestra cuenta de Groq (capa gratuita).
 3. Nombre: `Groq`.
+
+**Verificado HU-06 (28/10/2026):** tabla local `recordatorios enviados`, columnas Number/Number/String, dos filas tras ejecución #45 y ninguna adicional tras #58. Tras restaurar la tienda, se eliminaron solo las dos filas de prueba; tabla vacía. Las credenciales importadas de otro ordenador se reasignaron a la credencial local existente sin guardar valores secretos.

@@ -1763,6 +1763,71 @@ HU-07: vamos a construir a mano en n8n la rama de vencimientos de `06 · Recorda
 - **Decisión:** aceptado. Las 3 filas de HU-07 de `AGENTS.md` (sección 8) pasan a «Tomada». Los 3 criterios de HU-07 están cumplidos con pruebas manuales; el disparador de cada mañana queda sin probar hasta publicar el `06`.
 - No hay prompt: los flujos los construyó la pareja a mano.
 
+### Spec y código de recordatorios · HU-06
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** especificar la segunda rama del 06 y preparar los Code/guía fuera del repo; la pareja construye a mano, prueba y exporta.
+- **Resultado:** sección 4.2 nodo a nodo, errores, prueba y criterios sin marcar; `~/hu06/` con dos Code, LEEME, suite local y baseline mínimo. Se usa Data table por apartado/dias, lectura de todo el histórico una vez y comparación de todos los candidatos; dos Execute Sub-workflow en Run once for each item y registro después de éxito. Sin email: aviso a tienda con teléfono.
+- **Pruebas locales:** 4/4, primero fallaron antes de implementación; +7/+1, calendario Madrid/DST/año, mensajes con pendiente y fecha de app, sin candidatos, tabla vacía con varios clientes, deduplicación simulada y rechazo de datos inválidos. No son pruebas n8n.
+- **GET real (28/10/2026):** 16 activos; 0 candidatos +7/+1; fuera de plazo 16,15,14,13. Clave leída en memoria, sin imprimirla ni guardarla. No POST.
+- **Problemas/decisiones:** Get por candidato con salida vacía puede perder clientes: se prepara Get sin filtros/Return All/Execute Once/Always Output Data y segundo Code. Se explican fallos SMTP/Insert y concurrencia sin prometer exactly-once transaccional. #63 Sheets se sustituye por Data table sin OAuth.
+- **Estado:** pendiente construcción, pruebas manuales y capturas de la pareja. No se tocó n8n, workflows, backend, frontend, compose ni .env; no commit, push ni PR.
+
+<details><summary>Prompt literal</summary>
+
+```text
+## Tarea
+
+HU-06 · Recordatorios de vencimiento (#57, nivel Medio). Se añade como **segunda rama** del workflow `06 · Recordatorios y vencimientos`, que ya existe en `dev` con la rama de vencimientos (HU-07, de Esra). Rama `feature/hu-06-recordatorios`, desde `dev`.
+
+Criterios (README):
+1. Cada mañana se avisa a los clientes cuyo plazo vence en 7 días y en 1 día.
+2. Cada cliente recibe cada aviso una sola vez.
+3. El mensaje incluye lo que falta por pagar y la fecha límite.
+
+Reparto: el agente escribe la spec y el código de los nodos Code; **la pareja construye los nodos a mano en n8n**, pega el código, prueba y exporta.
+
+## Fuentes
+
+- `specs/06-recordatorios-vencimientos.md`: **sección 4.2** (reservada para HU-06: mismos disparadores, segunda conexión desde `Leer apartados activos`, nombres de nodo distintos, `10 · Enviar notificación` con Mode Run once for each item), 3.1, 4.1, 5 y 7.
+- `workflows/06-recordatorios-y-vencimientos.json` (rama de vencimientos ya hecha: léela, no la cambies), `workflows/10-*.json`, `specs/10-sub-workflows.md`.
+- `specs/01-eventos-tienda.md` (rama HU-01: aviso a la tienda si el cliente no tiene email), `AGENTS.md` (secciones 2, 8 y 9), `docs/ontologia.md`, `docs/credenciales.md` (Data table `Configuración`: así se crea una Data table).
+- `backend/schemas/apartado.py`: `POST /api/apartados` acepta `fecha` (para las pruebas).
+
+## Contenido
+
+1. **Spec**, en `specs/06-recordatorios-vencimientos.md`, sección 4.2 (sustituye «pendiente, Beste»), nodo a nodo:
+   - `Elegir los que vencen pronto` (Code), desde la salida de `Leer apartados activos`: los `activo` con `fecha_limite` = hoy + 7 o hoy + 1 (Europe/Madrid). Un item por recordatorio con `dias` (7 o 1) y los datos para el mensaje, sin recalcular (`pendiente` y `fecha_limite` de la app). Sin ninguno: `{ id: null }` y un IF que corta, como en la rama de vencimientos.
+   - **«Una sola vez»**: una Data table `Recordatorios enviados` (`apartado_id` Number, `dias` Number, `fecha` String). Antes de enviar, se descartan los que ya están (así una segunda ejecución el mismo día no repite); después de enviar, se apunta la fila. Explica por qué no basta con «se ejecuta una vez al día» (Probar a mano, un reinicio, ejecutarlo dos veces). El issue #63 proponía Google Sheets; una Data table de n8n hace lo mismo sin credencial OAuth, igual que `Configuración`: dilo.
+   - Cliente **con email**: `10 · Enviar notificación` con `para`, `asunto` y `texto` (una sola expresión con `\n`, Workflow Inputs de una línea). Asunto propuesto: `Tu apartado vence en 7 días: <producto>` / `…mañana…`. Texto con producto, talla, pendiente y fecha límite (dd/MM/yyyy), y cómo pagar.
+   - Cliente **sin email**: decide (propuesta: aviso a la tienda con el teléfono, como HU-01 y HU-07: el cliente no está delante) y justifícalo.
+   - Casos de error, prueba (sección 7) y criterios (sección 8). Actualiza la nota de alcance del principio y la cabecera (HU-06 deja de estar pendiente).
+2. **Código** de los nodos Code en `~/hu06/` (fuera del repo), con un `LEEME.md`: configuración exacta de cada nodo nuevo (Data table Get/Insert, IF, Execute Workflow con sus Workflow Inputs cada uno en su bloque para copiar), dibujo de las conexiones y pasos de prueba.
+3. **Prueba con datos reales** (la escribe el agente; la ejecuta la pareja): copia de la base de datos antes (`docker compose cp tienda:/data/tienda.db ~/tienda-antes-hu06.db`) y restauración después. Con `POST /api/apartados` y `fecha` = hoy − 83 días se crea un apartado que vence en 7 días, y con hoy − 89 uno que vence mañana (uno con email y otro sin email). Primera ejecución con `Probar a mano`: los recordatorios; segunda: ninguno. Comprueba con `GET /api/apartados?estado=activo` (solo lectura, clave del `.env` sin imprimirla) qué apartados de ejemplo caen hoy en +7 / +1, para contar con ellos. La rama de vencimientos se ejecuta en la misma prueba: tenlo en cuenta (vencerá los fuera de plazo), por eso la copia de la base de datos.
+4. `AGENTS.md`, sección 8: las decisiones nuevas (Data table, sin email). `docs/credenciales.md`: la Data table nueva. `docs/ai-log.md`: entrada «### Spec y código de recordatorios · HU-06» con el formato habitual (Autora: Beste, con Codex) y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. Solo `GET` a la API.
+- No cambies la rama de vencimientos ni sus nombres de nodo.
+- **No publiques el `06`.**
+- No añadas `.DS_Store`. No hagas commit, push ni PR. Di qué archivos has cambiado.
+```
+
+</details>
+
+### Construcción y pruebas de recordatorios · HU-06
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** la pareja construyó 9 nodos manualmente y autorizó al agente a terminar ajustes, pruebas reales, capturas, restauración, export y PR.
+- **Resultado:** 06 con 17 nodos, dos ramas, parámetros previos conservados. Correcciones: condición vacía de ¿Hay recordatorios? a Boolean is true con id !== null; referencias API locales de Buscar apartado y Vencer apartado. Sin modificar lógica/nombres de HU-07.
+- **Prueba 1:** Nora #25 (+7, pendiente 40, límite 04/11) y Hugo #26 (+1, sin email, pendiente 40, límite 29/10). Ejecución #45 Succeeded 1.934 s: 2 recordatorios, 2 filas. HU-07 además vence 4 apartados y entrega lista/vales.
+- **Prueba 2:** #58 Succeeded 427 ms, cero correos nuevos, mismas 2 filas. Mailpit 13 antes/después, mismos IDs de recordatorios. Se preservaron correos previos en vez de borrarlos.
+- **Restauración:** copia previa íntegra; tienda.db restaurada y servicio reiniciado. GET: 16 activos, Nora/Hugo ausentes, 16/15/14/13 de nuevo activos fuera de plazo. Solo las 2 filas de prueba eliminadas; tabla vacía.
+- **Evidencias:** docs/evidencias/06-hu06-*.png, resultados y validación JSON. Export con COMPOSE_PROJECT_NAME correcto, solo 06 en el diff de workflows. Code idéntico al probado, 4/4 tests; validator 0 errores/1 aviso intencional Execute Once.
+- **Límite:** 06 sin publicar por petición expresa; programación real 9:00 y errores de producción no comprobados. Criterio de envío cada mañana pendiente; deduplicación y contenido probados.
+- **Decisión:** aceptado para revisión humana mediante PR a dev; sin merge ni cambios en main/dev.
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.

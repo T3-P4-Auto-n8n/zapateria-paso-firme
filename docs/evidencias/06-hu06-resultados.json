@@ -1,0 +1,67 @@
+{
+  "fecha": "2026-10-28",
+  "workflow_id": "LEG1cBDsrLXn6wL2",
+  "active": false,
+  "primera": {
+    "execution_id": 45,
+    "status": "success",
+    "duration_ms": 1934,
+    "reminder_rows": [
+      {
+        "apartado_id": 25,
+        "dias": 7,
+        "fecha": "2026-10-28"
+      },
+      {
+        "apartado_id": 26,
+        "dias": 1,
+        "fecha": "2026-10-28"
+      }
+    ]
+  },
+  "segunda": {
+    "execution_id": 58,
+    "status": "success",
+    "duration_ms": 427,
+    "new_emails": 0,
+    "reminder_rows_count": 2
+  },
+  "mailpit_before_second": {
+    "total_messages": 13,
+    "reminders": [
+      {
+        "id": "02iwv1TDuhovgMdX6vH0oc",
+        "subject": "Recordatorio sin email: Hugo Prueba · vence mañana"
+      },
+      {
+        "id": "0fC3zka5g3rARtDiawRUBd",
+        "subject": "Tu apartado vence en 7 días: Sandalia cuero"
+      }
+    ]
+  },
+  "mailpit_after_second": {
+    "total_messages": 13,
+    "reminders": [
+      {
+        "id": "02iwv1TDuhovgMdX6vH0oc",
+        "subject": "Recordatorio sin email: Hugo Prueba · vence mañana"
+      },
+      {
+        "id": "0fC3zka5g3rARtDiawRUBd",
+        "subject": "Tu apartado vence en 7 días: Sandalia cuero"
+      }
+    ]
+  },
+  "restored": {
+    "active_count": 16,
+    "test_bookings_present": false,
+    "expired_active_ids": [
+      16,
+      15,
+      14,
+      13
+    ],
+    "test_history_rows_remaining": 0
+  },
+  "scheduled_run_verified": false
+}
