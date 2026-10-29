@@ -1,0 +1,55 @@
+{
+  "fecha": "2026-10-26",
+  "source": "GET API local; sin POST ni datos personales",
+  "reference": {
+    "ventas": {
+      "efectivo": 14.9,
+      "tarjeta": 98.85,
+      "bizum": 79.9,
+      "total": 193.65,
+      "operaciones": 4
+    },
+    "abonos": {
+      "efectivo": 0.0,
+      "tarjeta": 20.0,
+      "bizum": 0.0,
+      "total": 20.0,
+      "operaciones": 1
+    },
+    "total": 213.65
+  },
+  "ventas": [
+    {
+      "id": 253,
+      "fecha": "2026-10-26",
+      "importe": 79.9,
+      "forma_pago": "tarjeta"
+    },
+    {
+      "id": 254,
+      "fecha": "2026-10-26",
+      "importe": 18.95,
+      "forma_pago": "tarjeta"
+    },
+    {
+      "id": 255,
+      "fecha": "2026-10-26",
+      "importe": 14.9,
+      "forma_pago": "efectivo"
+    },
+    {
+      "id": 256,
+      "fecha": "2026-10-26",
+      "importe": 79.9,
+      "forma_pago": "bizum"
+    }
+  ],
+  "abonos": [
+    {
+      "id": 82,
+      "fecha": "2026-10-26",
+      "importe": 20.0,
+      "forma_pago": "tarjeta"
+    }
+  ]
+}
