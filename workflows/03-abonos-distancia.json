@@ -494,7 +494,10 @@
           "id": "HU04ApiTienda01",
           "name": "API Tienda"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {},
