@@ -320,8 +320,8 @@ Las issues #92–#95 no traen checklist: solo el título. Los criterios salen de
 - [x] **#93** Sub-workflow «buscar apartado»: busca por número, texto o estado y devuelve siempre `{ total, apartados }`, también con 0 resultados.
 - [x] **#94** Sub-workflow «enviar notificación»: envía por `Mailpit` desde `tienda@pasofirme.example`, en texto o HTML y sin firma de n8n, y para con error si falta `para` o `asunto`.
 - [x] El `08` envía su aviso con `Enviar notificación` y el correo llega igual que antes.
-- [ ] **#95** Usarlos desde los flujos 1, 2, 3, 6 (en este PR, solo el `08`; queda abierta, `Refs #95`):
+- [x] **#95** Usarlos desde los flujos 1, 2, 3, 6 (cerrada; en este PR, solo el `08`):
   - [x] Flujo 1 (`01`, HU-01): en la PR de #95 (ejemplo), probado
   - [ ] Flujo 2 (`01`, HU-02): se queda con Send Email (opcional, 4.3)
-  - [ ] Flujo 3 (`03`, Beste)
-  - [ ] Flujo 6 (`06`, Beste)
+  - [ ] Flujo 3 (`03`, Beste) (no se usa: el `03` busca con su propio HTTP Request)
+  - [x] Flujo 6 (`06`, Beste)
