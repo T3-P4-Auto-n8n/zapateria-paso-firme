@@ -2434,6 +2434,25 @@ El agente siguió con #121 tras completar la comparación #96. Las instrucciones
 
 </details>
 
+### Servidor MCP de solo lectura (#136–#138)
+
+- **Autora:** Beste, con Codex.
+- **Tarea:** exponer estado de un apartado a un agente de confianza mediante MCP Server Trigger.
+- **Resultado:** flujo 13 inactivo con autenticación Header Auth API Tienda y HTTP Request Tool GET de URL fija, ID entero positivo y allowlist de cinco campos. Trigger versión 2 para no propagar cabeceras a las herramientas. Sin datos personales ni acciones de escritura.
+- **Pruebas reales:** cliente JSON-RPC de este agente: initialize/list/call, protocolo 2025-03-26. Ejecución 71 consulta #1 con valores idénticos a la API; 72 ID 0 error de herramienta; 73 inexistente devuelve Apartado no encontrado en sesión nueva. Sin auth 403. Dos capturas y protocolo mínimo. No se enviaron salidas a modelos externos.
+- **Problemas encontrados:** test listener expiraba durante aprobaciones; cliente preparado primero y después escucha temporal. La petición sin auth también retira la escucha: separadas las pruebas. No confundir HTTP 404 de listener retirado con inexistencia de apartado. Se detectó credencial API Tienda inválida (401 frente a 200 de clave local), sincronizada con la clave ya existente por stdin en memoria, sin cambiar ID/nombre ni permisos ni escribir secretos. ID inválido se presenta por n8n como URL undefined, documentado sin maquillar.
+- **Decisión:** integración local de personal, no de clientes; no publicar, activar acceso global ni exponer por Internet. PR a dev y revisión humana. Datos de API solo leídos, DB intacta.
+
+<details><summary>Prompt</summary>
+
+```text
+ok continue completing them
+```
+
+Se continuó con la tarea asignada #136 y sus sub-issues tras #96 y #121.
+
+</details>
+
 ## 4. Decisiones abiertas
 
 Ninguna por ahora.
