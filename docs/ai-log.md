@@ -6,11 +6,12 @@ Registro de cómo usamos agentes de IA en el proyecto: herramientas, prompts cla
 
 | Uso | Herramienta | Modelo | Estado |
 |---|---|---|---|
-| Agente de desarrollo | Claude Code | Claude Opus 5.5 (`claude-opus-5-5`) | En uso |
-| Nodos de IA dentro de n8n | Groq (capa gratuita) | Por decidir | Pendiente de configurar |
+| Agente de desarrollo | Claude Code | Claude Opus 5.5 (`claude-opus-5-5`) | En uso (Esra) |
+| Agente de desarrollo | Codex | — | En uso (Beste) |
+| Nodos de IA dentro de n8n | Groq (capa gratuita) | `openai/gpt-oss-20b` | En uso: extracción en el `03` y saludo/despedida de los recordatorios del `06`. `openai/gpt-oss-120b` se probó en la [comparativa](comparativa-modelos.md) |
 | Documentación y validación de nodos | n8n-mcp (modo solo documentación) | — | En uso |
 
-**Por qué Claude Code y no OpenCode.** El README recomienda OpenCode, pero permite otras herramientas si se justifica la elección. Usamos Claude Code porque ya lo tenemos las dos.
+**Por qué Claude Code y Codex, y no OpenCode.** El README recomienda OpenCode, pero permite otras herramientas si se justifica la elección. Cada una usa la herramienta que ya tenía: Esra, Claude Code; Beste, Codex. Las dos trabajan con el mismo `AGENTS.md`.
 
 - **Alcance:** specs, documentación, JSON de los flujos y revisión.
 - **Para no pisarnos:** cada una lo usa en su propia rama y en su propia tarea.
@@ -2468,6 +2469,161 @@ ok continue completing them
 ```
 
 Preparación independiente de #102 mientras se esperan los datos de conexión Telegram solicitados a Beste.
+
+</details>
+
+### README del proyecto
+
+- **Autora:** Esra
+- **Tarea:** que el `README.md` sea la documentación principal del proyecto, y el enunciado del profesor pase a `docs/enunciado.md`.
+- **Resultado:**
+  - `git mv README.md docs/enunciado.md`, para conservar la historia.
+    - En el enunciado solo cambian los enlaces relativos que se rompían (`data/`, `backend/`, `frontend/`, `guia-de-la-app.md`).
+    - Se quitaron las 3 líneas que habíamos añadido en «Cómo empezar» (instalación, mapa y apartado completo), que pasan al README nuevo.
+  - `README.md` nuevo, con 11 secciones:
+    - qué es y qué problema resuelve;
+    - tabla de workflows con spec, JSON y pruebas;
+    - cada criterio de los niveles Esencial, Medio y Avanzado con ✅/🟡/❌;
+    - instalación corta, decisiones, organización y desarrollo con IA;
+    - los 10 entregables, la estructura del repo y las mejoras futuras.
+  - Fuentes:
+    - el repo en `dev` (`12a92bf`);
+    - en GitHub, solo lectura: las PR, los issues y el Project 1 de la organización;
+    - las ramas de Beste: `feature/39-hu03-prueba-correos` (`9c086d3`) y `feature/hu04-cierre-diario` (`4b5aa96`, PR #173).
+  - Se comprobó con un script que todos los enlaces relativos del README y del enunciado, y sus anclas, existen.
+- **Criterios en 🟡 o ❌:**
+  - **Esencial:**
+    - flujo 3 y sus 8 correos 🟡 (rama sin PR y PR parciales);
+    - flujo 5 🟡 (#173);
+    - bitácora 🟡: faltan las entradas de construcción del `03` y del `05`.
+  - **Medio:**
+    - recordatorios de HU-06 🟡: sin rama ni PR todavía;
+    - comparativa de modelos ❌ (#96, sin empezar).
+  - **Avanzado:**
+    - comandos 🟡 (#179);
+    - Telegram, recordatorios por IA, webhook protegido y RGPD ❌.
+  - **Entregables en curso:** bitácora (#145) y retrospectiva (#146).
+- **Problemas encontrados:**
+  - **Sección 1 de la bitácora.** Al resolver el conflicto de #176 (merge `672eff6`), se volvió a la versión antigua: «Groq · Por decidir», sin Codex. La entrada «Agente, modelos y n8n-mcp · #8» sí está. No se ha corregido aquí, porque este prompt solo deja tocar la bitácora para esta entrada. El README enlaza a la entrada de #8, que sí está bien.
+  - **HU-06** estaba en el plan de entrega (#141), pero no tiene rama ni PR. Se marcó 🟡 con esa nota, no ❌.
+  - **`main`** sigue en el commit del enunciado (20/10): todavía no ha recibido ningún nivel. El README lo dice.
+- **Decisión:** pendiente de revisión de la pareja.
+
+<details><summary>Prompt</summary>
+
+```text
+## Tarea
+
+El `README.md` sigue siendo el **enunciado del profesor**. El profesor lo leerá primero y tiene que entender de un vistazo **nuestro** proyecto. Rama `docs/readme-final`, que sale de `dev` cuando estén fusionados nuestros PR de entregables. Solo documentación.
+
+1. Mueve el enunciado tal cual a `docs/enunciado.md` con `git mv README.md docs/enunciado.md` (así se conserva su historia). Arregla en ese archivo solo los enlaces relativos que se rompan al moverlo (`docs/…` → `…`, `data/…` → `../data/…`, etc.); el texto no se toca. Quita de él las líneas que añadimos nosotras en «Cómo empezar» (enlaces a `docs/instalacion.md`, `docs/mapa-proceso.md`, `docs/evidencias/apartado-completo.md`): pasan al README nuevo.
+2. Escribe un `README.md` nuevo, en español, que sea la documentación principal del proyecto.
+
+## Fuentes
+
+- `docs/enunciado.md` (el README original): planteamiento, requisitos técnicos, automatizaciones, historias, niveles y entregables.
+- `AGENTS.md` (sección 8: decisiones), `specs/*.md`, `workflows/*.json` de `dev`, `docs/instalacion.md`, `docs/credenciales.md`, `docs/mapa-proceso.md`, `docs/evidencias/`, `docs/ai-log.md`, `docs/revision-secretos.md`, `docs/retrospectiva.md` si existe.
+- GitHub (solo lectura, con `gh`): PRs fusionados y abiertos, issues abiertos y cerrados por nivel, el Project (Kanban) de la organización `T3-P4-Auto-n8n`, las ramas de Beste sin fusionar (`feature/39-hu03-prueba-correos`, `feature/hu04-cierre-diario`).
+
+## Contenido del README nuevo
+
+1. **Título y una frase**: qué es (automatizaciones con n8n para la app de la Zapatería Paso Firme). Pareja: Esra Kesken y Beste Ozaydin. Enlace al enunciado (`docs/enunciado.md`).
+2. **Qué problema resuelve y para quién** (Marisa, la dependienta, el cliente), en 4–5 líneas, con enlace a `docs/mapa-proceso.md`.
+3. **Qué hemos construido**: tabla de workflows (número y nombre real, disparador, qué hace, HU, spec, JSON, evidencias). Solo lo que existe; lo que está en un PR abierto, márcalo como tal con su número.
+4. **Niveles**: por nivel (Esencial, Medio, Avanzado), cada criterio del enunciado con ✅ hecho / 🟡 en curso (PR o rama) / ❌ no lo hacemos, con enlace a la prueba (spec sección 7 o evidencia). Sé exacta: no marques como hecho lo que no está en `dev`.
+5. **Cómo ponerlo en marcha**: 5–6 líneas (`.env`, `docker compose up -d`, URLs) y enlace a `docs/instalacion.md` para todo lo demás.
+6. **Decisiones técnicas** más importantes (5–8), cada una en una línea con su porqué, enlazando a `AGENTS.md` sección 8: un webhook + Switch, sub-workflows `10`, umbral en Data table, transferencias como `bizum`, la IA solo extrae en el flujo 3, Retry solo en `GET`, `06` vence y el `01` envía el vale, datáfono como variante de HU-13…
+7. **Cómo nos organizamos**: Kanban (enlace al Project), una tarea = una rama = una PR a `dev`, Conventional Commits en inglés y documentación en español, revisión de la pareja en cada PR, cómo resolvimos los conflictos de `docs/ai-log.md`. Estructura de ramas (`main`, `dev`, `feature/…`, `docs/…`).
+8. **Desarrollo con IA**: 3–4 líneas y enlace a `docs/ai-log.md` (Claude Code y Codex, Groq `openai/gpt-oss-20b`, n8n-mcp sin API key).
+9. **Entregables**: los 10 del enunciado, cada uno con su enlace (o «en curso»).
+10. **Estructura del repo**: árbol corto de carpetas con una línea por carpeta.
+11. **Mejoras futuras**: lo que no hemos hecho del nivel Avanzado (asistente de Telegram, HU-14, …), 1 línea cada una.
+
+Estilo: frases cortas, tablas donde ayuden, nada de relleno. Que se lea en 3 minutos; el detalle está en los enlaces. Comprueba que todos los enlaces relativos apuntan a archivos que existen.
+
+## Límites
+
+- Solo `README.md` y `docs/enunciado.md` (y `docs/ai-log.md` para la entrada de abajo). No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml` ni `.env`. No llames a la API de la tienda.
+- `docs/ai-log.md`: entrada «### README del proyecto» con el formato habitual y este prompt literal en un bloque `<details>`.
+- No añadas `.DS_Store`.
+- No hagas commit, push ni PR. Dime qué archivos has cambiado y qué criterios has marcado como 🟡 o ❌.
+```
+
+</details>
+
+**Actualización 29/10** (Esra). La rama recibió `dev` y se puso el README al día para la entrega:
+
+- **Qué hemos construido:** `03` y `05` con su spec y su JSON en `dev`; el `05` guarda el histórico en la Data table `Cierres` (sin Google Sheets); el `06` con los recordatorios de HU-06 y la redacción con IA; filas nuevas `12 · Panel de Marisa` y `13 · Servidor MCP`; una nota con qué flujos están publicados.
+- **Niveles:** fuera la leyenda 🟡. Esencial, todo ✅ (flujo 3 con sus 9 correos, flujo 5 y bitácora con las entradas del `03` y del `05`). Medio, todo ✅ (HU-06 y comparativa). Avanzado: datáfono, recordatorios por IA y comandos ✅; Telegram, webhook protegido y RGPD ❌ (Telegram con enlace al diseño de la spec 14). Tabla nueva **🔴 Experto**: panel y servidor MCP ✅; PostgreSQL con copias, nube con HTTPS y CI ❌.
+- **Desarrollo con IA:** Groq `openai/gpt-oss-20b` en el `03` y el `06`, la comparativa 20B frente a 120B y los comandos de `.claude/commands/`.
+- **Entregables:** La fila 10 enlaza a `docs/retrospectiva.md` (nuevo, con la parte de Esra y la de Beste). La fila 8 enlaza a la bitácora sin «en curso». La sección 1 de esta bitácora se corrigió: Claude Code (Esra), Codex (Beste) y Groq `openai/gpt-oss-20b` en uso.
+- **Mejoras futuras:** solo lo no hecho, con cómo se haría (HU-14, IMAP real, HU-11/HU-12, HU-16, Apartados desde casa).
+- **Otros archivos:** `specs/10-sub-workflows.md` (#95 cerrada, flujo 6 hecho, el `03` no usa los sub-workflows) y `AGENTS.md`, sección 8 (las dos decisiones de HU-15, «Tomada»).
+- Los estados se comprobaron en `workflows/`, en las specs y en `docs/evidencias/`, y los enlaces relativos y sus anclas con un script.
+
+<details><summary>Prompt (29/10)</summary>
+
+```text
+## Tarea
+
+Actualizar el README del proyecto para la entrega de hoy (29/10). Estamos en la rama `docs/readme-final`, que ya tiene el README del proyecto (commit «docs: replace the assignment README…», del 28/10) y acaba de recibir `dev`. Desde entonces se ha fusionado mucho: el README dice «🟡 en curso» en cosas que ya están hechas. El profesor solo recibe el enlace del repo, así que tiene que ser exacto. Solo documentación.
+
+Comprueba cada estado en `workflows/`, en las specs (sección 7) y en `docs/evidencias/`; no te fíes de esta lista. Si algo no cuadra, dímelo.
+
+## Qué cambia desde el 28/10
+
+- `03 · Abonos a distancia` ✅ en `dev` (`workflows/03-abonos-distancia.json`): los 9 correos probados por Form Trigger (spec 03, sección 7). El nodo IMAP está desactivado porque Mailpit no tiene IMAP: en producción se activa con un correo real.
+- `05 · Cierre diario` ✅ en `dev`: guarda el histórico en la Data table `Cierres` (ya **no** usa Google Sheets: quita esa mención), día sin movimientos probado.
+- `06` ✅: HU-06 recordatorios a 7 y 1 día, **redactados con IA** (Groq, nodo `Redactar con Groq`; importes y fechas los pone el flujo), sin repetir avisos (Data table `recordatorios enviados`). Mira `docs/recordatorios-ia.md`.
+- Comparativa de 2 modelos ✅: `docs/comparativa-modelos.md`.
+- Comandos personalizados ✅: `.claude/commands/` (`/revisar-flujo`, `/generar-spec`, `/cerrar-tarea`), ya en `dev`.
+- Nuevos workflows: `12 · Panel de Marisa` (HU-15, Experto ✅, web servida por n8n con Basic Auth) y `13 · Servidor MCP` (Experto ✅, MCP Server Trigger con herramienta `estado_apartado`). Añádelos a «Qué hemos construido» y crea la tabla **🔴 Experto** en «Niveles».
+- `specs/14-asistente-telegram.md`: diseño de HU-11, **no construido** → sigue ❌, con enlace al diseño.
+- Retry On Fail ya está en todos los `GET`, también en `03` y `05` (#187).
+- #95 cerrada: los sub-workflows los usan el `01`, el `06`, el `08` y el `11`.
+- No hechos: HU-11, HU-12, HU-14 (webhook sin autenticación: la app no envía cabecera y no podíamos tocar `backend/`), HU-16 (nube, HTTPS, PostgreSQL, copias, CI). Variante «Apartados desde casa» de HU-13.
+
+## Contenido
+
+1. `README.md`:
+   - Quita el aviso «🟡 = en curso» y todos los 🟡 que ya no aplican; las filas `03` y `05` con enlaces a spec y JSON como las demás.
+   - «Niveles»: actualiza Esencial, Medio y Avanzado; añade Experto. La fila de la bitácora: comprueba si ya están las entradas del `03` y del `05`.
+   - «Desarrollo con IA»: añade los modelos que se usan ahora (Groq en `03` y `06`; los de la comparativa) y los comandos de `.claude/commands/`.
+   - «Entregables»: fila 8 sin «(en curso)» si la bitácora está completa; fila 10 → `docs/retrospectiva.md`.
+   - «Mejoras futuras»: quita lo ya hecho (recordatorios por IA, comparativa, panel, MCP) y deja lo que no se hizo, con una línea de cómo se haría: HU-14 (Header Auth en el webhook y que la app mande la clave), IMAP con un correo real, HU-11/HU-12 (Telegram necesita una URL pública con HTTPS), HU-16.
+   - «Cómo nos organizamos»: `main` recibe `dev` en la entrega.
+   - Comprueba que todos los enlaces relativos existen.
+2. `docs/retrospectiva.md` (nuevo): «Retrospectiva de la pareja», con la parte de Esra copiada **literal** del texto de abajo y una sección «Beste · Retrospectiva» con sus puntos si están en el texto de abajo; si no, déjala con «Pendiente». No inventes nada de Beste.
+3. `specs/10-sub-workflows.md`: «Flujo 6» en `[x]`; «Flujo 3» con «(no se usa: el `03` busca con su propio HTTP Request)»; #95 en `[x]` (cerrada).
+4. `AGENTS.md`, sección 8: las dos filas de HU-15 «Propuesta (HU-15, pendiente de construir)» → «Tomada».
+5. `docs/ai-log.md`: añade al final de la entrada «### README del proyecto» un párrafo «Actualización 29/10» con lo que cambió, y este prompt literal en un bloque `<details>`.
+
+## Límites
+
+- No toques n8n, `workflows/`, `backend/`, `frontend/`, `docker-compose.yml`, `.env`, `.claude/settings.local.json` ni `docs/enunciado.md`.
+- Ningún secreto, ninguna URL de Google, solo emails `@example.com` / `@pasofirme.example`.
+- No añadas `.DS_Store`. No hagas commit, push ni PR. Al final dime qué archivos cambiaste y qué no cuadraba.
+
+## Retrospectiva de Esra (literal)
+
+**Esra · Retrospectiva**
+
+**Qué fue bien**
+- **Primero la spec, luego el flujo.** Escribir la spec antes de construir nos ahorró rehacer flujos: cuando algo fallaba en la prueba, sabíamos qué tenía que pasar.
+- **Construir los nodos a mano y dejar al agente el código y la documentación.** Así entendía cada flujo y podía explicarlo; el agente acertaba más con el código de los nodos Code que generando flujos enteros.
+- **Probar con datos reales y copia de la base de datos.** Cada prueba que cambiaba datos (HU-07, HU-10, HU-13) empezaba con una copia y terminaba restaurándola, y las evidencias son de ejecuciones reales.
+- **Decisiones escritas en `AGENTS.md`.** Muchas dudas se resolvían leyendo la sección 8 en lugar de volver a discutirlas.
+
+**Qué haríamos diferente**
+- **Repartir el trabajo de forma más equilibrada desde el principio** y revisar cada día en qué punto estaba cada una. Al final, gran parte del nivel Medio y los entregables los hice yo, y el nivel Esencial dependía de flujos que se terminaron tarde.
+- **Probar en n8n antes de abrir la PR.** Algunas PR se abrieron con pruebas solo en código local y tuvieron que rehacerse.
+- **Fusionar las PR antes.** Al tener muchas PR abiertas a la vez, casi todas chocaban en `docs/ai-log.md` y perdimos tiempo resolviendo conflictos.
+
+**Qué he aprendido**
+- **n8n:** webhook + Switch, sub-workflows, Error Workflow, Data tables, la diferencia entre Test URL y Production URL, y que un formulario de prueba solo vale una vez.
+- **Trabajar con un agente como *tech lead*:** darle contexto (spec, AGENTS.md), revisar lo que genera y no aceptar lo que no puedo comprobar. El agente también se equivoca, y hay que detectarlo.
+- **Git en equipo:** ramas por tarea, PR revisadas y resolver conflictos (worktrees, merges de `dev`).
+```
 
 </details>
 
