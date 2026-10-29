@@ -66,7 +66,7 @@ test('export keeps both GETs on the same full day and persists to the local Cier
  assert.equal(exportText.includes('googleSheetsOAuth2Api'),false);
  assert.equal(exportText.includes('googleSheets'),false);
  assert.equal(exportText.includes('documentId'),false);
- assert.equal(exportText.includes('1p4W_chB_73vzmRUOhIY0sZCJM_S1LjM-V9opyAjcj4c'),false);
+ assert.equal(exportText.includes('docs.google.com'),false);
  assert.match(n('Enviar cierre diario').parameters.html,/Preparar cierre/);
  for(const [name,source] of [['Calcular día','calcular-dia'],['Preparar cierre','preparar-cierre']])assert.equal(n(name).parameters.jsCode,code(source));
 });

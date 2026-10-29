@@ -33,7 +33,7 @@ La CLI devolvió `Successfully imported 1 workflow.` para el export completo de 
 
 ## Histórico y límites reales
 
-Se creó [Paso Firme · Cierres diarios HU-04](https://docs.google.com/spreadsheets/d/1p4W_chB_73vzmRUOhIY0sZCJM_S1LjM-V9opyAjcj4c/edit). Readback de metadata y `Cierres!A1:Q2` confirmó la pestaña, los 17 encabezados y ausencia de cierres de prueba; se fijó es_ES/Europe/Madrid.
+Se creó un Google Sheets de prueba (ya no se usa). Readback de metadata y `Cierres!A1:Q2` confirmó la pestaña, los 17 encabezados y ausencia de cierres de prueba; se fijó es_ES/Europe/Madrid.
 
 ## Ejecuciones reales aisladas de n8n y Mailpit
 
