@@ -1,0 +1,72 @@
+{
+  "exit_code": 0,
+  "nodes": [
+    "Probar redacción a mano",
+    "Recordatorios ficticios",
+    "Preparar redacción del recordatorio",
+    "Redactar con Groq",
+    "Validar redacción del recordatorio",
+    "Comprobar cifras originales",
+    "Correo de prueba IA en Mailpit"
+  ],
+  "lastNodeExecuted": "Correo de prueba IA en Mailpit",
+  "error": false,
+  "Validar redacción del recordatorio": [
+    {
+      "id": 25,
+      "apartado_id": 25,
+      "dias": 7,
+      "hoy": "2026-10-28",
+      "cliente": "Nora Prueba",
+      "para": "nora.prueba@example.com",
+      "pendiente": 40,
+      "fecha_limite": "2026-11-04",
+      "asunto": "Prueba IA: Nora · 7 días",
+      "texto": "Te escribimos con cariño para cuidar tu apartado\n\nHola Nora Prueba:\n\nTu apartado vence en 7 días.\nApartado n.º 25\nModelo: Sandalia cuero\nTalla: 39\nPendiente: 40.00 €\nFecha límite: 04/11/2026\n\nGracias,\nZapatería Paso Firme\n\nNos encantará verte por la tienda",
+      "redaccion_ia": "aceptada"
+    },
+    {
+      "id": 26,
+      "apartado_id": 26,
+      "dias": 1,
+      "hoy": "2026-10-28",
+      "cliente": "Lola Prueba",
+      "para": "lola.prueba@example.com",
+      "pendiente": 12.5,
+      "fecha_limite": "2026-10-29",
+      "asunto": "Prueba IA: Lola · mañana",
+      "texto": "Te escribimos con cariño para cuidar tu apartado\n\nHola Lola Prueba:\n\nTu apartado vence mañana.\nApartado n.º 26\nModelo: Botín piel\nTalla: 38\nPendiente: 12.50 €\nFecha límite: 29/10/2026\n\nGracias,\nZapatería Paso Firme\n\nNos encantará verte por la tienda",
+      "redaccion_ia": "aceptada"
+    }
+  ],
+  "Comprobar cifras originales": [
+    {
+      "id": 25,
+      "apartado_id": 25,
+      "dias": 7,
+      "hoy": "2026-10-28",
+      "cliente": "Nora Prueba",
+      "para": "nora.prueba@example.com",
+      "pendiente": 40,
+      "fecha_limite": "2026-11-04",
+      "asunto": "Prueba IA: Nora · 7 días",
+      "texto": "Te escribimos con cariño para cuidar tu apartado\n\nHola Nora Prueba:\n\nTu apartado vence en 7 días.\nApartado n.º 25\nModelo: Sandalia cuero\nTalla: 39\nPendiente: 40.00 €\nFecha límite: 04/11/2026\n\nGracias,\nZapatería Paso Firme\n\nNos encantará verte por la tienda",
+      "redaccion_ia": "aceptada",
+      "verificado": true
+    },
+    {
+      "id": 26,
+      "apartado_id": 26,
+      "dias": 1,
+      "hoy": "2026-10-28",
+      "cliente": "Lola Prueba",
+      "para": "lola.prueba@example.com",
+      "pendiente": 12.5,
+      "fecha_limite": "2026-10-29",
+      "asunto": "Prueba IA: Lola · mañana",
+      "texto": "Te escribimos con cariño para cuidar tu apartado\n\nHola Lola Prueba:\n\nTu apartado vence mañana.\nApartado n.º 26\nModelo: Botín piel\nTalla: 38\nPendiente: 12.50 €\nFecha límite: 29/10/2026\n\nGracias,\nZapatería Paso Firme\n\nNos encantará verte por la tienda",
+      "redaccion_ia": "aceptada",
+      "verificado": true
+    }
+  ]
+}

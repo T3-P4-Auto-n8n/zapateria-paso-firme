@@ -1,0 +1,112 @@
+{
+  "name": "08 · Error Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "12198cb3-e4a5-461d-943c-83513ae89881",
+      "name": "Si falla un flujo"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "=Ha fallado el flujo «{{ $json.workflow.name }}»",
+            "texto": "={{ 'Una automatización ha fallado.\\n\\nFlujo: ' + $json.workflow.name + '\\nPaso: ' + $json.execution.lastNodeExecuted + '\\nError: ' + $json.execution.error.message + '\\nEjecución: ' + $json.execution.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3a58895e-f211-44b3-9962-812a74d92766",
+      "name": "Avisar a la tienda del error"
+    }
+  ],
+  "connections": {
+    "Si falla un flujo": {
+      "main": [
+        [
+          {
+            "node": "Avisar a la tienda del error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": true,
+  "id": "z1T27bO8VvzyoL18",
+  "versionId": "7c5254a9-10c6-4acb-9e9f-9e41fc688318"
+}

@@ -1,0 +1,334 @@
+{
+  "name": "07 · Informe mensual",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "=Informe mensual",
+        "formDescription": "=Elige cualquier día del mes del que quieres el informe",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "mes",
+              "fieldType": "date",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -800,
+        -32
+      ],
+      "id": "944f7f23-b0e5-44a6-9ec5-b5fda68adf5a",
+      "name": "Elegir mes",
+      "webhookId": "ffc51466-8cd2-459e-b48f-3f06c28e05f7"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -816,
+        -272
+      ],
+      "id": "5ce60a6f-830f-4abe-a096-0418d085e33d",
+      "name": "Día 1 a las 8:00"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Calcular periodo» · Run Once for All Items\n// Llega un item de «Elegir mes» (con `mes`) o de «Día 1 a las 8:00» (sin `mes`).\n// Devuelve un item { desde, hasta, nombre_mes }.\n\nconst ZONA = 'Europe/Madrid';\nconst MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',\n  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];\n\nconst mes = $input.first().json.mes;\nlet dia;\nif (mes) {\n  // El campo Date del formulario llega como `yyyy-MM-dd`\n  dia = DateTime.fromISO(String(mes).slice(0, 10), { zone: ZONA });\n  if (!dia.isValid) throw new Error(`Calcular periodo: la fecha del formulario no es válida: «${mes}»`);\n} else {\n  // Programado: el mes anterior a hoy\n  dia = DateTime.now().setZone(ZONA).minus({ months: 1 });\n}\n\nconst inicio = dia.startOf('month');\nconst fin = dia.endOf('month');\n\nreturn [{ json: {\n  desde: inicio.toFormat('yyyy-MM-dd'),\n  hasta: fin.toFormat('yyyy-MM-dd'),\n  nombre_mes: `${MESES[inicio.month - 1]} de ${inicio.year}`,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        -144
+      ],
+      "id": "59fb44c2-70bd-4124-b2c6-a733e2ef6947",
+      "name": "Calcular periodo"
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Calcular periodo').first().json.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $('Calcular periodo').first().json.hasta }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -352,
+        -144
+      ],
+      "id": "7f0c876c-1710-423d-847f-d1e3a9ea6c66",
+      "name": "Leer ventas del mes",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/abonos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $('Calcular periodo').first().json.desde }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -96,
+        -144
+      ],
+      "id": "4f19e22c-3f83-43b7-a3cb-9ec55a51a5ba",
+      "name": "Leer abonos desde el día 1",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        112,
+        -144
+      ],
+      "id": "720f6360-9b97-49fa-9679-0ce09e2a14b2",
+      "name": "Leer apartados",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/vales",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        320,
+        -144
+      ],
+      "id": "3e357395-21fd-4103-9717-e3ee7f0e46a5",
+      "name": "Leer vales",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar informe» · Run Once for All Items\n// Lee el periodo y las cuatro listas de la API, calcula las cifras del mes y\n// devuelve un item { asunto, html }. No recalcula `pendiente`: suma el que da la app.\n\nconst ZONA = 'Europe/Madrid';\nconst FORMAS = ['efectivo', 'tarjeta', 'bizum'];\nconst { desde, hasta, nombre_mes } = $('Calcular periodo').first().json;\n\n// Items de un GET sin el item vacío de Always Output Data (no tiene `id`)\nconst leer = nombre => $(nombre).all().map(i => i.json).filter(j => j && j.id != null);\n\nconst ventas = leer('Leer ventas del mes');\nconst abonosDesde = leer('Leer abonos desde el día 1');\nconst apartados = leer('Leer apartados');\nconst vales = leer('Leer vales');\n\nconst enMes = fecha => fecha >= desde && fecha <= hasta;\nconst abonosMes = abonosDesde.filter(b => enMes(b.fecha));\n\n// Importes en céntimos para sumar sin decimales raros\nconst cent = x => Math.round(Number(x) * 100);\nconst eur = c => (c / 100).toFixed(2);\nconst fecha = f => (f ? f.split('-').reverse().join('/') : '');\nconst esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// Suma total y por forma de pago\nfunction sumar(lista) {\n  const r = { n: lista.length, total: 0 };\n  for (const f of FORMAS) r[f] = 0;\n  for (const x of lista) {\n    const c = cent(x.importe);\n    r.total += c;\n    if (FORMAS.includes(x.forma_pago)) r[x.forma_pago] += c;\n  }\n  return r;\n}\nconst sv = sumar(ventas);\nconst sa = sumar(abonosMes);\nconst st = { n: sv.n + sa.n, total: sv.total + sa.total };\nfor (const f of FORMAS) st[f] = sv[f] + sa[f];\n\n// Pendiente de cobro: el `pendiente` de la app de los apartados activos\nconst activos = apartados.filter(a => a.estado === 'activo');\nconst pendiente = activos.reduce((s, a) => s + cent(a.pendiente), 0);\nconst ahora = DateTime.now().setZone(ZONA).toFormat('dd/MM/yyyy HH:mm');\n\n// Nuevos: fecha del apartado dentro del mes\nconst porFechaId = (a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.id - b.id);\nconst nuevos = apartados.filter(a => enMes(a.fecha)).sort(porFechaId);\n\n// Liquidados: estado liquidado y su último abono dentro del mes\nconst ultimoAbono = {};\nfor (const b of abonosDesde) {\n  if (!ultimoAbono[b.apartado_id] || b.fecha > ultimoAbono[b.apartado_id]) ultimoAbono[b.apartado_id] = b.fecha;\n}\nconst liquidados = apartados\n  .filter(a => a.estado === 'liquidado' && ultimoAbono[a.id] && enMes(ultimoAbono[a.id]))\n  .map(a => ({ ...a, ultimo: ultimoAbono[a.id] }))\n  .sort((a, b) => (a.ultimo < b.ultimo ? -1 : a.ultimo > b.ultimo ? 1 : a.id - b.id));\n\n// Vencidos: fecha del vale dentro del mes\nconst apartadoPorId = Object.fromEntries(apartados.map(a => [a.id, a]));\nconst vencidos = vales.filter(v => enMes(v.fecha)).sort(porFechaId)\n  .map(v => ({ vale: v, apartado: apartadoPorId[v.apartado_id] ?? { id: v.apartado_id } }));\n\nconst sinMovimientos = !ventas.length && !abonosMes.length && !nuevos.length && !liquidados.length && !vencidos.length;\n\n// --- HTML con estilos en línea ---\nconst TD = 'border:1px solid #ccc;padding:6px 8px;';\nconst celda = (t, num) => `<td style=\"${TD}${num ? 'text-align:right;white-space:nowrap;' : ''}\">${t}</td>`;\nconst cab = t => `<th style=\"${TD}background:#f2f2f2;text-align:left;\">${t}</th>`;\nconst tabla = (cabeceras, filas) =>\n  `<div style=\"overflow-x:auto;\"><table style=\"border-collapse:collapse;font-size:14px;margin:4px 0 16px;\">`\n  + `<tr>${cabeceras.map(cab).join('')}</tr>${filas.join('')}</table></div>`;\nconst titulo = t => `<h3 style=\"margin:20px 0 6px;font-size:16px;\">${t}</h3>`;\nconst ninguno = '<p style=\"margin:4px 0 16px;color:#666;\">Ninguno.</p>';\n\nconst filaRecaudacion = (nombre, s, negrita) => {\n  const b = t => (negrita ? `<b>${t}</b>` : t);\n  return `<tr>${celda(b(nombre))}${FORMAS.map(f => celda(b(eur(s[f])), true)).join('')}`\n    + `${celda(b(eur(s.total)), true)}${celda(b(s.n), true)}</tr>`;\n};\n\nconst partes = [];\npartes.push(`<h2 style=\"margin:0 0 4px;font-size:20px;\">Informe de ${esc(nombre_mes)}</h2>`);\npartes.push(`<p style=\"margin:0 0 12px;color:#666;\">Del ${fecha(desde)} al ${fecha(hasta)}</p>`);\nif (sinMovimientos) {\n  partes.push(`<p style=\"margin:0 0 12px;padding:8px;background:#fff6d6;\">No hubo movimientos en ${esc(nombre_mes)}.</p>`);\n}\n\npartes.push(titulo('Recaudación (€)'));\npartes.push(tabla(['', 'Efectivo', 'Tarjeta', 'Bizum', 'Total', 'Nº'], [\n  filaRecaudacion('Ventas directas', sv),\n  filaRecaudacion('Abonos', sa),\n  filaRecaudacion('Total recaudado', st, true),\n]));\npartes.push('<p style=\"margin:-10px 0 16px;font-size:12px;color:#666;\">Los abonos incluyen los abonos iniciales de los apartados.</p>');\n\npartes.push(titulo('Pendiente de cobro'));\npartes.push(`<p style=\"margin:4px 0 16px;\"><b>${eur(pendiente)} €</b> en ${activos.length} apartados activos `\n  + `<span style=\"color:#666;\">(a ${ahora})</span></p>`);\n\npartes.push(titulo(`Apartados nuevos: ${nuevos.length}`));\npartes.push(nuevos.length ? tabla(['Nº', 'Fecha', 'Cliente', 'Producto', 'Talla', 'Precio', 'Estado'],\n  nuevos.map(a => `<tr>${celda(a.id, true)}${celda(fecha(a.fecha))}${celda(esc(a.cliente))}${celda(esc(a.producto))}`\n    + `${celda(esc(a.talla))}${celda(eur(cent(a.precio)), true)}${celda(esc(a.estado))}</tr>`)) : ninguno);\n\npartes.push(titulo(`Apartados liquidados: ${liquidados.length}`));\npartes.push(liquidados.length ? tabla(['Nº', 'Cliente', 'Producto', 'Precio', 'Último abono'],\n  liquidados.map(a => `<tr>${celda(a.id, true)}${celda(esc(a.cliente))}${celda(esc(a.producto))}`\n    + `${celda(eur(cent(a.precio)), true)}${celda(fecha(a.ultimo))}</tr>`)) : ninguno);\n\npartes.push(titulo(`Apartados vencidos: ${vencidos.length}`));\npartes.push(vencidos.length ? tabla(['Nº', 'Cliente', 'Producto', 'Fecha límite', 'Vale', 'Importe'],\n  vencidos.map(({ vale: v, apartado: a }) => `<tr>${celda(a.id, true)}${celda(esc(a.cliente))}${celda(esc(a.producto))}`\n    + `${celda(fecha(a.fecha_limite))}${celda(esc(v.codigo))}${celda(eur(cent(v.importe)), true)}</tr>`)) : ninguno);\n\nconst html = `<div style=\"font-family:Arial,Helvetica,sans-serif;color:#222;max-width:680px;\">${partes.join('\\n')}</div>`;\n\nreturn [{ json: {\n  asunto: `Informe de ${nombre_mes}: ${eur(st.total)} € recaudados`,\n  html,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -144
+      ],
+      "id": "14c57439-4e97-4dda-9a40-3b6342cd36a8",
+      "name": "Preparar informe"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tienda@pasofirme.example",
+        "toEmail": "tienda@pasofirme.example",
+        "subject": "={{ $json.asunto }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        -144
+      ],
+      "id": "dccf213f-68cf-45f0-acfa-85dcdc42bb48",
+      "name": "Enviar informe mensual",
+      "webhookId": "ecf825ca-29c8-4ac8-b925-7b30a245d1f4",
+      "credentials": {
+        "smtp": {
+          "id": "fJ41sXzJzc6Ciubq",
+          "name": "Mailpit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Elegir mes": {
+      "main": [
+        [
+          {
+            "node": "Calcular periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Día 1 a las 8:00": {
+      "main": [
+        [
+          {
+            "node": "Calcular periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular periodo": {
+      "main": [
+        [
+          {
+            "node": "Leer ventas del mes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer ventas del mes": {
+      "main": [
+        [
+          {
+            "node": "Leer abonos desde el día 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer abonos desde el día 1": {
+      "main": [
+        [
+          {
+            "node": "Leer apartados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer apartados": {
+      "main": [
+        [
+          {
+            "node": "Leer vales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer vales": {
+      "main": [
+        [
+          {
+            "node": "Preparar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar informe": {
+      "main": [
+        [
+          {
+            "node": "Enviar informe mensual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timezone": "Europe/Madrid"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "active": false,
+  "id": "iX7z8Uy8V36e7QL5",
+  "versionId": "be15853a-6048-4a44-beb1-39ac0e279baf"
+}

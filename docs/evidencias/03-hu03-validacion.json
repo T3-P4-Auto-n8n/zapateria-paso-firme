@@ -1,0 +1,19 @@
+{
+  "valid": true,
+  "summary": {
+    "totalNodes": 28,
+    "enabledNodes": 27,
+    "triggerNodes": 2,
+    "validConnections": 36,
+    "invalidConnections": 0,
+    "expressionsValidated": 17,
+    "errorCount": 0,
+    "warningCount": 0
+  },
+  "errors": [],
+  "warnings": [],
+  "suggestions": [
+    "Most nodes lack error handling. Use \"onError\" property for modern error handling: \"continueRegularOutput\" (continue on error), \"continueErrorOutput\" (use error output), or \"stopWorkflow\" (stop execution).",
+    "Consider breaking this workflow into smaller sub-workflows for better maintainability"
+  ]
+}

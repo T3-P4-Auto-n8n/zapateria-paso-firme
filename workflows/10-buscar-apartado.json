@@ -1,0 +1,243 @@
+{
+  "name": "10 · Buscar apartado",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "id",
+              "type": "number"
+            },
+            {
+              "name": "texto"
+            },
+            {
+              "name": "estado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        -32
+      ],
+      "id": "8bf28b59-5961-4650-b389-4fbc891dc59e",
+      "name": "Al buscar un apartado"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Comprobar la búsqueda» (10 · Buscar apartado) · Run Once for All Items\n// Recibe { id, texto, estado } de «Al buscar un apartado» y devuelve\n// un item { por_numero, id, texto, estado } o para con error.\n\nconst ESTADOS = ['activo', 'liquidado', 'vencido'];\nconst entrada = $input.first().json;\n\n// Un campo vacío puede llegar como null, \"\" o no llegar\nconst limpio = v => (v == null ? '' : String(v).trim());\nconst idTexto = limpio(entrada.id).replace(/^#/, '');\nlet texto = limpio(entrada.texto);\nconst estado = limpio(entrada.estado).toLowerCase();\n\nif (!idTexto && !texto && !estado) {\n  throw new Error('Buscar apartado: falta `id`, `texto` o `estado`');\n}\nif (estado && !ESTADOS.includes(estado)) {\n  throw new Error(`Buscar apartado: estado no válido: «${estado}» (activo, liquidado o vencido)`);\n}\nlet id = null;\nif (idTexto) {\n  if (!/^\\d+$/.test(idTexto) || Number(idTexto) < 1) {\n    throw new Error(`Buscar apartado: el id no es un entero positivo: «${idTexto}»`);\n  }\n  id = Number(idTexto);\n}\n\n// Teléfono de 9 cifras sin espacios → formato de la app (612 345 001)\nif (/^\\d{9}$/.test(texto)) texto = texto.replace(/^(\\d{3})(\\d{3})(\\d{3})$/, '$1 $2 $3');\n\n// Si llegan id y texto, manda el id\nreturn [{ json: { por_numero: id != null, id, texto: id != null ? '' : texto, estado } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -32
+      ],
+      "id": "20afd6d0-d184-43b4-9c3b-e36966acdfc5",
+      "name": "Comprobar la búsqueda"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "2508f46f-017a-4579-a71a-e84032701fca",
+              "leftValue": "={{ $json.por_numero }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "76258a4c-67eb-40e9-8e03-3850c47e7fd1",
+      "name": "¿Por número?"
+    },
+    {
+      "parameters": {
+        "url": "=http://tienda:8000/api/apartados/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -128
+      ],
+      "id": "27bd73ed-7c42-4a1f-9dc3-fcc3190a2bfd",
+      "name": "Leer apartado por número",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://tienda:8000/api/apartados",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.texto }}"
+            },
+            {
+              "name": "estado",
+              "value": "={{ $json.estado }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        64
+      ],
+      "id": "eea83f9d-7e98-4270-9cd5-9bdadf0509ca",
+      "name": "Buscar apartados por texto",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar resultado» (10 · Buscar apartado) · Run Once for All Items\n// Recibe la respuesta de «Leer apartado por número» o de «Buscar apartados por texto»\n// (Include Response Headers and Status + Never Error) y devuelve siempre\n// un item { total, apartados }. No recalcula `abonado` ni `pendiente`.\n\nconst CAMPOS = ['id', 'fecha', 'cliente', 'telefono', 'email', 'producto', 'talla', 'precio',\n  'fecha_limite', 'estado', 'abonado', 'pendiente'];\nconst busqueda = $('Comprobar la búsqueda').first().json;\n\nconst cuerpo = b => {\n  if (typeof b !== 'string') return b;\n  try { return JSON.parse(b); } catch (e) { return b; }\n};\n// Mensaje de la app: {\"detail\": \"...\"} o, si falla la validación, {\"detail\": [{msg: ...}]}\nfunction detalle(body) {\n  const b = cuerpo(body);\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? (typeof b === 'string' ? b : JSON.stringify(b));\n}\n\nconst respuestas = $input.all().map(i => i.json);\nconst r = respuestas[0];\nlet lista;\nif (r.statusCode === 200) {\n  // Normalmente llega un item con la lista en `body`; por si n8n la reparte, se juntan todos\n  lista = respuestas.flatMap(x => {\n    const b = cuerpo(x.body);\n    return Array.isArray(b) ? b : b ? [b] : [];\n  });\n} else if (r.statusCode === 404 && busqueda.por_numero) {\n  lista = [];\n} else {\n  throw new Error(`Buscar apartado: la app respondió ${r.statusCode}: ${detalle(r.body)}`);\n}\n\n// Por número, el estado se filtra aquí (la API del detalle no lo admite)\nif (busqueda.por_numero && busqueda.estado) lista = lista.filter(a => a.estado === busqueda.estado);\n\n// Siempre los mismos campos, también si viene del detalle (sin `abonos` ni `vale`)\nconst apartados = lista.map(a => Object.fromEntries(CAMPOS.map(c => [c, a[c] ?? null])));\n\nreturn [{ json: { total: apartados.length, apartados } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -16
+      ],
+      "id": "1dae5702-d33c-41fe-b3b0-4d1697a73043",
+      "name": "Preparar resultado"
+    }
+  ],
+  "connections": {
+    "Al buscar un apartado": {
+      "main": [
+        [
+          {
+            "node": "Comprobar la búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar la búsqueda": {
+      "main": [
+        [
+          {
+            "node": "¿Por número?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Por número?": {
+      "main": [
+        [
+          {
+            "node": "Leer apartado por número",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar apartados por texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer apartado por número": {
+      "main": [
+        [
+          {
+            "node": "Preparar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar apartados por texto": {
+      "main": [
+        [
+          {
+            "node": "Preparar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": null,
+  "tags": [],
+  "active": true,
+  "id": "O7p1CtzUTrhjchSm",
+  "versionId": "ca5ca63e-0c15-491a-bd3b-42cd59f86d93"
+}

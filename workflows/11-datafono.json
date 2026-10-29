@@ -1,0 +1,584 @@
+{
+  "name": "11 · Datáfono",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Datáfono",
+        "formDescription": "CSV de cobros con tarjeta exportado del datáfono",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "datafono",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".csv",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -688,
+        -560
+      ],
+      "id": "1b446550-bf69-48ad-a00d-2e3629fe129d",
+      "name": "Subir el CSV del datáfono",
+      "webhookId": "1030bbf8-503c-4752-9ab0-5cb113f82e97"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "datafono",
+        "options": {
+          "delimiter": ";",
+          "enableBOM": true,
+          "headerRow": true,
+          "includeEmptyCells": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        -496,
+        -560
+      ],
+      "id": "b2790c81-60ea-4767-a9cf-2d50740d97d4",
+      "name": "Leer cobros del CSV",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Revisar los cobros» (11 · Datáfono) · Run Once for All Items\n// Recibe una fila del CSV por item (Extract From File, valores en texto) y devuelve un solo item\n// { origen, filas, cobros, no_importados, rango }, o para con error si faltan columnas.\n\nconst OBLIGATORIAS = ['fecha', 'operacion', 'importe', 'estado'];\n\n// Quién ha disparado el flujo (solo se ejecuta uno de los dos)\nfunction seEjecuto(nombre) {\n  try { return $(nombre).isExecuted !== false && $(nombre).all().length > 0; } catch (e) { return false; }\n}\nconst origen = seEjecuto('Subir el CSV del datáfono') ? 'formulario' : 'programado';\n\n// Nombres de columna sin BOM ni espacios y en minúsculas. Un CSV sin filas llega como un item vacío\nconst filas = $input.all()\n  .map(i => Object.fromEntries(Object.entries(i.json).map(([k, v]) => [k.replace(/^﻿/, '').trim().toLowerCase(), v])))\n  .filter(f => Object.keys(f).length > 0);\n\n// Con Include Empty Cells desactivado, una celda vacía no trae su columna: se mira la cabecera de todas las filas\nif (filas.length) {\n  const columnas = new Set(filas.flatMap(f => Object.keys(f)));\n  const faltan = OBLIGATORIAS.filter(c => !columnas.has(c));\n  if (faltan.length) throw new Error(`Datáfono: faltan columnas en el CSV: ${faltan.join(', ')}`);\n}\n\nconst limpio = v => (v == null ? '' : String(v).trim());\n\n// dd/mm/aaaa → AAAA-MM-DD, o null si no es una fecha real\nfunction fechaISO(texto) {\n  const m = /^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/.exec(texto);\n  if (!m) return null;\n  const [d, mes, a] = [Number(m[1]), Number(m[2]), Number(m[3])];\n  const f = new Date(Date.UTC(a, mes - 1, d));\n  if (f.getUTCFullYear() !== a || f.getUTCMonth() !== mes - 1 || f.getUTCDate() !== d) return null;\n  return `${a}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;\n}\n\n// \"18,95\" o \"1.234,56\" → 18.95 / 1234.56; null si no es un importe positivo con 2 decimales como mucho\nfunction importe(texto) {\n  let t = texto.replace(/\\s|€/g, '');\n  if (t.includes(',')) t = t.replace(/\\./g, '').replace(',', '.');\n  if (!/^\\d+(\\.\\d{1,2})?$/.test(t)) return null;\n  const n = Number(t);\n  return n > 0 ? n : null;\n}\n\nconst cobros = [];\nconst noImportados = [];\nconst vistas = new Set();\n\nfilas.forEach((f, i) => {\n  // Línea del fichero: la 1 es la cabecera\n  const linea = i + 2;\n  const operacion = limpio(f.operacion);\n  const estado = limpio(f.estado).toUpperCase();\n  const datos = { linea, operacion, fecha: limpio(f.fecha), hora: limpio(f.hora), importe: limpio(f.importe) };\n\n  if (estado !== 'APROBADA') {\n    noImportados.push({ ...datos, motivo: estado || 'sin estado' });\n    return;\n  }\n  const fecha = fechaISO(datos.fecha);\n  const euros = importe(datos.importe);\n  const falla = !fecha ? 'fecha' : euros == null ? 'importe' : !operacion ? 'operación' : null;\n  if (falla) {\n    noImportados.push({ ...datos, motivo: `fila no válida (${falla})` });\n    return;\n  }\n  if (vistas.has(operacion)) {\n    noImportados.push({ ...datos, motivo: 'operación repetida en el CSV' });\n    return;\n  }\n  vistas.add(operacion);\n  cobros.push({ linea, operacion, fecha, hora: datos.hora, importe: euros });\n});\n\n// Rango de fechas para el GET; sin cobros válidos, hoy\nconst hoy = DateTime.now().setZone('Europe/Madrid').toISODate();\nconst fechas = cobros.map(c => c.fecha).sort();\nconst rango = fechas.length ? { desde: fechas[0], hasta: fechas[fechas.length - 1] } : { desde: hoy, hasta: hoy };\n\nreturn [{ json: { origen, filas: filas.length, cobros, no_importados: noImportados, rango } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -560
+      ],
+      "id": "0217bd12-52ce-4781-9d83-bbb854c929fc",
+      "name": "Revisar los cobros"
+    },
+    {
+      "parameters": {
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "desde",
+              "value": "={{ $json.rango.desde }}"
+            },
+            {
+              "name": "hasta",
+              "value": "={{ $json.rango.hasta }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -96,
+        -560
+      ],
+      "id": "1d88b318-9e2f-4190-adc5-583d98b5c071",
+      "name": "Leer ventas de esos días",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Decidir qué crear» (11 · Datáfono) · Run Once for All Items\n// Compara los cobros válidos con las ventas de la app de esos días (regla de duplicados, pasos 8 y 9 de la spec).\n// Devuelve un item por venta a crear { cuerpo, operacion, plan } o, si no hay ninguna, { cuerpo: null, plan }.\n\nconst revision = $('Revisar los cobros').first().json;\n\n// Una lista vacía llega como un item vacío (Always Output Data): se ignora\nconst ventasApp = $('Leer ventas de esos días').all().map(i => i.json).filter(v => v && v.id != null);\n\nconst PREFIJO = 'Datáfono op. ';\nconst centimos = n => Math.round(Number(n) * 100);\nconst clave = (fecha, importe) => `${String(fecha)}|${centimos(importe)}`;\nconst concepto = v => String(v.concepto ?? '').trim();\n\n// Paso 8: ya importado por este flujo (mismo concepto y misma fecha)\nconst importados = [];\nconst pendientes = [];\nfor (const c of revision.cobros) {\n  const venta = ventasApp.find(v => String(v.fecha) === c.fecha && concepto(v) === PREFIJO + c.operacion);\n  if (venta) importados.push({ ...c, venta_id: venta.id });\n  else pendientes.push(c);\n}\n\n// Paso 9: ventas «tarjeta» apuntadas a mano (no del datáfono), por fecha + importe\nconst aMano = {};\nfor (const v of ventasApp) {\n  if (v.forma_pago !== 'tarjeta' || concepto(v).startsWith(PREFIJO)) continue;\n  (aMano[clave(v.fecha, v.importe)] ??= []).push(v);\n}\nfor (const lista of Object.values(aMano)) lista.sort((a, b) => a.id - b.id);\n\nconst grupos = {};\nfor (const c of pendientes) (grupos[clave(c.fecha, c.importe)] ??= []).push(c);\n\nconst registrados = [];\nconst crear = [];\nfor (const [k, lista] of Object.entries(grupos)) {\n  // Los primeros por hora se dan por apuntados; se crean los que sobran\n  lista.sort((a, b) => a.hora.localeCompare(b.hora) || a.linea - b.linea);\n  const enApp = aMano[k] ?? [];\n  lista.forEach((c, i) => {\n    if (i < enApp.length) registrados.push({ ...c, venta_id: enApp[i].id, venta_concepto: concepto(enApp[i]) });\n    else crear.push(c);\n  });\n  aMano[k] = enApp.slice(lista.length);\n}\n\n// Ventas «tarjeta» de la app que no se han emparejado con ningún cobro (solo informativo)\nconst sinCobro = Object.values(aMano).flat()\n  .map(v => ({ id: v.id, fecha: String(v.fecha), concepto: concepto(v), importe: v.importe }))\n  .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id);\n\ncrear.sort((a, b) => a.linea - b.linea);\nconst plan = { ...revision, importados, registrados, crear, sin_cobro: sinCobro };\n\nconst salida = crear.map(c => ({\n  json: {\n    cuerpo: { fecha: c.fecha, concepto: PREFIJO + c.operacion, importe: c.importe, forma_pago: 'tarjeta' },\n    operacion: c.operacion,\n    plan,\n  },\n}));\n\nreturn salida.length ? salida : [{ json: { cuerpo: null, plan } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -560
+      ],
+      "id": "b1a692df-e88d-4662-bee3-888ec1b3ae21",
+      "name": "Decidir qué crear"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "727ebd13-d3a9-40cf-a64c-51d3045b71c8",
+              "leftValue": "={{ !!$json.cuerpo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        288,
+        -560
+      ],
+      "id": "e4ec23c1-3bd2-4200-8899-9be83ad8a189",
+      "name": "¿Hay ventas que crear?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tienda:8000/api/ventas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        -656
+      ],
+      "id": "d8cf3f58-5b76-429c-83bc-91238d07b7cd",
+      "name": "Registrar ventas",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4VXOVN2q1Qb0tPy6",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code «Preparar informe» (11 · Datáfono) · Run Once for All Items\n// Recoge las respuestas de «Registrar ventas» (si se ejecutó) y devuelve { asunto, texto } para\n// «Enviar informe del datáfono». Un 422 va al informe; cualquier otro error para el flujo.\n\nconst items = $('Decidir qué crear').all();\nconst plan = items[0].json.plan;\n\n// Resultados de un nodo, o [] si no se ejecutó (rama false del IF)\nfunction resultadosDe(nombre) {\n  try {\n    if ($(nombre).isExecuted === false) return [];\n    return $(nombre).all();\n  } catch (e) {\n    return [];\n  }\n}\n\n// Mensaje de la app: {\"detail\": \"...\"} o, si falla la validación, {\"detail\": [{msg: ...}]}\nfunction detalle(body) {\n  let b = body;\n  if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { return b; } }\n  const d = b?.detail;\n  if (Array.isArray(d)) return d.map(x => x.msg ?? JSON.stringify(x)).join('; ');\n  return d ?? JSON.stringify(b);\n}\n\n// Las respuestas llegan en el mismo orden que los items a crear (Batching de 1)\nconst aCrear = items.filter(i => i.json.cuerpo);\nconst creadas = [];\nconst rechazadas = [];\nif (aCrear.length) {\n  const resultados = resultadosDe('Registrar ventas');\n  if (resultados.length !== aCrear.length) {\n    throw new Error(`Registrar ventas: se esperaban ${aCrear.length} respuestas y llegaron ${resultados.length}`);\n  }\n  aCrear.forEach((item, i) => {\n    const c = plan.crear.find(x => x.operacion === item.json.operacion);\n    const r = resultados[i].json;\n    if (r.statusCode >= 200 && r.statusCode < 300) {\n      let b = r.body;\n      if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\n      creadas.push({ ...c, venta_id: b?.id ?? null });\n    } else if (r.statusCode === 422) {\n      rechazadas.push({ ...c, error: detalle(r.body) });\n    } else {\n      throw new Error(`Registrar ventas (operación ${c.operacion}): la app respondió ${r.statusCode}: ${detalle(r.body)}`);\n    }\n  });\n}\n\n// ---------- Texto del informe ----------\n\nconst dia = iso => iso.split('-').reverse().join('/');\nconst e = n => `${Number(n).toFixed(2)} €`;\nconst cuando = c => `${dia(c.fecha)}${c.hora ? ` ${c.hora}` : ''}`;\nconst seccion = (titulo, lineas) => `${titulo} (${lineas.length})\\n${lineas.length ? lineas.join('\\n') : '- Ninguna'}\\n`;\n\nconst { desde, hasta } = plan.rango;\nconst periodo = desde === hasta ? `del ${dia(desde)}` : `del ${dia(desde)} al ${dia(hasta)}`;\nconst total = creadas.reduce((s, c) => s + Math.round(c.importe * 100), 0) / 100;\n\nconst texto = [\n  `Importación del datáfono ${periodo} (${plan.origen === 'formulario' ? 'subido con el formulario' : 'ejecución programada'})`,\n  '',\n  `Filas en el CSV: ${plan.filas} · cobros aprobados válidos: ${plan.cobros.length}`,\n  creadas.length ? '' : 'No se ha creado ninguna venta.\\n',\n  seccion(`VENTAS CREADAS · ${e(total)}`, creadas.map(c =>\n    `- op. ${c.operacion} · ${cuando(c)} · ${e(c.importe)} → venta ${c.venta_id ?? '(sin id)'}`)),\n  seccion('YA IMPORTADAS EN UNA EJECUCIÓN ANTERIOR', plan.importados.map(c =>\n    `- op. ${c.operacion} · ${cuando(c)} · ${e(c.importe)} = venta ${c.venta_id}`)),\n  seccion('YA REGISTRADAS EN LA TIENDA (venta con tarjeta del mismo día e importe)', plan.registrados.map(c =>\n    `- op. ${c.operacion} · ${cuando(c)} · ${e(c.importe)} = venta ${c.venta_id} (${c.venta_concepto})`)),\n  seccion('NO IMPORTADAS', plan.no_importados.map(n =>\n    `- línea ${n.linea}${n.operacion ? ` · op. ${n.operacion}` : ''} · ${n.fecha || 'sin fecha'}${n.hora ? ` ${n.hora}` : ''} · ${n.importe || 'sin importe'} · ${n.motivo}`)),\n  seccion('RECHAZADAS POR LA APP', rechazadas.map(c =>\n    `- op. ${c.operacion} · ${cuando(c)} · ${e(c.importe)}. La app respondió: «${c.error}»`)),\n  seccion('VENTAS CON TARJETA EN LA APP SIN COBRO EN EL DATÁFONO (no se toca nada)', plan.sin_cobro.map(v =>\n    `- venta ${v.id} · ${dia(v.fecha)} · ${v.concepto} · ${e(v.importe)}`)),\n  'Las ventas creadas llevan el concepto «Datáfono op. <operación>». Si alguna ya estaba apuntada con otra forma de pago u otro día, ahora está dos veces: revisadla en la app.',\n].join('\\n');\n\nconst asunto = `Datáfono ${periodo}: ${creadas.length} ventas creadas`;\n\nreturn [{ json: { asunto, texto } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -512
+      ],
+      "id": "56f4884f-5d9c-4f41-87e7-0ec3ef4eca50",
+      "name": "Preparar informe"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "={{ $json.asunto }}",
+            "texto": "={{ $json.texto }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        992,
+        -640
+      ],
+      "id": "425b731b-6788-47f2-bc2a-9134b01902a4",
+      "name": "Enviar informe del datáfono"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "triggerAtHour": 22
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -688,
+        -128
+      ],
+      "id": "b6ca7a1b-1239-48a5-a961-a07be26c5706",
+      "name": "Cada noche a las 22:00"
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/home/node/.n8n-files/datafono/datafono-{{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd') }}.csv",
+        "options": {
+          "dataPropertyName": "datafono"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -128
+      ],
+      "id": "3c3c6ea8-237b-40cc-8f3e-04b32eec5dee",
+      "name": "Leer el CSV del día",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "2c281153-23fc-4ade-a66b-337fe4a579ae",
+              "leftValue": "={{ !!$binary.datafono }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        -176,
+        -128
+      ],
+      "id": "68f24f46-d1bf-4ace-a084-6be80600e187",
+      "name": "¿Ha llegado el CSV?"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "SX8XHPikDL4KcF2w",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SX8XHPikDL4KcF2w",
+          "cachedResultName": "10 · Enviar notificación"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "para": "tienda@pasofirme.example",
+            "asunto": "=Datáfono: no ha llegado el CSV del {{ $now.setZone('Europe/Madrid').toFormat('dd/MM/yyyy') }}",
+            "texto": "={{ 'No se ha encontrado el fichero datafono-' + $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd') + '.csv en /home/node/.n8n-files/datafono/.\\n\\nNo se ha importado ningún cobro con tarjeta. Cuando llegue el CSV, se puede subir a mano con el formulario «Subir el CSV del datáfono».' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "para",
+              "displayName": "para",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "asunto",
+              "displayName": "asunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "texto",
+              "displayName": "texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        176,
+        -112
+      ],
+      "id": "9238e440-80bb-4d47-8c90-6fa9ae7a4992",
+      "name": "Avisar de que falta el CSV"
+    }
+  ],
+  "connections": {
+    "Subir el CSV del datáfono": {
+      "main": [
+        [
+          {
+            "node": "Leer cobros del CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer cobros del CSV": {
+      "main": [
+        [
+          {
+            "node": "Revisar los cobros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisar los cobros": {
+      "main": [
+        [
+          {
+            "node": "Leer ventas de esos días",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer ventas de esos días": {
+      "main": [
+        [
+          {
+            "node": "Decidir qué crear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir qué crear": {
+      "main": [
+        [
+          {
+            "node": "¿Hay ventas que crear?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay ventas que crear?": {
+      "main": [
+        [
+          {
+            "node": "Registrar ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar ventas": {
+      "main": [
+        [
+          {
+            "node": "Preparar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar informe": {
+      "main": [
+        [
+          {
+            "node": "Enviar informe del datáfono",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cada noche a las 22:00": {
+      "main": [
+        [
+          {
+            "node": "Leer el CSV del día",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer el CSV del día": {
+      "main": [
+        [
+          {
+            "node": "¿Ha llegado el CSV?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ha llegado el CSV?": {
+      "main": [
+        [
+          {
+            "node": "Leer cobros del CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar de que falta el CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "z1T27bO8VvzyoL18",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": null,
+  "tags": [],
+  "active": true,
+  "id": "H0dzfmkSvZHcFDsv",
+  "versionId": "e158f120-6104-4a7a-af43-458ba7a73711"
+}

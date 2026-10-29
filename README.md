@@ -1,383 +1,179 @@
-# 👟 Proyecto: Automatizaciones con n8n · Zapatería Paso Firme
+# 👟 Zapatería Paso Firme · Automatizaciones con n8n
 
-<img width="11520" height="3456" alt="n8n" src="https://github.com/user-attachments/assets/f8bdfbe6-0400-4f8e-a011-efb25c188db4" />
+Flujos de **n8n** que automatizan todo lo que pasa alrededor de la app de la tienda: avisos a clientes, vencimientos, cierres de caja, informes y entrada de datos.
 
-## 📋 Planteamiento
+**Pareja:** Esra Kesken y Beste Ozaydin · **Enunciado del profesor:** [docs/enunciado.md](docs/enunciado.md)
 
-**Zapatería Paso Firme** es una tienda de barrio con una sola dependienta y su dueña, Marisa. Además de la venta normal, su servicio estrella es el **sistema de apartados**: el cliente elige unos zapatos, deja un abono inicial y los va pagando poco a poco hasta llevárselos.
+## Qué problema resuelve
 
-Hoy todo se lleva **a mano**: una libreta para los apartados y un Excel donde Marisa apunta las ventas del día y, a final de mes, suma lo recaudado y lo que le queda por cobrar. Los problemas se repiten cada semana:
+Marisa, la dueña, llevaba los apartados en una libreta y las ventas en un Excel. Sumaba con calculadora y apuntaba a mano los Bizum que llegaban al banco.
 
-- Hay que buscar en la libreta cuánto ha pagado un cliente y cuánto le falta, y a veces las cuentas no cuadran.
-- Nadie avisa a los clientes de que su plazo está a punto de vencer, así que hay apartados olvidados con zapatos ocupando el almacén.
-- El cierre de caja diario y la suma mensual se hacen con calculadora, tarde y con errores.
-- Marisa no sabe en ningún momento cuánto dinero tiene pendiente de cobrar.
-- Cada vez más clientes pagan sus abonos desde casa por **Bizum o transferencia**. Marisa tiene que revisar los avisos del banco, adivinar de qué apartado es cada pago y apuntarlo a mano; algunos se le pasan.
+- **Clientes:** nadie les avisaba de cuánto les faltaba ni de cuándo vencía el plazo.
+- **Dependienta:** buscaba en la libreta cuánto había pagado cada cliente.
 
-Marisa ya ha dado el primer paso: una app sencilla donde la dependienta registra apartados, abonos y ventas. Vuestra pareja ha sido contratada para **automatizar todo lo demás con n8n**: lo que hoy se hace con libreta, calculadora y memoria debe ocurrir solo.
+Ahora la dependienta solo registra apartados, abonos y ventas en la app. n8n avisa a cada cliente con los importes que da la app, vence los apartados fuera de plazo con su vale, y envía a Marisa sus cifras y los casos que tiene que decidir.
 
-Como en la mayoría de equipos actuales, **el trabajo se hará con agentes de IA**: un agente (como [OpenCode](https://opencode.ai)) con modelos gratuitos ayuda a diseñar, generar y depurar los flujos, y vosotros hacéis de *tech lead*: definís qué automatizar, dais contexto al agente, revisáis lo que genera y decidís qué se pone en producción. El agente propone, pero la responsabilidad de los flujos es vuestra.
+→ [Mapa del proceso: hoy y automatizado](docs/mapa-proceso.md)
 
-**Modalidad:** por parejas.
+## Qué hemos construido
 
-## 📏 Reglas del negocio: sistema de apartado
+| Workflow | Disparador | Qué hace | HU | Spec · JSON | Pruebas |
+|---|---|---|---|---|---|
+| `01 · Eventos de la tienda` | Webhook `POST /webhook/tienda` + Switch por `evento` | Confirmación de apartado, recibo de abono o aviso de recogida, aviso de venta grande y vale al cliente cuando vence | HU-01, HU-02, HU-09, HU-07 (criterio 2) | [spec](specs/01-eventos-tienda.md) · [JSON](workflows/01-eventos-tienda.json) | [Sección 7](specs/01-eventos-tienda.md#7-prueba) · [apartado completo](docs/evidencias/apartado-completo.md) |
+| `03 · Abonos a distancia` | Correo del banco (IMAP, desactivado: Mailpit no tiene IMAP); formulario para pruebas | La IA (Groq) extrae ordenante, importe y concepto. El flujo busca el apartado por API y registra el abono, o pregunta a Marisa | HU-03 | [spec](specs/03-abonos-distancia.md) · [JSON](workflows/03-abonos-distancia.json) | [Los 9 correos](specs/03-abonos-distancia.md#resultados-reales--28102026) |
+| `05 · Cierre diario` | Cada noche a las 00:05; formulario | Ventas y abonos del día anterior por forma de pago, en la Data table `Cierres` y por correo a Marisa | HU-04 | [spec](specs/05-cierre-diario.md) · [JSON](workflows/05-cierre-diario.json) | [Resultados](docs/evidencias/05-hu04-resultados.md) |
+| `06 · Recordatorios y vencimientos` | Cada mañana a las 9:00 | Vence por API los apartados fuera de plazo y envía a la tienda la lista de zapatos que vuelven a la venta. Avisa a los clientes a 7 días y a 1 día del plazo, una sola vez (Data table `recordatorios enviados`), con un saludo y una despedida redactados por IA; importes y fechas los pone el flujo | HU-07, HU-06 | [spec](specs/06-recordatorios-vencimientos.md) · [JSON](workflows/06-recordatorios-y-vencimientos.json) | [Sección 7](specs/06-recordatorios-vencimientos.md#7-prueba) · [recordatorios con IA](docs/recordatorios-ia.md) |
+| `07 · Informe mensual` | Día 1 a las 8:00; formulario | Recaudación del mes anterior, pendiente de cobro y apartados nuevos, liquidados y vencidos, en una tabla HTML | HU-08 | [spec](specs/07-informe-mensual.md) · [JSON](workflows/07-informe-mensual.json) | [Sección 7](specs/07-informe-mensual.md#7-prueba) |
+| `08 · Error Workflow` | Error en cualquier flujo | Avisa a la tienda con el flujo, el paso, el error y el enlace a la ejecución | HU-05, #56 | [spec](specs/08-error-workflow.md) · [JSON](workflows/08-error-workflow.json) | [Sección 7](specs/08-error-workflow.md#7-prueba) |
+| `09 · Migración del Excel` | Formulario con los 2 CSV | Limpia los CSV de `data/` y los carga por API con su fecha, sin duplicar. Los casos dudosos van a un informe | HU-10 | [spec](specs/09-migracion-excel.md) · [JSON](workflows/09-migracion-excel.json) | [Sección 7](specs/09-migracion-excel.md#7-prueba) |
+| `10 · Buscar apartado` y `10 · Enviar notificación` | Execute Workflow | Sub-workflows comunes; los usan el `01`, el `06`, el `08` y el `11` | #92 | [spec](specs/10-sub-workflows.md) · [JSON](workflows/10-buscar-apartado.json), [JSON](workflows/10-enviar-notificacion.json) | [Sección 7](specs/10-sub-workflows.md#7-prueba) |
+| `11 · Datáfono` | De lunes a sábado a las 22:00; formulario | Importa el CSV de cobros con tarjeta como ventas, sin duplicar | HU-13 | [spec](specs/11-datafono.md) · [JSON](workflows/11-datafono.json) | [Sección 7](specs/11-datafono.md#7-prueba) |
+| `12 · Panel de Marisa` | Webhook `GET /webhook/panel` con Basic Auth | Página web servida por n8n: cobrado hoy, recaudado en el mes, pendiente de cobro y apartados que vencen en 7 días o están fuera de plazo. Pide los datos a la API en cada visita | HU-15 | [spec](specs/12-panel-marisa.md) · [JSON](workflows/12-panel-marisa.json) | [Sección 7](specs/12-panel-marisa.md#7-prueba) |
+| `13 · Servidor MCP` | MCP Server Trigger con Header Auth | Herramienta `estado_apartado` para otros agentes: estado, pendiente, abonado y fecha límite de un apartado. Solo lectura, sin datos personales | Experto (#136) | [spec](specs/13-servidor-mcp.md) · [JSON](workflows/13-servidor-mcp.json) | [Sección 6](specs/13-servidor-mcp.md#6-resultados-reales) |
 
-| Regla | Detalle |
-|---|---|
-| Abono inicial | Mínimo **5 €** en el momento de apartar |
-| Plazo | Máximo **3 meses** (90 días) desde la fecha del apartado para pagar el total |
-| Abonos | Se pueden hacer los abonos que se quieran, de cualquier importe, sin superar lo que falta por pagar |
-| Liquidación | Cuando lo que falta llega a 0 €, el apartado queda **liquidado** y el cliente puede recoger sus zapatos |
-| Vencimiento | Si pasan los 3 meses sin liquidar, el apartado queda **vencido**: los zapatos vuelven a la venta y lo abonado se convierte en un **vale de compra** para el cliente (no se devuelve en efectivo) |
-| Un apartado = un par | Cada apartado corresponde a un solo producto (modelo + talla) |
+Todos se han probado a mano en n8n con los datos de ejemplo. Están publicados el `01`, el `08`, los `10`, el `11` y el `12`. Los demás se exportan sin publicar: se prueban con su formulario o con *Execute workflow*, y la pareja los publica al ponerlos en marcha. Por eso las ejecuciones programadas del `05` (00:05) y del `06` (9:00) no se han visto todavía.
 
-Y las cifras que Marisa necesita:
+## Niveles
 
-- **Ventas del día:** ventas directas + abonos cobrados ese día (los abonos iniciales también cuentan).
-- **Recaudación mensual:** la suma de todo lo cobrado en el mes, separando ventas directas y abonos de apartados.
-- **Total pendiente de cobro:** la suma de lo que falta por pagar en todos los apartados activos.
+✅ hecho y en `dev` · ❌ no lo hacemos
 
-## 🗂️ Datos de partida
+### 🟢 Esencial
 
-En [`data/`](data/) tenéis una muestra del Excel actual de la tienda, tal y como lo lleva Marisa:
+| Criterio del enunciado | Estado | Prueba |
+|---|---|---|
+| App y n8n con `docker compose`, conectados | ✅ | [Evento que llega a n8n](docs/evidencias/01-evento-llega-a-n8n.png) |
+| Flujo 1 · Confirmación de apartado | ✅ | [Apartado completo](docs/evidencias/apartado-completo.md), [spec 01, sección 7](specs/01-eventos-tienda.md#7-prueba) |
+| Flujo 2 · Recibo de abono | ✅ | [Apartado completo](docs/evidencias/apartado-completo.md), [spec 01, sección 7](specs/01-eventos-tienda.md#7-prueba) |
+| Flujo 3 · Abonos a distancia | ✅ | [Spec 03, resultados reales](specs/03-abonos-distancia.md#resultados-reales--28102026), probado con el formulario. El nodo IMAP está desactivado porque Mailpit no tiene IMAP: en producción se activa con un buzón real |
+| El flujo 3 resuelve los 8 correos; la IA solo extrae | ✅ | [Los 9 correos](specs/03-abonos-distancia.md#resultados-reales--28102026): 4 abonos registrados, 4 avisos a Marisa y la publicidad descartada sin llamar a la IA |
+| Flujo 5 · Cierre diario | ✅ | [Resultados](docs/evidencias/05-hu04-resultados.md): un día con movimientos, un día sin movimientos y una repetición sin duplicar la fila en `Cierres` |
+| Un único webhook con un Switch por `evento` | ✅ | [Spec 01](specs/01-eventos-tienda.md) |
+| Mensajes al cliente con los importes de la app | ✅ | [Comprobación cifra a cifra](docs/evidencias/apartado-completo.md#5-comprobación-cifra-de-la-app--cifra-del-correo) |
+| Error Workflow que avisa a la tienda | ✅ | [Spec 08, sección 7](specs/08-error-workflow.md#7-prueba) |
+| Credenciales en n8n y JSON en GitHub | ✅ | [Credenciales](docs/credenciales.md), [revisión de secretos](docs/revision-secretos.md) |
+| `AGENTS.md` y bitácora con los prompts de cada flujo principal | ✅ | [AGENTS.md](AGENTS.md) y [bitácora](docs/ai-log.md), con una entrada por flujo (también el `03` y el `05`) |
 
-- [`excel_actual_apartados.csv`](data/excel_actual_apartados.csv): apartados y abonos mezclados en la misma hoja.
-- [`excel_actual_ventas.csv`](data/excel_actual_ventas.csv): ventas del día y el total mensual sumado a mano.
+### 🟡 Medio
 
-Son datos **reales del día a día**, con lo que eso implica: fechas en distintos formatos, nombres escritos de varias maneras, importes con el símbolo €, teléfonos que faltan, un abono inicial por debajo del mínimo y totales calculados a mano. Sirven para el flujo de **migración** (nivel medio): limpiarlos y cargarlos en la app por API.
+| Criterio del enunciado | Estado | Prueba |
+|---|---|---|
+| Flujo 4 · Venta grande | ✅ | [Spec 01, sección 7](specs/01-eventos-tienda.md#7-prueba) |
+| Flujo 6 · Vencimientos (HU-07) | ✅ | [Spec 06, sección 7](specs/06-recordatorios-vencimientos.md#7-prueba) |
+| Flujo 6 · Recordatorios a 7 días y a 1 día (HU-06) | ✅ | [Spec 06, sección 7](specs/06-recordatorios-vencimientos.md#7-prueba): una primera ejecución con 2 avisos y una segunda sin repetirlos |
+| Flujo 7 · Informe mensual | ✅ | [Spec 07, sección 7](specs/07-informe-mensual.md#7-prueba) |
+| Aviso al cliente con el código y el importe de su vale | ✅ | [Vale al cliente](docs/evidencias/06-hu07-vale-cliente.png) |
+| Sub-workflows reutilizables | ✅ | [Spec 10, sección 7](specs/10-sub-workflows.md#7-prueba). Se usan en el `01`, el `06`, el `08` y el `11` (#95) |
+| Migración del Excel | ✅ | [Spec 09, sección 7](specs/09-migracion-excel.md#7-prueba) |
+| Informe mensual con tabla en el correo | ✅ | [Informe de octubre](docs/evidencias/07-hu08-informe-octubre.png) |
+| Comparativa de 2 modelos gratuitos | ✅ | [Comparativa](docs/comparativa-modelos.md): `openai/gpt-oss-20b` y `openai/gpt-oss-120b` en la extracción del flujo 3 (calidad, velocidad y errores) |
 
-En [`data/correos/`](data/correos/) tenéis **avisos del banco** como los que recibe Marisa cuando un cliente paga por Bizum o transferencia. Sirven para el flujo de **abonos a distancia** (nivel esencial) y están pensados para los apartados de ejemplo de la app. Hay casos fáciles y casos trampa:
+### 🟠 Avanzado
 
-| Correo | Qué tiene que pasar |
-|---|---|
-| `01_bizum_carmen`, `09_bizum_silvia` | El nombre coincide con un único apartado activo: se registra el abono |
-| `02_bizum_jorge` | El ordenante está abreviado, pero el concepto trae el nº de apartado |
-| `03_transferencia_lucia` | Paga justo lo que falta: el apartado queda **liquidado** |
-| `04_bizum_laura` | Paga **más** de lo pendiente: la app lo rechaza y hay que avisar a Marisa |
-| `05_bizum_romero` | Solo apellido e inicial y sin concepto: hay que preguntar a Marisa antes de registrar nada |
-| `06_bizum_paula` | El apartado está **fuera de plazo**: no se puede abonar, hay que avisar a Marisa |
-| `07_transferencia_desconocido` | No coincide con ningún cliente: preguntar a Marisa |
-| `08_publicidad_banco` | No es un pago: se ignora |
+| Criterio del enunciado | Estado | Prueba |
+|---|---|---|
+| Asistente de IA por Telegram (HU-11, HU-12) | ❌ | Solo el diseño de HU-11 ([spec 14](specs/14-asistente-telegram.md)), sin construir |
+| Otra entrada de datos automática: datáfono (HU-13) | ✅ | [Spec 11, sección 7](specs/11-datafono.md#7-prueba). La variante «Apartados desde casa» no se hace |
+| Recordatorios redactados por IA | ✅ | [Recordatorios con IA](docs/recordatorios-ia.md): el modelo solo escribe el saludo y la despedida y no recibe datos del cliente; importes y fechas los pone el flujo |
+| Webhook protegido y validación de los datos | ❌ | La app no envía ninguna cabecera y no podemos tocar `backend/` (#117, #118) |
+| Datos personales conforme al RGPD (HU-14) | ❌ | Solo limitamos lo que recibe Groq: en el flujo 3, ordenante, importe y concepto ([bitácora, #8](docs/ai-log.md#agente-modelos-y-n8n-mcp--8)); en los recordatorios, nada del cliente |
+| Comandos o subagentes personalizados | ✅ | [`.claude/commands/`](.claude/commands/): `/revisar-flujo`, `/generar-spec` y `/cerrar-tarea` de Claude Code ([AGENTS.md, sección 6](AGENTS.md#6-forma-de-trabajo)) |
 
-Para probarlos, enviad estos correos (asunto y cuerpo) a la cuenta que lea n8n. Mientras desarrolláis, también podéis pegar el texto en un formulario de n8n (Form Trigger) para no depender del correo.
+### 🔴 Experto
 
-## 🚀 Cómo empezar
+| Criterio del enunciado | Estado | Prueba |
+|---|---|---|
+| Panel sencillo para Marisa (HU-15) | ✅ | [Spec 12, sección 7](specs/12-panel-marisa.md#7-prueba): las cifras coinciden con la API, se actualizan al recargar y se ve en una columna en el móvil |
+| n8n con PostgreSQL y copias de seguridad automáticas (HU-16) | ❌ | — |
+| Despliegue en la nube con HTTPS (HU-16) | ❌ | — |
+| CI con GitHub Actions que valide los JSON (HU-16) | ❌ | Validamos a mano con `validate_workflow` de n8n-mcp y `/revisar-flujo` |
+| Flujos como servidor MCP (MCP Server Trigger) | ✅ | [Spec 13, sección 6](specs/13-servidor-mcp.md#6-resultados-reales): un agente llama a `estado_apartado` y recibe lo mismo que da la API |
 
-Necesitáis [Git](https://git-scm.com/) y [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalados y abiertos.
-
-**1. Una persona de la pareja clona el proyecto:**
-
-```bash
-git clone https://github.com/Factoria-F5-madrid/AI-project-automatizaciones-n8n.git paso-firme
-cd paso-firme
-```
-
-**2. Cortad la conexión con este repositorio.** El proyecto es vuestro: no se trabaja sobre el repositorio de Factoría F5, así que hay que quitarle el remoto `origin`:
-
-```bash
-git remote remove origin
-```
-
-**3. Conectadlo a vuestro propio repositorio.** Cread en GitHub un repositorio **vacío** (sin README, sin `.gitignore` y sin licencia) y enlazadlo:
-
-```bash
-git remote add origin https://github.com/<vuestro-usuario>/<vuestro-repo>.git
-git push -u origin main
-```
-
-Si usáis GitHub CLI, los pasos de crear y enlazar se hacen en uno: `gh repo create <vuestro-repo> --private --source . --push`.
-
-**4. Invitad a vuestra pareja** como colaboradora del repositorio (*Settings → Collaborators*). Ella lo clona desde **vuestro** repositorio, no desde este.
-
-**5. A partir de aquí, todo se sube a vuestro repositorio** con el flujo de siempre (rama, commit, push y Pull Request):
-
-```bash
-git switch -c flujo-confirmacion-apartado
-git add .
-git commit -m "Añade flujo de confirmación de apartado"
-git push -u origin flujo-confirmacion-apartado
-```
-
-Comprobad en cualquier momento a dónde apunta vuestro proyecto con `git remote -v`: tiene que salir vuestro repositorio, no el de Factoría F5.
-
-> **¿Y si el profe actualiza el enunciado o la app?** Podéis traer los cambios sin volver a conectaros: `git pull https://github.com/Factoria-F5-madrid/AI-project-automatizaciones-n8n.git main`
-
-**6. Levantad la app y n8n:**
+## Cómo ponerlo en marcha
 
 ```bash
-cp .env.example .env
+git clone https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme.git paso-firme && cd paso-firme
+cp .env.example .env      # cambiar API_KEY por una clave propia
 docker compose up -d
 ```
 
-Cambiad `API_KEY` en el `.env` por una clave vuestra (el `.env` no se sube a GitHub). Después abrid http://localhost:8000 (la tienda) y http://localhost:5678 (n8n; la primera vez os pedirá crear una cuenta local).
+App: http://localhost:8000 · n8n: http://localhost:5678 · Mailpit: http://localhost:8025
 
-Para pararlo todo: `docker compose down`. Para borrar también los datos y empezar de cero: `docker compose down -v`.
+Todo lo demás está en **[docs/instalacion.md](docs/instalacion.md)**: credenciales, Data table, el orden en que se importan los workflows, qué se publica y las pruebas de humo.
 
-## 🏪 El software de la tienda
+## Decisiones técnicas
 
-Para no empezar de cero, la tienda ya tiene una **aplicación básica** (carpetas [`backend/`](backend/) y [`frontend/`](frontend/)) que sustituye a la libreta. Vuestro trabajo **no es programarla**, sino **automatizar todo lo que pasa alrededor** con n8n. Cuando la levantéis (ver [Cómo empezar](#-cómo-empezar)) tendréis:
+Todas, con su motivo, en [AGENTS.md, sección 8](AGENTS.md#8-decisiones-tomadas).
 
-| Servicio | URL | Para qué |
+- **Un webhook y un Switch** en el `01` reparten todos los eventos de la app: lo pide el enunciado y es una sola URL que mantener ([AGENTS.md, sección 3](AGENTS.md#3-servicios-y-urls)).
+- **Sub-workflows `10`** para buscar apartados y enviar correos, siempre con Mode «Run once for each item»: con «all items» se perderían items sin error.
+- **Umbral de venta grande en una Data table** (`Configuración`): las Variables de n8n son de pago, y así Marisa cambia el importe sin editar el flujo.
+- **Las transferencias se registran como `bizum`:** la app no acepta `transferencia`. Lo confirmó el profesor.
+- **En el flujo 3, la IA solo extrae** ordenante, importe y concepto. Qué apartado es y si se puede registrar lo decide el flujo con la API ([AGENTS.md, sección 9](AGENTS.md#9-lo-que-el-agente-no-debe-hacer)).
+- **Retry On Fail en todos los `GET` y nunca en los `POST`:** repetir un `POST` podría registrar dos veces un abono o una venta.
+- **Históricos en Data tables de n8n** (`Cierres`, `recordatorios enviados`), sin Google Sheets: no hace falta OAuth ni una cuenta de Google para importar y probar.
+- **El `06` vence y el `01` envía el vale:** el cliente recibe su vale aunque el apartado se venza por otra vía.
+- **HU-13 con la variante Datáfono:** a las 22:00, antes del cierre, y sin duplicar lo que ya se apuntó a mano.
+- **El panel es una web que sirve el propio n8n, con Basic Auth:** siempre al día y sin Looker Studio ni Google Sheets.
+
+## Cómo nos organizamos
+
+- **Kanban:** [Project «zapateria-paso-firme»](https://github.com/orgs/T3-P4-Auto-n8n/projects/1). Una historia por tarjeta, con sus tareas. Etiquetas por nivel (`esencial`, `medio`, `avanzado`, `experto`) y por tipo (`historia`, `tarea`).
+- **Una tarea = una rama = una PR a `dev`**, con su spec, su JSON y su entrada en la bitácora.
+- **Revisión:** la otra persona de la pareja aprueba cada PR antes de fusionarla. Así se han fusionado todas las PR del [historial](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/pulls?q=is%3Apr).
+- **Idiomas:** commits y PR en inglés, con Conventional Commits (`feat:`, `docs:`, `fix:`, `chore:`). Documentación en español.
+- **Conflictos en `docs/ai-log.md`:** todas las ramas añaden su entrada al final. Antes de fusionar, se trae `dev` a la rama (`git merge origin/dev`) y se dejan las dos entradas, una detrás de otra, antes de «Decisiones abiertas».
+- **Ramas:**
+  - `main`: entrega; recibe `dev` en la entrega (29/10);
+  - `dev`: integración;
+  - `feature/…`, `docs/…`, `fix/…` y `chore/…`: siempre desde `dev`.
+
+## Desarrollo con IA
+
+- **Agentes:** Esra trabaja con Claude Code y Beste con Codex. Cada una en su rama, y las dos con el mismo [AGENTS.md](AGENTS.md).
+- **Modelo gratuito en n8n:** Groq `openai/gpt-oss-20b` (capa gratuita):
+  - en el `03`, solo para extraer ordenante, importe y concepto;
+  - en el `06`, solo para el saludo y la despedida de los recordatorios.
+- **Comparativa:** `openai/gpt-oss-20b` frente a `openai/gpt-oss-120b` en la extracción del `03`; nos quedamos con el 20B ([comparativa](docs/comparativa-modelos.md)).
+- **Comandos de Claude Code** en [`.claude/commands/`](.claude/commands/): `/generar-spec`, `/revisar-flujo` y `/cerrar-tarea`. Ninguno hace commit ni publica flujos; Beste usa el mismo texto como prompt en Codex.
+- **n8n-mcp** en modo solo documentación (sin API key): consulta nodos y valida los JSON, pero no puede tocar n8n.
+- **El agente propone; la pareja construye en n8n, prueba y decide.** Prompts, errores del agente y decisiones, en la [bitácora de IA](docs/ai-log.md).
+
+## Entregables
+
+| # | Entregable | Dónde |
 |---|---|---|
-| App de la tienda | http://localhost:8000 | Registrar apartados, abonos y ventas, y descargar todo en **Excel** |
-| Documentación de la API | http://localhost:8000/docs | Probar los endpoints que usará n8n (Swagger) |
-| n8n | http://localhost:5678 | Construir las automatizaciones |
-
-> 📘 **Leed la [Guía de la app](docs/guia-de-la-app.md) antes de empezar a construir flujos.** Explica cómo está hecha la app, **qué endpoints tiene**, **cuándo y cómo avisa a n8n por webhook** (con los avisos reales y cómo se le envía el estado), los errores que puede devolver y cómo probarla desde la terminal.
-
-**Lo que la app NO hace (y os toca a vosotros con n8n):** avisar a los clientes, recordar vencimientos, vencer los apartados fuera de plazo, hacer cierres de caja, calcular la recaudación mensual y el total pendiente, enviar informes y migrar el Excel antiguo.
-
-## 🎯 Objetivo
-
-Conectar la app de la tienda con un conjunto de **flujos de n8n** que avisen a los clientes, controlen los vencimientos y den a Marisa sus cifras diarias y mensuales sin hacer una sola suma.
-
-## 🛠️ Requisitos Técnicos
-
-1. **App de la tienda y n8n** con **Docker** (el `docker-compose.yml` ya está incluido)
-2. Integración con la **app de la tienda** mediante el **Webhook** de eventos y su **API REST** (nodo HTTP Request)
-3. Google Sheets u otra herramienta similar solo para lo que la app no guarda (por ejemplo, el histórico de cierres de caja)
-4. Al menos un flujo programado (**Schedule Trigger**)
-5. Notificaciones a clientes y a la tienda (Gmail, Telegram, Slack…)
-6. Gestión segura de **credenciales** en n8n, **nunca escritas en los nodos ni subidas al repositorio**
-7. Validación de las reglas del negocio dentro de los flujos (IF / Switch y nodo **Code** cuando sea necesario)
-8. Manejo de errores (reintentos, ramas de error y un **Error Workflow**)
-9. Flujos exportados en **JSON** y versionados en Git y GitHub
-10. Desarrollo asistido por **agentes de IA** con modelos gratuitos (ver sección siguiente)
-
-## 🔄 Automatizaciones a construir
-
-| # | Flujo | Disparador | Qué hace |
-|---|---|---|---|
-| 1 | **Confirmación de apartado** | Evento `apartado.creado` | Envía al cliente un resumen: qué ha apartado, cuánto ha pagado, cuánto le falta y hasta cuándo |
-| 2 | **Recibo de abono** | Evento `abono.registrado` | Envía el recibo del abono con lo que falta. Si el apartado queda liquidado, avisa de que puede recoger sus zapatos |
-| 3 | **Abonos a distancia** | Correo nuevo (Gmail o IMAP) | Lee los avisos del banco, descarta los que no son pagos, usa **IA** para sacar ordenante, importe y concepto, busca el apartado por API y registra el abono. Si no está claro de quién es, si paga de más o si el apartado está fuera de plazo, **no registra nada** y pregunta a Marisa (correo o Telegram) |
-| 4 | **Venta grande** | Evento `venta.registrada` | Avisa a Marisa de las ventas por encima de un importe que ella decida |
-| 5 | **Cierre diario** | Programado (cada noche) | Pide a la API las ventas y abonos del día, suma por forma de pago, guarda el cierre y envía el resumen a Marisa |
-| 6 | **Recordatorios y vencimientos** | Programado (cada mañana) | Avisa a los clientes cuyo plazo vence en 7 días y en 1 día; vence por API los que han pasado el plazo (la app genera el vale) y avisa a la tienda para devolver los zapatos a la venta |
-| 7 | **Informe mensual** | Programado (día 1 de cada mes) | Recaudación del mes (ventas + abonos), total pendiente de cobro, apartados nuevos, liquidados y vencidos, enviado por correo a Marisa |
-| 8 | **Error Workflow** | Error en cualquier flujo | Avisa a la tienda con el flujo, el paso y el error |
-
-## 📖 Historias de usuario
-
-Estas son las historias del cliente. Cada pareja las pasa a su tablero Kanban (una tarjeta por historia, con sus criterios de aceptación como lista de comprobación) y puede dividirlas en tareas más pequeñas. Las que llevan la etiqueta de un nivel solo hay que hacerlas si se llega a ese nivel.
-
-Los personajes: **Marisa** (dueña), **la dependienta** y **el cliente** de la tienda.
-
-<details>
-<summary><b>🟢 Esencial</b> · 5 historias</summary>
-
-**HU-01 · Confirmación al apartar** (flujo 1)
-> Como **cliente**, quiero recibir un mensaje al apartar unos zapatos, para tener claro qué he apartado, cuánto he pagado, cuánto me falta y hasta cuándo.
-
-- [ ] Al crear un apartado en la app, el cliente recibe un mensaje en menos de un minuto.
-- [ ] El mensaje incluye modelo, talla, precio, abonado, pendiente y fecha límite, con los importes que da la app.
-- [ ] Si el cliente no tiene correo, el flujo no falla: avisa a la tienda de que no se pudo enviar.
-
-**HU-02 · Recibo de cada abono** (flujo 2)
-> Como **cliente**, quiero un recibo cada vez que pago un abono, para saber cuánto me queda por pagar.
-
-- [ ] Cada abono registrado genera un recibo con el importe pagado y lo que queda pendiente.
-- [ ] Si el apartado queda liquidado, el mensaje cambia: avisa de que ya puede recoger sus zapatos.
-
-**HU-03 · Abonos por Bizum o transferencia sin apuntar nada a mano** (flujo 3)
-> Como **Marisa**, quiero que los pagos que me llegan por Bizum o transferencia se registren solos en el apartado correcto, para dejar de revisar los avisos del banco y apuntarlos a mano.
-
-- [ ] Los correos que no son un pago (como la publicidad del banco) se ignoran.
-- [ ] De cada pago se extraen ordenante, importe y concepto, y se busca el apartado por API.
-- [ ] Si hay un único apartado claro, se registra el abono y el cliente recibe su recibo (HU-02).
-- [ ] Si el pago es dudoso (varios apartados posibles, sin concepto o cliente desconocido), no se registra nada y se pregunta a Marisa.
-- [ ] Si el importe supera lo pendiente o el apartado está fuera de plazo, no se registra nada y se avisa a Marisa con el motivo.
-- [ ] El flujo resuelve bien los correos de `data/correos/`.
-
-**HU-04 · Cierre de caja automático** (flujo 5)
-> Como **Marisa**, quiero recibir cada noche el resumen de lo cobrado en el día, para cerrar la caja sin sumar con calculadora.
-
-- [ ] Cada noche llega un resumen con ventas directas, abonos y el total, separados por forma de pago (efectivo, tarjeta y Bizum).
-- [ ] Los importes coinciden con los de la app.
-- [ ] Si ese día no hubo movimientos, el resumen lo dice en vez de fallar.
-
-**HU-05 · Avisos de errores** (flujo 8)
-> Como **Marisa**, quiero que me avisen si una automatización falla, para no descubrir semanas después que algo dejó de funcionar.
-
-- [ ] Cualquier flujo que falle envía un aviso con el nombre del flujo, el paso y el error.
-- [ ] El aviso no incluye contraseñas ni claves.
-
-</details>
-
-<details>
-<summary><b>🟡 Medio</b> · 5 historias</summary>
-
-**HU-06 · Recordatorios de vencimiento** (flujo 6)
-> Como **cliente**, quiero que me avisen antes de que se acabe el plazo de mi apartado, para no perder mis zapatos ni lo que ya he pagado.
-
-- [ ] Cada mañana se avisa a los clientes cuyo plazo vence en 7 días y en 1 día.
-- [ ] Cada cliente recibe cada aviso una sola vez.
-- [ ] El mensaje incluye lo que falta por pagar y la fecha límite.
-
-**HU-07 · Apartados vencidos con su vale** (flujo 6)
-> Como **Marisa**, quiero que los apartados que se pasan de plazo se cierren solos y el cliente reciba un vale, para recuperar los zapatos y no tener que gestionarlo uno a uno.
-
-- [ ] Los apartados fuera de plazo se vencen por API y la app genera el vale.
-- [ ] El cliente recibe un mensaje con el código y el importe de su vale.
-- [ ] Marisa recibe la lista de zapatos que vuelven a la venta.
-
-**HU-08 · Informe mensual** (flujo 7)
-> Como **Marisa**, quiero un informe a principios de mes con lo recaudado y lo que me deben, para saber cómo va el negocio sin hacer cuentas.
-
-- [ ] El día 1 llega un informe con lo recaudado el mes anterior (ventas directas y abonos por separado).
-- [ ] Incluye el total pendiente de cobro, y los apartados nuevos, liquidados y vencidos del mes.
-- [ ] Los importes coinciden con los de la app.
-
-**HU-09 · Aviso de ventas grandes** (flujo 4)
-> Como **Marisa**, quiero que me avisen de las ventas grandes, para enterarme aunque no esté en la tienda.
-
-- [ ] Las ventas por encima de un importe configurable generan un aviso a Marisa.
-- [ ] Cambiar el importe no obliga a editar el flujo (se guarda en una variable).
-
-**HU-10 · Migración del Excel antiguo**
-> Como **Marisa**, quiero pasar los datos de mi Excel a la app, para no perder el histórico ni mantener dos sistemas.
-
-- [ ] Los CSV de `data/` se leen y se limpian (fechas, nombres, importes con €).
-- [ ] Los apartados y abonos se crean en la app por API conservando su fecha original.
-- [ ] Ejecutarlo dos veces no duplica los datos.
-- [ ] Los casos dudosos (por ejemplo, un abono inicial menor de 5 €) no se cargan y salen en un informe para que Marisa decida.
-
-</details>
-
-<details>
-<summary><b>🟠 Avanzado</b> · 4 historias</summary>
-
-**HU-11 · Preguntar saldo por Telegram**
-> Como **cliente**, quiero preguntar por Telegram cuánto me falta por pagar, para no tener que llamar o pasar por la tienda.
-
-- [ ] El asistente identifica al cliente y solo le muestra sus apartados, nunca los de otro.
-- [ ] Responde con el saldo y la fecha límite que da la app, nunca con cifras calculadas por el modelo.
-- [ ] Si no entiende la pregunta o no encuentra al cliente, lo dice y ofrece hablar con la tienda.
-
-**HU-12 · Marisa pregunta a su negocio**
-> Como **Marisa**, quiero preguntar por Telegram *"¿cuánto se recaudó esta semana?"* o *"¿qué apartados vencen este mes?"*, para tener las cifras al momento.
-
-- [ ] Solo responde a Marisa (usuario autorizado).
-- [ ] Las respuestas salen de consultas a la API de la tienda.
-
-**HU-13 · Entrada automática de datos** (al menos una)
-> Como **dependienta**, quiero que ciertos datos entren solos, para dedicarme a atender a los clientes.
-
-- [ ] *Apartados desde casa:* el cliente pide apartar unos zapatos desde un formulario o Telegram y se crea una solicitud que avisa a la tienda. El apartado se confirma cuando llega el abono inicial.
-- [ ] *Datáfono:* cada noche se importa el CSV de cobros con tarjeta como ventas, sin duplicar las ya registradas.
-
-**HU-14 · Datos personales protegidos**
-> Como **cliente**, quiero que mis datos se traten con cuidado, para que no se compartan más de lo necesario.
-
-- [ ] El webhook de n8n exige autenticación y rechaza peticiones sin ella.
-- [ ] A los modelos de IA solo se envía lo imprescindible y se documenta qué datos salen.
-- [ ] Solo se envían mensajes a clientes que han dado su consentimiento.
-
-</details>
-
-<details>
-<summary><b>🔴 Experto</b> · 2 historias</summary>
-
-**HU-15 · Panel para Marisa**
-> Como **Marisa**, quiero ver en una pantalla las ventas, la recaudación, lo pendiente de cobro y los apartados que van a vencer, para decidir sin abrir hojas ni correos.
-
-- [ ] El panel muestra los datos de la app actualizados.
-- [ ] Se entiende sin explicación y se ve bien en el móvil.
-
-**HU-16 · Funcionar siempre**
-> Como **Marisa**, quiero que las automatizaciones sigan funcionando aunque se reinicie el ordenador, para no depender de que alguien las encienda.
-
-- [ ] Despliegue en la nube con HTTPS.
-- [ ] Copias de seguridad automáticas de los datos de n8n.
-- [ ] Un cambio en los flujos pasa por CI (validación de los JSON) antes de mergear.
-
-</details>
-
-## 🤖 Desarrollo Agéntico con IA
-
-El proyecto debe desarrollarse con un agente de IA en la terminal, trabajando como se hace hoy en la industria.
-
-**Herramientas**
-
-- Agente: **[OpenCode](https://opencode.ai)** (recomendado). Se pueden usar alternativas abiertas o gratuitas (Aider, Cline, Kilo Code…), pero hay que justificar la elección.
-- Modelos **gratuitos**, por ejemplo: los modelos gratuitos de OpenCode Zen, modelos `:free` de OpenRouter, la capa gratuita de Groq o Gemini. Los mismos modelos se pueden usar dentro de n8n en los nodos de IA.
-- **[n8n-mcp](https://github.com/czlonkowski/n8n-mcp)** (recomendado): servidor MCP que da al agente la documentación de todos los nodos de n8n y, conectado a la API de vuestra instancia, le permite crear, validar y actualizar flujos.
-- Si tienen IAs de pago pueden utilizarlas, solo que tenerlo en cuenta para no pisar el trabajo del equipo, delimitar muy bien el alcance que tendrán.
-
-**¿En qué ayuda el agente si n8n es visual?**
-
-Un flujo de n8n es un archivo JSON y n8n tiene una API REST, así que un agente puede trabajar con ellos igual que con código:
-
-- **Generar y modificar flujos:** a partir de una spec, el agente crea el JSON del flujo y lo sube a n8n (vía MCP o la API). El equipo lo abre en el editor, lo prueba y lo ajusta.
-- **Elegir y configurar nodos:** consulta qué nodo usar y qué parámetros necesita, en lugar de buscarlo a mano en la documentación.
-- **Escribir el código de los nodos Code** y las expresiones complejas (`{{ $json... }}`) de transformación de datos.
-- **Depurar:** se le pasa el error de una ejecución fallida y el JSON del flujo, y propone la corrección.
-- **Pruebas:** payloads de prueba para los webhooks y scripts para exportar e importar flujos.
-- **Documentar:** genera la documentación de cada flujo a partir de su JSON.
-
-El editor visual sigue siendo donde se prueba y se revisa: el agente no sustituye abrir el flujo y ejecutarlo.
-
-**Forma de trabajo**
-
-1. **Contexto antes que flujos:** crear un `AGENTS.md` en la raíz con el negocio y sus reglas del apartado, los servicios integrados, las convenciones de nombres de flujos y nodos, cómo importar y exportar flujos y lo que el agente **no** debe hacer (por ejemplo: no escribir credenciales en el JSON, no activar flujos en producción).
-2. **SDD & Ontologías:** antes de pedirle nada al agente, cada automatización se define con *Spec-Driven Development* en una spec (`specs/`) con el disparador, las entradas, las salidas, los casos de error y los criterios de aceptación, apoyada en una ontología del dominio: entidades del negocio (`Cliente`, `Producto`, `Apartado`, `Abono`, `Venta`, `CierreDiario`…), sus atributos, relaciones y reglas. Así el agente y el equipo comparten el mismo vocabulario y no inventan conceptos.
-3. **Tareas pequeñas:** en pareja, repartid los flujos para no pisaros; una tarea del Kanban equivale a un flujo (o parte de uno), una rama y una Pull Request con el JSON exportado.
-4. **Revisión humana obligatoria:** todo flujo generado se importa, se prueba con datos de ejemplo y se revisa en la PR antes de mergear. Hay que prestar especial atención a la seguridad: credenciales, datos personales y webhooks expuestos.
-5. **Pruebas como contrato:** cada flujo tiene datos de prueba (pinned data o payloads de ejemplo) y un resultado esperado. Si una prueba falla, se arregla el flujo, no se cambia la prueba.
-6. **Trazabilidad:** registrar los prompts más relevantes y las decisiones que se tomaron (qué se aceptó, qué se rechazó y por qué).
-
-## 📦 Entregables
-
-1. Mapa del proceso de apartado: cómo se hace hoy y cómo queda automatizado (diagrama BPMN, Miro, Excalidraw o similar)
-2. Vuestro propio repositorio (ver [Cómo empezar](#-cómo-empezar)) con los flujos exportados en JSON (carpeta `workflows/`) y README con instrucciones para importarlos y configurarlos
-3. Lista de credenciales y variables que necesita cada flujo (sin los valores)
-4. Un **flujo de prueba** o script que cree datos de ejemplo en la app por API para poder hacer la demo
-5. Datos de prueba y evidencias de ejecución (capturas o vídeo de un apartado completo: alta, abonos, liquidación)
-6. Tablero Kanban con las [historias de usuario](#-historias-de-usuario) de vuestro nivel, con sus criterios de aceptación y quién trabaja en cada una
-7. `AGENTS.md` y carpeta `specs/` con las especificaciones de cada automatización
-8. **Bitácora de IA** (`docs/ai-log.md`): herramienta y modelos usados, prompts clave, errores o alucinaciones del agente y cómo se corrigieron
-9. Historial de PRs con revisiones visibles de los flujos generados
-10. Breve retrospectiva de la pareja
-
-## 🏆 Niveles de Entrega
-
-### 🟢 Nivel Esencial
-
-- App y n8n levantados con `docker compose` y conectados (los eventos de la app llegan a n8n)
-- Flujos **1 (Confirmación de apartado)**, **2 (Recibo de abono)**, **3 (Abonos a distancia)** y **5 (Cierre diario)** funcionando
-- El flujo 3 resuelve bien los 8 correos de `data/correos/`: la IA solo extrae los datos, y las decisiones (qué apartado es, si se puede registrar) las toma el flujo con la API
-- Un único webhook que reparta los eventos con un nodo **Switch** según el campo `evento`
-- Mensajes al cliente por correo o Telegram con los importes correctos (los da la app, no se recalculan a mano)
-- **Error Workflow** que avise a la tienda
-- Credenciales gestionadas en n8n y flujos exportados en JSON en GitHub
-- `AGENTS.md` funcional y bitácora de IA con al menos los prompts de cada flujo principal
-
-### 🟡 Nivel Medio
-
-- Flujos **4 (Venta grande)**, **6 (Recordatorios y vencimientos)** y **7 (Informe mensual)**
-- Aviso al cliente cuando su apartado vence, con el código y el importe de su vale
-- Sub-workflows reutilizables (**Execute Workflow**), por ejemplo "buscar apartado" o "enviar notificación"
-- **Migración del Excel actual**: flujo que lea los CSV de `data/`, limpie los datos (fechas, nombres, importes), cree los apartados y abonos en la app por API (con su `fecha` original) y deje en un informe los casos dudosos
-- Informe mensual en PDF o con tabla en el correo
-- Comparativa de al menos 2 modelos gratuitos en una misma tarea (calidad, velocidad, errores)
-
-### 🟠 Nivel Avanzado
-
-- **Asistente de IA por Telegram** (nodo AI Agent con un modelo gratuito y la API de la tienda como herramienta):
-  - el cliente pregunta *"¿cuánto me falta?"* y recibe su saldo y fecha límite
-  - Marisa pregunta *"¿cuánto se recaudó esta semana?"* o *"¿qué apartados vencen este mes?"*
-- **Otras entradas de datos automáticas** (al menos una):
-  - **Apartados desde casa:** formulario de n8n o bot de Telegram donde el cliente pide apartar unos zapatos; n8n crea una solicitud, avisa a la tienda y el apartado se confirma cuando llega el abono inicial
-  - **Ventas del datáfono:** cada noche n8n importa el CSV de cobros con tarjeta y los registra como ventas, sin duplicar las que ya estén
-- Mensajes de recordatorio redactados por IA con un tono cercano, siempre con los importes calculados por el flujo (nunca por el modelo)
-- Webhook de n8n protegido (autenticación por cabecera) y validación de los datos que llegan
-- Datos personales conforme al RGPD: solo los datos necesarios, consentimiento para recibir mensajes y no enviar a modelos externos más datos de los imprescindibles
-- Comandos, skills o subagentes personalizados en OpenCode para tareas repetitivas (generar specs, revisar flujos…)
-
-### 🔴 Nivel Experto
-
-- Panel sencillo para Marisa (Looker Studio, una web o similar) con ventas, recaudación, pendiente de cobro y apartados por vencer
-- n8n con PostgreSQL en `docker-compose`, con copias de seguridad automáticas
-- Despliegue en la nube (Render, Railway, un VPS, Google Cloud, etc.) con HTTPS
-- Pipeline de CI con GitHub Actions que valide los JSON de los flujos en cada PR
-- Exponer los flujos como servidor MCP (**MCP Server Trigger**) para que otros agentes consulten el estado de los apartados
+| 1 | Mapa del proceso, hoy y automatizado | [docs/mapa-proceso.md](docs/mapa-proceso.md) |
+| 2 | Repositorio con los flujos en JSON e instrucciones | [workflows/](workflows/) · [docs/instalacion.md](docs/instalacion.md) |
+| 3 | Credenciales y variables de cada flujo | [docs/credenciales.md](docs/credenciales.md) |
+| 4 | Script de datos de ejemplo | [scripts/datos_demo.py](scripts/datos_demo.py) · [tests/payloads/](tests/payloads/) |
+| 5 | Evidencias de un apartado completo | [docs/evidencias/apartado-completo.md](docs/evidencias/apartado-completo.md) · [docs/evidencias/](docs/evidencias/) |
+| 6 | Kanban con las historias | [Project](https://github.com/orgs/T3-P4-Auto-n8n/projects/1) |
+| 7 | `AGENTS.md` y specs | [AGENTS.md](AGENTS.md) · [specs/](specs/) |
+| 8 | Bitácora de IA | [docs/ai-log.md](docs/ai-log.md) |
+| 9 | Historial de PR con revisiones | [Pull requests](https://github.com/T3-P4-Auto-n8n/zapateria-paso-firme/pulls?q=is%3Apr) |
+| 10 | Retrospectiva de la pareja | [docs/retrospectiva.md](docs/retrospectiva.md) |
+
+## Estructura del repo
+
+```
+├── workflows/     Workflows exportados de n8n (JSON)
+├── specs/         Una spec por workflow, desde specs/_plantilla.md
+├── docs/          Enunciado, instalación, ontología, guía de la app, credenciales, mapa, bitácora, comparativa, retrospectiva
+│   └── evidencias/  Capturas de las pruebas
+├── tests/         Eventos de prueba (payloads/) y tests de los nodos Code
+├── scripts/       flujos.py (exportar/importar), datos_demo.py, comparar_modelos.py y generadores de nodos
+├── data/          CSV del Excel antiguo y correos del banco de ejemplo
+├── backend/, frontend/  La app de la tienda (no se toca)
+└── AGENTS.md      Contexto y reglas para los agentes de IA
+```
+
+## Mejoras futuras
+
+Lo que no hemos hecho y cómo lo haríamos:
+
+- **Webhook protegido (HU-14):** Header Auth en el Webhook del `01` y que la app envíe esa clave en cada evento; hay que cambiar `backend/`, que no podíamos tocar.
+- **Consentimiento y RGPD (HU-14):** guardar fuera de la app quién acepta recibir mensajes y comprobarlo antes de cada envío.
+- **Abonos desde el buzón real:** activar el nodo IMAP del `03` con un correo real del banco; Mailpit no tiene IMAP.
+- **Asistentes por Telegram (HU-11, HU-12):** Telegram solo envía mensajes a una URL pública con HTTPS, y n8n está en local. El diseño de HU-11 ya está en la [spec 14](specs/14-asistente-telegram.md).
+- **Funcionar siempre (HU-16):** n8n en la nube con HTTPS, PostgreSQL con copias automáticas y GitHub Actions que valide los JSON de `workflows/` en cada PR.
+- **Apartados desde casa:** la otra variante de HU-13.
