@@ -1,0 +1,109 @@
+{
+  "tested_utc": "2026-10-28T22:28:35.564756+00:00",
+  "endpoint": "local test listener only",
+  "agent": "Codex via a local JSON-RPC MCP client; no external model receives API output",
+  "unauthenticated": {
+    "http_status": 403
+  },
+  "initialize": {
+    "http_status": 200,
+    "response": {
+      "result": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "Servidor_MCP_de_la_tienda",
+          "version": "0.1.0"
+        },
+        "instructions": "Herramienta de lectura para personal autorizado. Consulta solo un apartado por ID. Usa exclusivamente los valores actuales de la API; no calcules ni inventes saldos. No es un servicio de clientes."
+      },
+      "jsonrpc": "2.0",
+      "id": 2
+    }
+  },
+  "tools_list": {
+    "http_status": 200,
+    "response": {
+      "result": {
+        "tools": [
+          {
+            "name": "estado_apartado",
+            "description": "Consulta por ID el estado, pendiente, abonado y fecha límite actuales de un apartado. Solo personal autorizado. No registra ni vence nada. Un 404 significa que no existe.",
+            "inputSchema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "apartado_id": {
+                  "type": "number",
+                  "description": "ID entero positivo del apartado"
+                }
+              },
+              "required": [
+                "apartado_id"
+              ],
+              "additionalProperties": true
+            }
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 3
+    }
+  },
+  "valid_id": {
+    "http_status": 200,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "[{\"id\":1,\"estado\":\"activo\",\"pendiente\":19.5,\"abonado\":15,\"fecha_limite\":\"2027-01-22\"}]"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 4
+    }
+  },
+  "api_values_match": true,
+  "invalid_id": {
+    "http_status": 200,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "NodeOperationError: URL parameter must be a string, got undefined"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 5
+    }
+  },
+  "nonexistent_id": {
+    "http_status": 200,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "NodeOperationError: The resource you are requesting could not be found\n\nDetails: Apartado no encontrado"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 4
+    }
+  },
+  "nonexistent_id_note": "Separate fresh test listener: MCP tool isError=true with Apartado no encontrado, not the expired-listener HTTP 404 observed after the invalid-ID call.",
+  "executions": {
+    "valid_id": 71,
+    "invalid_id": 72,
+    "nonexistent_id": 73
+  }
+}

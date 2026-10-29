@@ -1,0 +1,82 @@
+{
+  "name": "13 · Servidor MCP",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "paso-firme-estado",
+        "authentication": "headerAuth",
+        "instructions": "Herramienta de lectura para personal autorizado. Consulta solo un apartado por ID. Usa exclusivamente los valores actuales de la API; no calcules ni inventes saldos. No es un servicio de clientes."
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f7d5f2ee-38ce-444b-b5b2-6f65bc6f3b68",
+      "name": "Servidor MCP de la tienda",
+      "webhookId": "f167c05e-8d2c-4c9f-a7fc-ca9cfdc55c86",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HU04ApiTienda01",
+          "name": "API Tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Consulta por ID el estado, pendiente, abonado y fecha límite actuales de un apartado. Solo personal autorizado. No registra ni vence nada. Un 404 significa que no existe.",
+        "method": "GET",
+        "url": "={{ (() => { const id = $fromAI('apartado_id', 'ID entero positivo del apartado', 'number'); if (!Number.isSafeInteger(id) || id < 1) throw new Error('apartado_id debe ser un entero positivo'); return 'http://tienda:8000/api/apartados/' + id; })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 10000
+        },
+        "optimizeResponse": true,
+        "responseType": "json",
+        "fieldsToInclude": "selected",
+        "fields": "id,estado,pendiente,abonado,fecha_limite"
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        200,
+        220
+      ],
+      "id": "dc2b739b-2769-48a6-8487-9fd9a6478979",
+      "name": "estado_apartado",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HU04ApiTienda01",
+          "name": "API Tienda"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "estado_apartado": {
+      "ai_tool": [
+        [
+          {
+            "node": "Servidor MCP de la tienda",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "z1T27bO8VvzyoL18"
+  },
+  "meta": null,
+  "tags": [],
+  "active": false,
+  "id": "HU136McpServer01",
+  "versionId": "7a994ca3-8147-48b6-83ce-415dc3511841"
+}

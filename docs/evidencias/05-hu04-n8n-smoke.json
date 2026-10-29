@@ -1,0 +1,25 @@
+{
+  "workflow": "HU-04 · Prueba aislada sin histórico",
+  "workflow_id": "HU04SmokeTest01",
+  "scope": "Prueba real de Form → GET ventas → GET abonos → Code → Mailpit. Google Sheets excluido explícitamente; no acredita el flujo completo ni publicación.",
+  "executions": [
+    {
+      "id": 26,
+      "fecha": "2026-10-26",
+      "url": "http://localhost:5678/workflow/HU04SmokeTest01/executions/26",
+      "status": "Succeeded",
+      "duration_ms": 422,
+      "total": 213.65,
+      "mailpit_id": "6Nr8Uhf3OucB2IFbIdYK2z"
+    },
+    {
+      "id": 27,
+      "fecha": "1900-01-01",
+      "url": "http://localhost:5678/workflow/HU04SmokeTest01/executions/27",
+      "status": "Succeeded",
+      "duration_ms": 317,
+      "total": 0,
+      "mailpit_id": "0960QdSUmFF51ORlZhfcut"
+    }
+  ]
+}

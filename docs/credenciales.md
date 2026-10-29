@@ -9,20 +9,19 @@ Qué credenciales y variables necesita cada workflow. **Aquí nunca se escriben 
 | `Mailpit` | SMTP | Host `mailpit`, puerto `1025`, sin usuario ni contraseña, SSL/TLS desactivado | Enviar correos de prueba en local (se ven en http://localhost:8025) |
 | `API Tienda` | Header Auth | Name `X-API-Key`, Value = `API_KEY` del `.env` | Llamar a la API de la app (`http://tienda:8000/api/...`) |
 | `Groq` | Groq API | API Key de Groq | Modelo de IA en los nodos de IA (`03 · Abonos a distancia`) |
-| `Google Sheets` | Google Sheets OAuth2 API | Conexión OAuth con una cuenta de Google con permiso de edición en el documento del histórico; los tokens solo viven en n8n | Histórico de `05 · Cierre diario` (PR #173) |
 | `Panel Marisa` | Basic Auth | User y Password que elige la pareja; solo viven en n8n | Proteger la página de `12 · Panel de Marisa`: el navegador los pide al abrir `/webhook/panel` (HU-15) |
 
 `03 · Abonos a distancia` tiene además un nodo `Correo bancario IMAP` **deshabilitado y sin credencial**: hoy se prueba con el formulario. Hará falta una credencial IMAP cuando se active la entrada por correo.
 
 ## Workflow → credenciales
 
-Estado final con todos los workflows: los de `dev` (con el `06` y la rama `apartado.vencido` del `01`, de #172) y los de los PR abiertos (#173: `05`; rama `feature/39-hu03-prueba-correos`: `03`). Sacado de los JSON exportados: la credencial de cada nodo, los sub-workflows que llama cada uno y su **Settings → Error workflow**.
+Inventario basado en los workflows de `dev` (incluidos `06`, la rama `apartado.vencido` del `01` de #172 y `03` de #182) y el workflow HU-04 de esta rama (#173), pendiente de revisión. Sacado de los JSON exportados: la credencial de cada nodo, los sub-workflows que llama cada uno y su **Settings → Error workflow**.
 
 | Workflow | Credenciales en sus nodos | A través de sub-workflows | Data tables, archivos y documentos | Variables del `.env` | Error workflow |
 |---|---|---|---|---|---|
 | `01 · Eventos de la tienda` | `Mailpit` (`Enviar recibo del abono`, `Avisar de que puede recoger`, `Avisar a la tienda: venta grande`) | `Mailpit`, por `10 · Enviar notificación` (`Enviar confirmación al cliente`, `Avisar a la tienda: sin email`, `Enviar vale al cliente` y `Avisar a la tienda: vencido sin email`) | Data table `Configuración`, nodo `Leer umbral de venta grande` | `N8N_WEBHOOK_URL`: la app envía los eventos a su webhook (Production URL `/webhook/tienda`). No usa `API_KEY`: el webhook no lleva autenticación | `08` |
 | `03 · Abonos a distancia` | `API Tienda` (`Buscar apartado`, `Registrar abono`), `Groq` (`Extraer datos con Groq`), `Mailpit` (`Avisar a la tienda para revisar el pago`) | — (no llama a los `10`) | — | `API_KEY` (por `API Tienda`). Un abono registrado dispara `abono.registrado` y el recibo lo envía el `01` (HU-02), así que depende de `N8N_WEBHOOK_URL` | `08` |
-| `05 · Cierre diario` | `API Tienda` (`Leer ventas del día`, `Leer abonos del día`), `Google Sheets` (`Guardar cierre en Sheets`), `Mailpit` (`Enviar cierre diario`) | — | Documento de Google Sheets con la pestaña `Cierres` y sus 17 encabezados (spec del `05`, sección 5) | `API_KEY` (por `API Tienda`) | `08` |
+| `05 · Cierre diario` | `API Tienda` (`Leer ventas del día`, `Leer abonos del día`), `Mailpit` (`Enviar cierre diario`) | — | Data table local `Cierres`, upsert por `fecha`, 17 columnas (spec del `05`, sección 5) | `API_KEY` (por `API Tienda`) | `08` |
 | `06 · Recordatorios y vencimientos` | `API Tienda` (`Vencer apartado`) | `API Tienda`, por `10 · Buscar apartado` (`Leer apartados activos`); `Mailpit`, por `10 · Enviar notificación` (lista de vencimientos, recordatorio al cliente y aviso sin email) | Data table `recordatorios enviados` (HU-06), columnas apartado_id Number, dias Number, fecha String | `API_KEY` (por `API Tienda`). Los vencimientos disparan `apartado.vencido`; el vale lo envía el `01` vía `N8N_WEBHOOK_URL` | `08` |
 | `07 · Informe mensual` | `API Tienda` (`Leer ventas del mes`, `Leer abonos desde el día 1`, `Leer apartados`, `Leer vales`), `Mailpit` (`Enviar informe mensual`) | — | — | `API_KEY` (por `API Tienda`) | `08` |
 | `08 · Error Workflow` | — | `Mailpit`, por `10 · Enviar notificación` (`Avisar a la tienda del error`) | — | — | ninguno (es el Error workflow) |
@@ -62,6 +61,10 @@ Configuración que cambia Marisa sin editar los flujos. Usamos Data tables porqu
 | `umbral_venta_grande` | `100` | `01 · Eventos de la tienda`, nodo `Leer umbral de venta grande` (HU-09): avisa de las ventas con `importe` **mayor** que este valor |
 
 **Cómo crearla:** en n8n, **Overview → Data tables → Create data table**, nombre `Configuración` (exactamente así), columnas `clave` (String) y `valor` (Number). Después, añadir la fila `umbral_venta_grande` · `100`. Para cambiar el umbral, se edita `valor` en esa fila; el flujo no se toca.
+
+### Cierres
+
+El flujo `05 · Cierre diario` guarda un registro por fecha. Crear una tabla llamada `Cierres` con las 17 columnas definidas en [la spec de HU-04](../specs/05-cierre-diario.md): `fecha` (String), columnas de importes y operaciones (Number), y `sin_movimientos` (Boolean). No necesita credential ni filas iniciales. El nodo usa Upsert por `fecha`.
 
 > **Las Data tables no se exportan con el JSON del workflow.** Al importar `workflows/01-eventos-tienda.json` en otra instancia (por ejemplo, la de la pareja), hay que crear antes la tabla `Configuración` con su fila y volver a elegirla en el nodo `Leer umbral de venta grande`. Si no, el nodo da error y lo avisa el `08`.
 
@@ -115,3 +118,7 @@ En n8n: **Overview → Credentials → Create credential**, buscar el tipo y gua
 ### Extensión IA de recordatorios (#121)
 
 `06 · Recordatorios y vencimientos` añade la credencial **Groq** (Groq API) al HTTP `Redactar con Groq`. Solo se envían instrucciones de tono genéricas; ningún dato de cliente, importe o fecha. API Tienda, sub-workflow 10, Data table y Error workflow 08 conservan su configuración anterior. El flujo permanece inactivo.
+
+### Servidor MCP de personal (#136)
+
+`13 · Servidor MCP` usa **API Tienda** (Header Auth, `X-API-Key`) tanto para la entrada autenticada como para su único GET a tienda. Es una integración local para agentes de confianza del equipo que ya disponen de esta clave, nunca clientes Telegram. Versión 2 del trigger evita propagar cabeceras al input de herramienta. El resultado permite únicamente id, estado, pendiente, abonado y fecha_limite. Sin activar MCP global ni publicar el flujo. Configuración y pruebas: [spec 13](../specs/13-servidor-mcp.md). No guardar valores del header en configuración versionada.
